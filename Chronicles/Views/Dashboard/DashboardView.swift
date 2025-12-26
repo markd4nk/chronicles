@@ -1,126 +1,125 @@
 import SwiftUI
 
-/// Main Dashboard View
-/// Chronicles iOS App - Papper Design Style
+// MARK: - Dashboard View
+// Chronicles iOS App - Papper Design Style
 
 struct DashboardView: View {
     @Environment(\.colorScheme) var colorScheme
     
     // Mock data
     private let userName = "Mark"
-    private let currentDate = Date()
     
     var body: some View {
         ZStack {
-            // Background gradient
-            backgroundGradient
+            // Papper gradient background
+            backgroundView
                 .ignoresSafeArea()
             
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 24) {
-                    // Header section
+                VStack(spacing: 28) {
                     headerSection
-                    
-                    // Weekly calendar
                     WeeklyCalendarView()
-                    
-                    // Quick entry widgets
                     widgetSection
-                    
                     Spacer(minLength: 100)
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 16)
+                .padding(.top, 20)
             }
         }
-        .preferredColorScheme(.dark) // Preview in dark mode by default
     }
     
     // MARK: - Background
     
-    private var backgroundGradient: some View {
-        Group {
-            if colorScheme == .dark {
-                // Dark mode: solid dark background with subtle gradient overlay
-                ZStack {
-                    ColorTokens.Dark.background
-                    
-                    LinearGradient(
-                        colors: [
-                            ColorTokens.Dark.gradientWarmPink.opacity(0.08),
-                            ColorTokens.Dark.gradientPurple.opacity(0.05),
-                            ColorTokens.Dark.gradientPeach.opacity(0.08)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                }
-            } else {
-                // Light mode: soft gradient
-                GradientTokens.lightBackground
+    @ViewBuilder
+    private var backgroundView: some View {
+        if colorScheme == .dark {
+            // Dark mode: subtle gradient overlay
+            ZStack {
+                Color.black
+                PapperGradients.darkLinear()
+                    .opacity(0.15)
             }
+        } else {
+            // Light mode: full gradient
+            PapperGradients.lightLinear()
         }
     }
     
-    // MARK: - Header Section
+    // MARK: - Header
     
     private var headerSection: some View {
-        VStack(spacing: 8) {
-            // App logo placeholder
-            Image(systemName: "triangle")
-                .font(.system(size: 40, weight: .thin))
-                .foregroundColor(colorScheme == .dark ? .white : .primary)
-                .padding(.bottom, 8)
+        VStack(spacing: 12) {
+            // Logo
+            logoView
             
-            // Date subtitle
+            // Date
             Text(formattedDate.uppercased())
-                .dateSubtitleStyle()
-                .foregroundColor(ColorTokens.Text.tertiary)
+                .font(PapperTypography.dateSubtitle)
+                .tracking(1.5)
+                .foregroundStyle(.secondary)
             
             // Greeting
             Text(greeting)
-                .greetingStyle()
-                .foregroundColor(colorScheme == .dark ? .white : .primary)
+                .font(PapperTypography.greeting)
+                .foregroundStyle(.primary)
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
         .overlay(alignment: .topTrailing) {
-            // Profile button
             profileButton
         }
     }
     
-    // MARK: - Profile Button
-    
-    private var profileButton: some View {
-        Button(action: {
-            // Profile action
-        }) {
-            Image(systemName: "person.circle")
-                .font(.system(size: 28))
-                .foregroundColor(ColorTokens.Widget.morning)
+    private var logoView: some View {
+        ZStack {
+            // Radial lines effect
+            ForEach(0..<24, id: \.self) { i in
+                Rectangle()
+                    .fill(.primary.opacity(0.3))
+                    .frame(width: 1, height: 20)
+                    .offset(y: -25)
+                    .rotationEffect(.degrees(Double(i) * 15))
+            }
+            
+            // Triangle
+            Image(systemName: "triangle")
+                .font(.system(size: 32, weight: .ultraLight))
+                .foregroundStyle(.primary)
         }
-        .padding(.top, 8)
+        .frame(width: 60, height: 60)
+        .padding(.bottom, 8)
     }
     
-    // MARK: - Widget Section
+    private var profileButton: some View {
+        Button(action: {}) {
+            Circle()
+                .stroke(PapperColors.primary, lineWidth: 2)
+                .frame(width: 36, height: 36)
+                .overlay {
+                    Image(systemName: "person.fill")
+                        .font(.system(size: 16))
+                        .foregroundStyle(PapperColors.primary)
+                }
+        }
+    }
+    
+    // MARK: - Widgets
     
     private var widgetSection: some View {
         HStack(spacing: 16) {
             QuickEntryWidget(
                 title: "Morning\nreflection",
                 icon: "sun.max.fill",
-                iconColor: ColorTokens.Widget.morning,
-                status: .completed,
-                colorScheme: colorScheme
+                iconColor: Color.orange,
+                isCompleted: true
             )
             
             QuickEntryWidget(
                 title: "Evening\nreflection",
                 icon: "moon.stars.fill",
-                iconColor: ColorTokens.Widget.evening,
-                status: .pending(prompt: "Assess your day"),
-                colorScheme: colorScheme
+                iconColor: PapperColors.DarkGradient.purple,
+                isCompleted: false,
+                subtitle: "Assess your day"
             )
         }
     }
@@ -128,36 +127,26 @@ struct DashboardView: View {
     // MARK: - Helpers
     
     private var greeting: String {
-        let hour = Calendar.current.component(.hour, from: currentDate)
-        let timeOfDay: String
-        
-        switch hour {
-        case 0..<12:
-            timeOfDay = "Good Morning"
-        case 12..<17:
-            timeOfDay = "Good Afternoon"
-        default:
-            timeOfDay = "Good Evening"
-        }
-        
-        return "\(timeOfDay), \(userName)!"
+        let hour = Calendar.current.component(.hour, from: Date())
+        let time = hour < 12 ? "Morning" : hour < 17 ? "Afternoon" : "Evening"
+        return "Good \(time), \(userName)!"
     }
     
     private var formattedDate: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "EEEE d MMMM yyyy"
-        return formatter.string(from: currentDate)
+        return formatter.string(from: Date())
     }
 }
 
-// MARK: - Preview
+// MARK: - Previews
 
-#Preview {
+#Preview("Dark") {
     DashboardView()
+        .preferredColorScheme(.dark)
 }
 
-#Preview("Light Mode") {
+#Preview("Light") {
     DashboardView()
         .preferredColorScheme(.light)
 }
-

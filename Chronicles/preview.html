@@ -3,9 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=414, initial-scale=1.0">
-    <title>Chronicles - Dashboard Preview</title>
+    <title>Chronicles - Dashboard Preview (Papper Design)</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500;600&display=swap');
+        /* Papper Design Tokens from JSON */
+        :root {
+            /* Primary Color */
+            --primary: #FF6B6B;
+            
+            /* Light Gradient Colors */
+            --light-pink: #f7d9d9;
+            --light-lavender: #efe1e8;
+            --light-blue-gray: #e1e5ef;
+            
+            /* Dark Gradient Colors */
+            --dark-warm-pink: #f7baba;
+            --dark-purple: #d9c8ea;
+            --dark-peach: #ffccb3;
+            
+            /* Shadow */
+            --shadow-color: rgba(224, 0, 0, 0.2);
+            
+            /* Typography Sizes */
+            --header2: 24px;
+            --body-title: 16px;
+            --body: 14px;
+            --body-discovery: 13px;
+            --body-small: 11px;
+            --paywall-title: 18px;
+            --paywall-subtitle: 12px;
+        }
         
         * {
             margin: 0;
@@ -13,56 +39,43 @@
             box-sizing: border-box;
         }
         
-        :root {
-            /* Papper Color Tokens */
-            --primary: #FF6B6B;
-            --background-dark: #1C1C1E;
-            --card-dark: #2C2C2E;
-            --card-secondary-dark: #3A3A3C;
-            --text-primary: #FFFFFF;
-            --text-secondary: #8E8E93;
-            --widget-morning: #FFB347;
-            --widget-evening: #7B68EE;
-            --completed: #34C759;
-            
-            /* Gradient colors */
-            --gradient-pink: rgba(247, 186, 186, 0.08);
-            --gradient-purple: rgba(217, 200, 234, 0.05);
-            --gradient-peach: rgba(255, 204, 179, 0.08);
-        }
-        
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: var(--background-dark);
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
             min-height: 100vh;
             display: flex;
             justify-content: center;
             padding: 20px;
+            transition: background 0.3s;
         }
         
-        .phone-frame {
+        /* Dark Mode (default) */
+        body {
+            background: #000;
+        }
+        
+        .phone {
             width: 390px;
             min-height: 844px;
-            background: linear-gradient(
-                135deg,
-                var(--gradient-pink),
-                var(--gradient-purple),
-                var(--gradient-peach)
-            ), var(--background-dark);
-            border-radius: 40px;
-            padding: 50px 20px 40px;
+            background: linear-gradient(135deg, 
+                rgba(247, 186, 186, 0.12), 
+                rgba(217, 200, 234, 0.08), 
+                rgba(255, 204, 179, 0.12)
+            ), #000;
+            border-radius: 44px;
+            padding: 60px 20px 40px;
             position: relative;
-            overflow: hidden;
+            color: #fff;
         }
         
-        .phone-frame::before {
+        /* Dynamic Island */
+        .phone::before {
             content: '';
             position: absolute;
-            top: 12px;
+            top: 14px;
             left: 50%;
             transform: translateX(-50%);
-            width: 120px;
-            height: 30px;
+            width: 126px;
+            height: 34px;
             background: #000;
             border-radius: 20px;
         }
@@ -70,103 +83,126 @@
         /* Header */
         .header {
             text-align: center;
-            margin-bottom: 24px;
+            margin-bottom: 28px;
             position: relative;
         }
         
         .logo {
-            width: 50px;
-            height: 50px;
-            margin: 0 auto 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 12px;
+            position: relative;
         }
         
-        .logo svg {
-            width: 40px;
-            height: 40px;
-            stroke: var(--text-primary);
-            stroke-width: 1;
-            fill: none;
+        .logo-rays {
+            position: absolute;
+            inset: 0;
         }
         
-        .profile-btn {
+        .logo-rays::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 60px;
+            height: 60px;
+            background: 
+                repeating-conic-gradient(
+                    from 0deg,
+                    rgba(255,255,255,0.3) 0deg 1deg,
+                    transparent 1deg 15deg
+                );
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+        }
+        
+        .logo-triangle {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 0;
+            height: 0;
+            border-left: 14px solid transparent;
+            border-right: 14px solid transparent;
+            border-bottom: 24px solid rgba(255,255,255,0.9);
+        }
+        
+        .profile {
             position: absolute;
             top: 8px;
             right: 0;
-            width: 32px;
-            height: 32px;
+            width: 36px;
+            height: 36px;
+            border: 2px solid var(--primary);
             border-radius: 50%;
-            border: 2px solid var(--widget-morning);
             display: flex;
             align-items: center;
             justify-content: center;
         }
         
-        .profile-btn svg {
-            width: 20px;
-            height: 20px;
-            fill: var(--widget-morning);
+        .profile svg {
+            width: 18px;
+            height: 18px;
+            fill: var(--primary);
         }
         
-        .date-label {
-            font-size: 11px;
+        .date {
+            font-size: var(--body-small);
             font-weight: 500;
             letter-spacing: 1.5px;
-            color: var(--text-secondary);
+            color: rgba(255,255,255,0.5);
             margin-bottom: 8px;
             text-transform: uppercase;
         }
         
         .greeting {
-            font-family: 'Playfair Display', Georgia, serif;
+            font-family: 'New York', Georgia, serif;
             font-size: 32px;
             font-weight: 700;
-            color: var(--text-primary);
-            line-height: 1.2;
+            line-height: 1.15;
         }
         
-        /* Weekly Calendar */
+        /* Calendar */
         .calendar {
             display: flex;
             justify-content: space-between;
             margin-bottom: 24px;
-            padding: 8px 0;
         }
         
-        .day-cell {
+        .day {
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 10px 8px;
+            padding: 10px 6px;
             border-radius: 12px;
             cursor: pointer;
             transition: background 0.2s;
+            min-width: 44px;
         }
         
-        .day-cell.selected {
-            background: var(--card-secondary-dark);
+        .day.selected {
+            background: rgba(255,255,255,0.08);
         }
         
         .day-label {
-            font-size: 11px;
-            color: var(--text-secondary);
+            font-size: var(--body-small);
+            color: rgba(255,255,255,0.4);
             margin-bottom: 6px;
         }
         
-        .day-cell.selected .day-label {
-            color: var(--text-primary);
+        .day.selected .day-label {
+            color: rgba(255,255,255,0.7);
         }
         
-        .day-number {
-            font-size: 16px;
+        .day-num {
+            font-size: var(--body-title);
             font-weight: 500;
-            color: var(--text-secondary);
+            color: rgba(255,255,255,0.35);
         }
         
-        .day-cell.selected .day-number {
-            color: var(--text-primary);
+        .day.selected .day-num {
+            color: #fff;
         }
         
         /* Widgets */
@@ -183,24 +219,21 @@
             display: flex;
             flex-direction: column;
             cursor: pointer;
-            transition: transform 0.15s, box-shadow 0.15s;
-        }
-        
-        .widget:hover {
-            transform: scale(0.98);
+            transition: transform 0.15s;
+            box-shadow: 0 1px 4px var(--shadow-color);
         }
         
         .widget:active {
-            transform: scale(0.96);
+            transform: scale(0.97);
         }
         
         .widget.completed {
-            background: var(--background-dark);
-            border: 1.5px solid var(--card-secondary-dark);
+            background: transparent;
+            border: 1.5px solid rgba(255,255,255,0.1);
         }
         
         .widget.pending {
-            background: var(--card-secondary-dark);
+            background: rgba(255,255,255,0.06);
         }
         
         .widget-icon {
@@ -209,9 +242,8 @@
         }
         
         .widget-title {
-            font-size: 16px;
+            font-size: var(--body-title);
             font-weight: 600;
-            color: var(--text-primary);
             line-height: 1.3;
             margin-bottom: 8px;
         }
@@ -220,114 +252,143 @@
             display: flex;
             align-items: center;
             gap: 6px;
-            font-size: 11px;
-            color: var(--text-secondary);
+            font-size: var(--body-small);
+            color: rgba(255,255,255,0.5);
         }
         
-        .status-check {
+        .check {
             width: 16px;
             height: 16px;
-            background: var(--completed);
+            background: #34C759;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
         }
         
-        .status-check svg {
+        .check svg {
             width: 10px;
             height: 10px;
-            fill: white;
         }
         
-        /* Mode toggle */
-        .mode-toggle {
+        /* Light Mode */
+        body.light {
+            background: var(--light-blue-gray);
+        }
+        
+        body.light .phone {
+            background: linear-gradient(135deg, 
+                var(--light-pink), 
+                var(--light-lavender), 
+                var(--light-blue-gray)
+            );
+            color: #1c1c1e;
+        }
+        
+        body.light .date {
+            color: rgba(0,0,0,0.4);
+        }
+        
+        body.light .day.selected {
+            background: rgba(0,0,0,0.05);
+        }
+        
+        body.light .day-label {
+            color: rgba(0,0,0,0.35);
+        }
+        
+        body.light .day.selected .day-label {
+            color: rgba(0,0,0,0.6);
+        }
+        
+        body.light .day-num {
+            color: rgba(0,0,0,0.3);
+        }
+        
+        body.light .day.selected .day-num {
+            color: #1c1c1e;
+        }
+        
+        body.light .widget.completed {
+            background: rgba(255,255,255,0.6);
+            border-color: rgba(0,0,0,0.08);
+        }
+        
+        body.light .widget.pending {
+            background: #fff;
+        }
+        
+        body.light .widget-status {
+            color: rgba(0,0,0,0.5);
+        }
+        
+        body.light .logo-rays::before {
+            background: repeating-conic-gradient(
+                from 0deg,
+                rgba(0,0,0,0.2) 0deg 1deg,
+                transparent 1deg 15deg
+            );
+        }
+        
+        body.light .logo-triangle {
+            border-bottom-color: rgba(0,0,0,0.85);
+        }
+        
+        /* Toggle */
+        .toggle {
             position: fixed;
             top: 20px;
             right: 20px;
-            padding: 10px 20px;
-            background: var(--card-dark);
-            color: var(--text-primary);
+            padding: 10px 16px;
+            background: rgba(255,255,255,0.1);
+            color: #fff;
             border: none;
             border-radius: 8px;
             cursor: pointer;
             font-family: inherit;
+            font-size: 13px;
         }
         
-        /* Light mode styles */
-        body.light-mode {
-            background: #F5F5F7;
-        }
-        
-        body.light-mode .phone-frame {
-            background: linear-gradient(
-                135deg,
-                #f7d9d9,
-                #efe1e8,
-                #e1e5ef
-            );
-        }
-        
-        body.light-mode .greeting,
-        body.light-mode .widget-title,
-        body.light-mode .day-cell.selected .day-number,
-        body.light-mode .day-cell.selected .day-label {
-            color: #1C1C1E;
-        }
-        
-        body.light-mode .widget.pending {
-            background: white;
-        }
-        
-        body.light-mode .widget.completed {
-            background: #F5F5F7;
-            border-color: #E5E5E7;
-        }
-        
-        body.light-mode .day-cell.selected {
-            background: rgba(0, 0, 0, 0.05);
+        body.light .toggle {
+            background: rgba(0,0,0,0.08);
+            color: #1c1c1e;
         }
     </style>
 </head>
 <body>
-    <button class="mode-toggle" onclick="toggleMode()">Toggle Light/Dark</button>
+    <button class="toggle" onclick="document.body.classList.toggle('light')">
+        Toggle Theme
+    </button>
     
-    <div class="phone-frame">
-        <!-- Header -->
+    <div class="phone">
         <div class="header">
             <div class="logo">
-                <svg viewBox="0 0 50 50">
-                    <path d="M25 5 L45 42 L5 42 Z" />
-                    <circle cx="25" cy="28" r="3" fill="currentColor" />
-                </svg>
+                <div class="logo-rays"></div>
+                <div class="logo-triangle"></div>
             </div>
             
-            <div class="profile-btn">
+            <div class="profile">
                 <svg viewBox="0 0 24 24">
                     <circle cx="12" cy="8" r="4"/>
                     <path d="M4 20c0-4 4-7 8-7s8 3 8 7"/>
                 </svg>
             </div>
             
-            <div class="date-label" id="date-label">FRIDAY 26 DECEMBER 2025</div>
-            <div class="greeting" id="greeting">Good Afternoon, Mark!</div>
+            <div class="date" id="date"></div>
+            <div class="greeting" id="greeting"></div>
         </div>
         
-        <!-- Weekly Calendar -->
-        <div class="calendar" id="calendar">
-            <!-- Generated by JS -->
-        </div>
+        <div class="calendar" id="calendar"></div>
         
-        <!-- Widgets -->
         <div class="widgets">
             <div class="widget completed">
                 <div class="widget-icon">☀️</div>
                 <div class="widget-title">Morning<br>reflection</div>
                 <div class="widget-status">
                     Completed
-                    <div class="status-check">
+                    <div class="check">
                         <svg viewBox="0 0 12 12">
-                            <path d="M2 6 L5 9 L10 3" stroke="white" stroke-width="2" fill="none"/>
+                            <path d="M2 6 L5 9 L10 3" stroke="#fff" stroke-width="2" fill="none"/>
                         </svg>
                     </div>
                 </div>
@@ -342,59 +403,36 @@
     </div>
     
     <script>
-        // Update date and greeting
-        function updateDateTime() {
-            const now = new Date();
-            const options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
-            const dateStr = now.toLocaleDateString('en-US', options).toUpperCase();
-            document.getElementById('date-label').textContent = dateStr;
-            
-            const hour = now.getHours();
-            let greeting;
-            if (hour < 12) greeting = 'Good Morning';
-            else if (hour < 17) greeting = 'Good Afternoon';
-            else greeting = 'Good Evening';
-            document.getElementById('greeting').textContent = `${greeting}, Mark!`;
-        }
+        // Date
+        const now = new Date();
+        const dateOpts = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+        document.getElementById('date').textContent = now.toLocaleDateString('en-US', dateOpts).toUpperCase();
         
-        // Generate calendar
-        function generateCalendar() {
-            const calendar = document.getElementById('calendar');
-            const today = new Date();
-            const dayOfWeek = today.getDay();
-            const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-            
-            const days = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
-            
-            for (let i = 0; i < 7; i++) {
-                const date = new Date(today);
-                date.setDate(today.getDate() + mondayOffset + i);
-                
-                const isToday = date.toDateString() === today.toDateString();
-                
-                const cell = document.createElement('div');
-                cell.className = `day-cell${isToday ? ' selected' : ''}`;
-                cell.innerHTML = `
-                    <div class="day-label">${days[i]}</div>
-                    <div class="day-number">${date.getDate()}</div>
-                `;
-                cell.onclick = () => {
-                    document.querySelectorAll('.day-cell').forEach(c => c.classList.remove('selected'));
-                    cell.classList.add('selected');
-                };
-                calendar.appendChild(cell);
-            }
-        }
+        // Greeting
+        const hour = now.getHours();
+        const time = hour < 12 ? 'Morning' : hour < 17 ? 'Afternoon' : 'Evening';
+        document.getElementById('greeting').textContent = `Good ${time}, Mark!`;
         
-        // Toggle light/dark mode
-        function toggleMode() {
-            document.body.classList.toggle('light-mode');
-        }
+        // Calendar
+        const cal = document.getElementById('calendar');
+        const days = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+        const weekday = now.getDay();
+        const mondayOff = weekday === 0 ? -6 : 1 - weekday;
         
-        // Initialize
-        updateDateTime();
-        generateCalendar();
+        for (let i = 0; i < 7; i++) {
+            const d = new Date(now);
+            d.setDate(now.getDate() + mondayOff + i);
+            const isToday = d.toDateString() === now.toDateString();
+            
+            const div = document.createElement('div');
+            div.className = `day${isToday ? ' selected' : ''}`;
+            div.innerHTML = `<div class="day-label">${days[i]}</div><div class="day-num">${d.getDate()}</div>`;
+            div.onclick = () => {
+                cal.querySelectorAll('.day').forEach(x => x.classList.remove('selected'));
+                div.classList.add('selected');
+            };
+            cal.appendChild(div);
+        }
     </script>
 </body>
 </html>
-

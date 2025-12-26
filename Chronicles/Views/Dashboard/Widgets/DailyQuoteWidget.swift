@@ -1,54 +1,60 @@
 import SwiftUI
 
-/// Daily Quote Widget for Dashboard
-/// Chronicles iOS App - Papper Design Style
+// MARK: - Daily Quote Widget
+// Chronicles iOS App - Papper Design Style
 
 struct DailyQuoteWidget: View {
-    let colorScheme: ColorScheme
+    @Environment(\.colorScheme) var colorScheme
     
-    // Mock quote data
-    private let quote = "The only way to do great work is to love what you do."
-    private let author = "Steve Jobs"
+    let quote: String
+    let author: String
+    
+    init(
+        quote: String = "The only way to do great work is to love what you do.",
+        author: String = "Steve Jobs"
+    ) {
+        self.quote = quote
+        self.author = author
+    }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            // Quote icon
+            // Quote mark
             Image(systemName: "quote.opening")
-                .font(.system(size: 24))
-                .foregroundColor(ColorTokens.primary)
+                .font(.system(size: 24, weight: .medium))
+                .foregroundStyle(PapperColors.primary)
             
             // Quote text
             Text(quote)
-                .font(TypographyTokens.body)
-                .foregroundColor(colorScheme == .dark ? .white : .primary)
+                .font(PapperTypography.body)
+                .foregroundStyle(.primary)
                 .lineSpacing(4)
             
             // Author
             Text("— \(author)")
-                .font(TypographyTokens.bodySmall)
-                .foregroundColor(ColorTokens.Text.tertiary)
+                .font(PapperTypography.bodySmall)
+                .foregroundStyle(.secondary)
         }
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            colorScheme == .dark
-                ? ColorTokens.Dark.cardSecondary
-                : ColorTokens.Light.card
-        )
-        .cornerRadius(20)
-        .slightShadow()
+        .background(cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .papperShadow()
+    }
+    
+    private var cardBackground: Color {
+        colorScheme == .dark 
+            ? Color.white.opacity(0.06)
+            : .white
     }
 }
 
-// MARK: - Preview
-
 #Preview {
     ZStack {
-        ColorTokens.Dark.background.ignoresSafeArea()
+        Color.black.ignoresSafeArea()
         
-        DailyQuoteWidget(colorScheme: .dark)
+        DailyQuoteWidget()
             .padding()
     }
     .preferredColorScheme(.dark)
 }
-

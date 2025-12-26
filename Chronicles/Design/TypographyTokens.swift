@@ -1,130 +1,79 @@
 import SwiftUI
 
-/// Papper Design Library - Typography Tokens
-/// Chronicles iOS App
+// MARK: - Papper Design Library - Typography Tokens
+// Source: papper-design-tokens.json
 
-struct TypographyTokens {
+/// Typography tokens from Papper Design Library
+enum PapperTypography {
     
-    // MARK: - Font Sizes
+    // MARK: - Font Sizes (from JSON)
     
-    struct Size {
+    enum Size {
         static let header2: CGFloat = 24
         static let bodyTitle: CGFloat = 16
         static let body: CGFloat = 14
         static let bodyDiscovery: CGFloat = 13
-        static let bodySmall: CGFloat = 11
-        static let paywallTitle: CGFloat = 18
         static let paywallSubtitle: CGFloat = 12
         static let codeMono: CGFloat = 12
-        
-        // Additional sizes
-        static let largeTitle: CGFloat = 34
-        static let title: CGFloat = 28
-        static let headline: CGFloat = 17
-        static let caption: CGFloat = 12
+        static let bodySmall: CGFloat = 11
+        static let paywallTitle: CGFloat = 18
     }
     
-    // MARK: - Font Weights
+    // MARK: - Font Weights (from JSON)
     
-    struct Weight {
-        static let regular: Font.Weight = .regular
-        static let medium: Font.Weight = .medium
-        static let semibold: Font.Weight = .semibold
-        static let bold: Font.Weight = .bold
+    enum Weight {
+        static let regular: Font.Weight = .regular     // 400
+        static let medium: Font.Weight = .medium       // 500
+        static let semibold: Font.Weight = .semibold   // 600
+        static let bold: Font.Weight = .bold           // 700
     }
     
-    // MARK: - Text Styles
+    // MARK: - Text Styles (from JSON)
     
-    /// Large greeting text (Good Morning, Mark!)
-    static var largeGreeting: Font {
-        .system(size: Size.largeTitle, weight: .bold, design: .serif)
-    }
+    /// header2: SF Pro, 24px, semibold (600)
+    static let header2 = Font.system(size: Size.header2, weight: .semibold, design: .default)
     
-    /// Header 2 style
-    static var header2: Font {
-        .system(size: Size.header2, weight: .semibold, design: .default)
-    }
+    /// bodyTitle: SF Pro, 16px, medium (500)
+    static let bodyTitle = Font.system(size: Size.bodyTitle, weight: .medium, design: .default)
     
-    /// Body title style
-    static var bodyTitle: Font {
-        .system(size: Size.bodyTitle, weight: .medium, design: .default)
-    }
+    /// body: SF Pro, 14px, regular (400)
+    static let body = Font.system(size: Size.body, weight: .regular, design: .default)
     
-    /// Body text style
-    static var body: Font {
-        .system(size: Size.body, weight: .regular, design: .default)
-    }
+    /// bodyDiscovery: SF Pro, 13px, regular (400)
+    static let bodyDiscovery = Font.system(size: Size.bodyDiscovery, weight: .regular, design: .default)
     
-    /// Body small style
-    static var bodySmall: Font {
-        .system(size: Size.bodySmall, weight: .regular, design: .default)
-    }
+    /// bodySmall: SF Pro, 11px, regular (400)
+    static let bodySmall = Font.system(size: Size.bodySmall, weight: .regular, design: .default)
     
-    /// Caption style
-    static var caption: Font {
-        .system(size: Size.caption, weight: .regular, design: .default)
-    }
+    /// paywallTitle: New York Medium (serif), 18px, bold (700)
+    static let paywallTitle = Font.system(size: Size.paywallTitle, weight: .bold, design: .serif)
     
-    /// Paywall title style (New York Medium equivalent)
-    static var paywallTitle: Font {
-        .system(size: Size.paywallTitle, weight: .bold, design: .serif)
-    }
+    /// paywallSubtitle: SF Pro, 12px, regular (400)
+    static let paywallSubtitle = Font.system(size: Size.paywallSubtitle, weight: .regular, design: .default)
     
-    /// Paywall subtitle style
-    static var paywallSubtitle: Font {
-        .system(size: Size.paywallSubtitle, weight: .regular, design: .default)
-    }
+    /// codeMono: IBM Plex Mono (monospaced), 12px, regular (400)
+    static let codeMono = Font.system(size: Size.codeMono, weight: .regular, design: .monospaced)
+}
+
+// MARK: - Custom Styles (derived from JSON)
+
+extension PapperTypography {
     
-    /// Monospace code style
-    static var codeMono: Font {
-        .system(size: Size.codeMono, weight: .regular, design: .monospaced)
-    }
+    /// Large greeting title - derived from header2 style
+    static let greeting = Font.system(size: 32, weight: .bold, design: .serif)
     
-    /// Date subtitle (FRIDAY 26 DECEMBER 2025)
-    static var dateSubtitle: Font {
-        .system(size: Size.bodySmall, weight: .medium, design: .default)
-    }
+    /// Date subtitle with tracking
+    static let dateSubtitle = Font.system(size: Size.bodySmall, weight: .medium, design: .default)
     
     /// Widget title
-    static var widgetTitle: Font {
-        .system(size: Size.bodyTitle, weight: .semibold, design: .default)
-    }
+    static let widgetTitle = Font.system(size: Size.bodyTitle, weight: .semibold, design: .default)
     
     /// Widget subtitle
-    static var widgetSubtitle: Font {
-        .system(size: Size.bodySmall, weight: .regular, design: .default)
-    }
+    static let widgetSubtitle = Font.system(size: Size.bodySmall, weight: .regular, design: .default)
     
     /// Calendar day number
-    static var calendarDay: Font {
-        .system(size: Size.bodyTitle, weight: .medium, design: .default)
-    }
+    static let calendarDay = Font.system(size: Size.bodyTitle, weight: .medium, design: .default)
     
-    /// Calendar day label (Mo, Tu, etc.)
-    static var calendarDayLabel: Font {
-        .system(size: Size.bodySmall, weight: .regular, design: .default)
-    }
+    /// Calendar day label
+    static let calendarLabel = Font.system(size: Size.bodySmall, weight: .regular, design: .default)
 }
-
-// MARK: - Text Style Modifiers
-
-extension View {
-    func greetingStyle() -> some View {
-        self.font(TypographyTokens.largeGreeting)
-    }
-    
-    func dateSubtitleStyle() -> some View {
-        self
-            .font(TypographyTokens.dateSubtitle)
-            .tracking(1.5)
-    }
-    
-    func widgetTitleStyle() -> some View {
-        self.font(TypographyTokens.widgetTitle)
-    }
-    
-    func widgetSubtitleStyle() -> some View {
-        self.font(TypographyTokens.widgetSubtitle)
-    }
-}
-

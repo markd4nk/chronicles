@@ -1,124 +1,99 @@
 import SwiftUI
 
-/// Quick Entry Widget for Dashboard
-/// Chronicles iOS App - Papper Design Style
-
-enum WidgetStatus {
-    case completed
-    case pending(prompt: String)
-    
-    var isCompleted: Bool {
-        if case .completed = self {
-            return true
-        }
-        return false
-    }
-}
+// MARK: - Quick Entry Widget
+// Chronicles iOS App - Papper Design Style
 
 struct QuickEntryWidget: View {
+    @Environment(\.colorScheme) var colorScheme
+    
     let title: String
     let icon: String
     let iconColor: Color
-    let status: WidgetStatus
-    let colorScheme: ColorScheme
-    
-    @State private var isPressed = false
+    var isCompleted: Bool = false
+    var subtitle: String? = nil
     
     var body: some View {
-        Button(action: {
-            // Open journal entry creation
-            print("Open entry for: \(title)")
-        }) {
-            widgetContent
-        }
-        .buttonStyle(WidgetButtonStyle())
-    }
-    
-    // MARK: - Widget Content
-    
-    private var widgetContent: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Icon
-            Image(systemName: icon)
-                .font(.system(size: 28))
-                .foregroundColor(iconColor)
-            
-            Spacer()
-            
-            // Title
-            Text(title)
-                .widgetTitleStyle()
-                .foregroundColor(colorScheme == .dark ? .white : .primary)
-                .multilineTextAlignment(.leading)
-            
-            // Status
-            statusView
-        }
-        .padding(20)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(height: 180)
-        .background(cardBackground)
-        .cornerRadius(20)
-        .overlay(
-            RoundedRectangle(cornerRadius: 20)
-                .stroke(borderColor, lineWidth: status.isCompleted ? 1.5 : 0)
-        )
-    }
-    
-    // MARK: - Status View
-    
-    private var statusView: some View {
-        Group {
-            switch status {
-            case .completed:
-                HStack(spacing: 6) {
-                    Text("Completed")
-                        .widgetSubtitleStyle()
-                        .foregroundColor(ColorTokens.Text.tertiary)
-                    
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 16))
-                        .foregroundColor(ColorTokens.Widget.completed)
-                }
+        Button(action: { /* Open entry */ }) {
+            VStack(alignment: .leading, spacing: 0) {
+                // Icon
+                Image(systemName: icon)
+                    .font(.system(size: 28))
+                    .foregroundStyle(iconColor)
                 
-            case .pending(let prompt):
-                Text(prompt)
-                    .widgetSubtitleStyle()
-                    .foregroundColor(ColorTokens.Text.tertiary)
+                Spacer()
+                
+                // Title
+                Text(title)
+                    .font(PapperTypography.widgetTitle)
+                    .foregroundStyle(.primary)
+                    .multilineTextAlignment(.leading)
+                    .padding(.bottom, 8)
+                
+                // Status
+                statusView
             }
+            .padding(20)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(height: 180)
+            .background(cardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 20))
+            .overlay {
+                if isCompleted {
+                    RoundedRectangle(cornerRadius: 20)
+                        .stroke(borderColor, lineWidth: 1.5)
+                }
+            }
+            .papperShadow()
+        }
+        .buttonStyle(ScaleButtonStyle())
+    }
+    
+    // MARK: - Status
+    
+    @ViewBuilder
+    private var statusView: some View {
+        if isCompleted {
+            HStack(spacing: 6) {
+                Text("Completed")
+                    .font(PapperTypography.widgetSubtitle)
+                    .foregroundStyle(.secondary)
+                
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 16))
+                    .foregroundStyle(.green)
+            }
+        } else if let subtitle {
+            Text(subtitle)
+                .font(PapperTypography.widgetSubtitle)
+                .foregroundStyle(.secondary)
         }
     }
     
     // MARK: - Styling
     
     private var cardBackground: Color {
-        if status.isCompleted {
-            return colorScheme == .dark
-                ? ColorTokens.Dark.background
-                : ColorTokens.Light.background
+        if isCompleted {
+            return colorScheme == .dark ? .clear : Color(white: 0.97)
         }
-        return colorScheme == .dark
-            ? ColorTokens.Dark.cardSecondary
-            : ColorTokens.Light.card
+        return colorScheme == .dark 
+            ? Color.white.opacity(0.06)
+            : .white
     }
     
     private var borderColor: Color {
-        if status.isCompleted {
-            return colorScheme == .dark
-                ? ColorTokens.Dark.cardSecondary
-                : ColorTokens.Light.cardSecondary
-        }
-        return .clear
+        colorScheme == .dark 
+            ? Color.white.opacity(0.1)
+            : Color.black.opacity(0.08)
     }
 }
 
-// MARK: - Widget Button Style
+// MARK: - Scale Button Style
 
-struct WidgetButtonStyle: ButtonStyle {
+struct ScaleButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
-            .animation(.easeInOut(duration: 0.15), value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
     }
 }
 
@@ -126,27 +101,25 @@ struct WidgetButtonStyle: ButtonStyle {
 
 #Preview {
     ZStack {
-        ColorTokens.Dark.background.ignoresSafeArea()
+        Color.black.ignoresSafeArea()
         
         HStack(spacing: 16) {
             QuickEntryWidget(
                 title: "Morning\nreflection",
                 icon: "sun.max.fill",
-                iconColor: ColorTokens.Widget.morning,
-                status: .completed,
-                colorScheme: .dark
+                iconColor: .orange,
+                isCompleted: true
             )
             
             QuickEntryWidget(
                 title: "Evening\nreflection",
                 icon: "moon.stars.fill",
-                iconColor: ColorTokens.Widget.evening,
-                status: .pending(prompt: "Assess your day"),
-                colorScheme: .dark
+                iconColor: .purple,
+                isCompleted: false,
+                subtitle: "Assess your day"
             )
         }
         .padding()
     }
     .preferredColorScheme(.dark)
 }
-
