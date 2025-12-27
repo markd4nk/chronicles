@@ -498,70 +498,78 @@ struct JournalEntry {
 ```javascript
 users/
   {userId}/
-  - email: String
-  - displayName: String
-  - preferredName: String
-  - createdAt: Timestamp
-  - onboardingCompleted: Bool
-  - onboardingData: {...}
-  - subscriptionStatus: String
-  - securityEnabled: Bool (NEW - password/Face ID toggle)
-  - dashboardLayout: Array (NEW - widget configuration)
+    - email: String
+    - displayName: String
+    - preferredName: String
+    - createdAt: Timestamp
+    - onboardingCompleted: Bool
+    - onboardingData: {...}
+    - subscriptionStatus: String
+    - securityEnabled: Bool (NEW - password/Face ID toggle)
+    - dashboardLayout: Array (NEW - widget configuration)
 ```
+
+
 
 #### Journals Collection (NEW)
 
 ```javascript
 journals/
   {journalId}/
-  - userId: String
-  - name: String
-  - createdAt: Timestamp
-  - order: Int
-  - color: String?
+    - userId: String
+    - name: String
+    - createdAt: Timestamp
+    - order: Int
+    - color: String?
 ```
+
+
 
 #### Journal Templates Collection (NEW)
 
 ```javascript
 journalTemplates/
   {templateId}/
-  - userId: String
-  - journalId: String
-  - name: String
-  - prompts: [String]
-  - structure: String
-  - createdAt: Timestamp
+    - userId: String
+    - journalId: String
+    - name: String
+    - prompts: [String]
+    - structure: String
+    - createdAt: Timestamp
 ```
+
+
 
 #### Journal Entries Collection
 
 ```javascript
 journalEntries/
   {entryId}/
-  - userId: String
-  - journalId: String (NEW)
-  - templateId: String? (NEW)
-  - title: String
-  - content: String
-  - createdAt: Timestamp
-  - updatedAt: Timestamp
-  - inputMethod: String?
-  - mood: String?
+    - userId: String
+    - journalId: String (NEW)
+    - templateId: String? (NEW)
+    - title: String
+    - content: String
+    - createdAt: Timestamp
+    - updatedAt: Timestamp
+    - inputMethod: String?
+    - mood: String?
 ```
+
+
 
 #### Goals Collection
 
 ```javascript
 goals/
   {goalId}/
-  - userId: String
-  - title: String
-  - description: String
-  - targetDate: Timestamp
-  - status: String
-  - progress: Int
-  - createdAt: Timestamp
+    - userId: String
+    - title: String
+    - description: String
+    - targetDate: Timestamp
+    - status: String
+    - progress: Int
+    - createdAt: Timestamp
 ```
 
 ---
@@ -734,21 +742,21 @@ The app follows the **Papper Design Library** style guide with soft, calming aes
 **Gradients** (Background):
 
 - **Light Mode**: Conic gradient with soft pastels
-        - `#f7d9d9` (6.5%) - Soft pink
-        - `#efe1e8` (3.5%) - Lavender
-        - `#e1e5ef` (87.5%) - Soft blue-gray
+                - `#f7d9d9` (6.5%) - Soft pink
+                - `#efe1e8` (3.5%) - Lavender
+                - `#e1e5ef` (87.5%) - Soft blue-gray
 - **Dark Mode**: Conic gradient with warmer tones
-        - `#f7baba` (6.5%) - Warm pink
-        - `#d9c8ea` (3.5%) - Purple
-        - `#ffccb3` (87.5%) - Peach
+                - `#f7baba` (6.5%) - Warm pink
+                - `#d9c8ea` (3.5%) - Purple
+                - `#ffccb3` (87.5%) - Peach
 
 **Shadows**:
 
 - **Slight Shadow**: Subtle drop shadow for depth
-        - Color: `#e0000033` (transparent black)
-        - Offset: (0, 1)
-        - Blur: 4px
-        - Spread: 0
+                - Color: `#e0000033` (transparent black)
+                - Offset: (0, 1)
+                - Blur: 4px
+                - Spread: 0
 
 ### Typography
 
@@ -837,7 +845,3 @@ The app follows the **Papper Design Library** style guide with soft, calming aes
 - Sign in with Apple
 - In-App Purchase
 - Camera
-- Microphone
-- Speech Recognition
-
----

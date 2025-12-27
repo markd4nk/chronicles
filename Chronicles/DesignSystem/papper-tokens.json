@@ -1,0 +1,290 @@
+{
+  "metadata": {
+    "name": "Papper Design System",
+    "version": "1.0.0",
+    "description": "Complete design tokens for Chronicles journaling app based on Papper Design Library",
+    "exportDate": "2025-12-27",
+    "source": "Figma - Papper: Design library (Community)"
+  },
+  "colors": {
+    "palette": {
+      "peach": {
+        "200": "#f7e1d7",
+        "300": "#f4d5c7",
+        "400": "#ffccb3"
+      },
+      "pink": {
+        "200": "#f7d9d9",
+        "300": "#f4c9c9",
+        "400": "#f7baba"
+      },
+      "grayblue": {
+        "200": "#e1e5ef",
+        "300": "#d5dae8",
+        "400": "#d1dcfa"
+      },
+      "green": {
+        "50": "#f1f4ee",
+        "200": "#e6f2d9",
+        "300": "#dcedc9",
+        "400": "#daf0c1"
+      },
+      "purple": {
+        "200": "#e8e1ef",
+        "300": "#dfd5e8",
+        "400": "#d9c8ea"
+      },
+      "mint": {
+        "200": "#deede9",
+        "300": "#d0e6e0",
+        "400": "#c4eee3"
+      },
+      "lavanda": {
+        "200": "#efe1e8",
+        "300": "#e8d5df",
+        "400": "#f5d6e6"
+      },
+      "yellow": {
+        "200": "#f2ecd9",
+        "300": "#ede4c9",
+        "400": "#f7eaba"
+      },
+      "blue": {
+        "200": "#e1ebef",
+        "300": "#d5e3e8",
+        "400": "#c2e3f0"
+      },
+      "greenish": {
+        "200": "#e0ebe0",
+        "300": "#d3e3d3",
+        "400": "#c6ecc6"
+      },
+      "neutral": {
+        "000": "#ffffff",
+        "100": "#f6f6f6",
+        "200b": "#eef0f2",
+        "300": "#e0e0e0",
+        "400": "#bdbdbd",
+        "500": "#828282",
+        "550b": "#646d6d",
+        "600": "#4f4f4f",
+        "700": "#414141",
+        "800": "#333333",
+        "900": "#272727",
+        "999": "#111111",
+        "1000": "#000000"
+      },
+      "translucents": {
+        "black40": "rgba(0, 0, 0, 0.4)",
+        "white40": "rgba(255, 255, 255, 0.4)",
+        "white60": "rgba(255, 255, 255, 0.6)",
+        "neutral700": "rgba(65, 65, 65, 0.5)",
+        "neutral70080": "rgba(65, 65, 65, 0.8)",
+        "neutral600": "rgba(79, 79, 79, 0.5)",
+        "550b80": "rgba(100, 109, 109, 0.8)"
+      },
+      "special": {
+        "coral700": "#f97575",
+        "primary": "#FF6B6B"
+      }
+    },
+    "semantic": {
+      "surfaces": {
+        "buttonsPrimary": "neutral.700",
+        "buttonsQuickAction": "translucents.white60",
+        "backgroundPlain": "neutral.000",
+        "backgroundGray": "neutral.100",
+        "backgroundLogo": "neutral.100",
+        "backgroundModal": "neutral.000",
+        "firstLayer": "primary",
+        "secondLayer": "primary",
+        "accent": "accent",
+        "discoveryGray": "neutral.100",
+        "discoveryFirstLayer": "neutral.000",
+        "discoverySecondLayer": "primary",
+        "tabsSurface": "translucents.white60",
+        "tabsSecondSurface": "translucents.550b80",
+        "paywallGray": "neutral.200b",
+        "paywallButton": "green.50"
+      },
+      "fonts": {
+        "accent": "neutral.1000",
+        "main": "neutral.700",
+        "secondary": "translucents.neutral70080",
+        "tabs": "green.50",
+        "fancy": "neutral.550b",
+        "buttons": "neutral.000",
+        "nonColor": "neutral.700",
+        "textholder": "translucents.neutral700",
+        "paywall": "neutral.900",
+        "paywallSamecolor": "neutral.900"
+      },
+      "borders": {
+        "active": "neutral.700",
+        "inactive": "neutral.000",
+        "gentle": "translucents.neutral700",
+        "discovery": "neutral.000",
+        "samecolor": "neutral.900"
+      },
+      "icons": {
+        "primary": "translucents.neutral70080",
+        "secondary": "translucents.neutral700"
+      }
+    },
+    "gradients": {
+      "light": {
+        "type": "conic",
+        "stops": [
+          { "color": "#f7d9d9", "position": 0.065 },
+          { "color": "#efe1e8", "position": 0.035 },
+          { "color": "#e1e5ef", "position": 0.875 }
+        ]
+      },
+      "dark": {
+        "type": "conic",
+        "stops": [
+          { "color": "#f7baba", "position": 0.065 },
+          { "color": "#d9c8ea", "position": 0.035 },
+          { "color": "#ffccb3", "position": 0.875 }
+        ]
+      }
+    }
+  },
+  "typography": {
+    "fontFamilies": {
+      "sfPro": {
+        "value": "SF Pro",
+        "fallback": "system",
+        "description": "San Francisco Pro - iOS system font"
+      },
+      "ibmPlexMono": {
+        "value": "IBM Plex Mono",
+        "fallback": "monospaced",
+        "description": "Monospace font for code"
+      },
+      "newYorkMedium": {
+        "value": "New York Medium",
+        "fallback": "serif",
+        "description": "Serif font for elegant headings"
+      },
+      "hacky": {
+        "value": "Hacky",
+        "fallback": "monospaced",
+        "description": "Custom display font"
+      }
+    },
+    "fontSizes": {
+      "header2": 24,
+      "paywallTitle": 18,
+      "bodyTitle": 16,
+      "body": 14,
+      "bodyDiscovery": 13,
+      "paywallSubtitle": 12,
+      "codeMono": 12,
+      "bodySmall": 11
+    },
+    "fontWeights": {
+      "regular": 400,
+      "medium": 500,
+      "semibold": 600,
+      "bold": 700
+    },
+    "textStyles": {
+      "header2": {
+        "fontFamily": "sfPro",
+        "fontSize": 24,
+        "fontWeight": 600,
+        "lineHeight": 1.2
+      },
+      "body": {
+        "fontFamily": "sfPro",
+        "fontSize": 14,
+        "fontWeight": 400,
+        "lineHeight": 1.4
+      },
+      "bodySmall": {
+        "fontFamily": "sfPro",
+        "fontSize": 11,
+        "fontWeight": 400,
+        "lineHeight": 1.4
+      },
+      "bodyTitle": {
+        "fontFamily": "sfPro",
+        "fontSize": 16,
+        "fontWeight": 500,
+        "lineHeight": 1.3
+      },
+      "paywallTitle": {
+        "fontFamily": "newYorkMedium",
+        "fontSize": 18,
+        "fontWeight": 700,
+        "lineHeight": 1.2
+      },
+      "paywallSubtitle": {
+        "fontFamily": "sfPro",
+        "fontSize": 12,
+        "fontWeight": 400,
+        "lineHeight": 1.4
+      },
+      "codeMono": {
+        "fontFamily": "ibmPlexMono",
+        "fontSize": 12,
+        "fontWeight": 400,
+        "lineHeight": 1.5
+      }
+    }
+  },
+  "shadows": {
+    "slightShadow": {
+      "color": "#e0000033",
+      "offsetX": 0,
+      "offsetY": 1,
+      "blur": 4,
+      "spread": 0
+    }
+  },
+  "spacing": {
+    "xxxs": 2,
+    "xxs": 4,
+    "xs": 8,
+    "sm": 12,
+    "md": 16,
+    "lg": 20,
+    "xl": 24,
+    "xxl": 32,
+    "xxxl": 40,
+    "xxxxl": 48
+  },
+  "components": {
+    "cards": {
+      "task": {
+        "radius": 16,
+        "height": 97,
+        "width": 266
+      },
+      "main": {
+        "radius": 35
+      },
+      "discovery": {
+        "radius": 10
+      }
+    },
+    "borders": {
+      "thin": 1,
+      "thick": 2
+    },
+    "checkbox": {
+      "thickness": 3,
+      "checkerThickness": 2
+    },
+    "iphone": {
+      "radius": 55
+    },
+    "logo": {
+      "outline": "neutral.550b",
+      "accent": "special.coral700",
+      "surface": "green.50"
+    }
+  }
+}
+
