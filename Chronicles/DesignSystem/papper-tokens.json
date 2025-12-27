@@ -1,152 +1,209 @@
 {
   "metadata": {
     "name": "Papper Design System",
-    "version": "1.0.0",
-    "description": "Complete design tokens for Chronicles journaling app based on Papper Design Library",
+    "version": "3.0.0",
+    "description": "Complete design tokens for Chronicles journaling app based on Papper Design Library. Features warm paper aesthetic with light/dark mode support.",
     "exportDate": "2025-12-27",
-    "source": "Figma - Papper: Design library (Community)"
+    "source": "Figma - Papper: Design library (Community)",
+    "sourceOfTruth": {
+      "note": "THIS FILE IS THE SINGLE SOURCE OF TRUTH FOR ALL DESIGN TOKENS",
+      "swiftCode": "Swift files in DesignSystem/ are the implementation of these tokens",
+      "aiAgents": "AI agents should reference this file for all design token values"
+    },
+    "files": {
+      "jsonTokens": "papper-tokens.json (this file - primary source)",
+      "swiftFiles": [
+        "PapperDesignSystem.swift (all tokens: colors, typography, spacing, shadows, component specs, theme)",
+        "PapperUIComponents.swift (all UI components: buttons, checkboxes, cards, lists, icons, etc.)"
+      ]
+    },
+    "themeInfo": {
+      "description": "Warm paper aesthetic - clean journaling design",
+      "lightMode": "Warm off-white backgrounds like aged paper",
+      "darkMode": "Warm dark gray backgrounds for comfortable reading",
+      "pastels": "Optional - moved to colors.optional.pastels"
+    }
   },
   "colors": {
     "palette": {
-      "peach": {
-        "200": "#f7e1d7",
-        "300": "#f4d5c7",
-        "400": "#ffccb3"
+      "paper": {
+        "light": "#faf8f3",
+        "lightSecondary": "#f5f2eb",
+        "lightTertiary": "#efe9de",
+        "dark": "#2a2823",
+        "darkSecondary": "#353129",
+        "darkTertiary": "#403b31",
+        "accent": "#414141",
+        "accentLight": "#4f4f4f",
+        "accentDark": "#333333"
       },
-      "pink": {
-        "200": "#f7d9d9",
-        "300": "#f4c9c9",
-        "400": "#f7baba"
+      "ink": {
+        "black": "#1a1a1a",
+        "dark": "#2a2418",
+        "medium": "#4a4540",
+        "light": "#6b6560",
+        "lighter": "#8b8580"
       },
-      "grayblue": {
-        "200": "#e1e5ef",
-        "300": "#d5dae8",
-        "400": "#d1dcfa"
-      },
-      "green": {
-        "50": "#f1f4ee",
-        "200": "#e6f2d9",
-        "300": "#dcedc9",
-        "400": "#daf0c1"
-      },
-      "purple": {
-        "200": "#e8e1ef",
-        "300": "#dfd5e8",
-        "400": "#d9c8ea"
-      },
-      "mint": {
-        "200": "#deede9",
-        "300": "#d0e6e0",
-        "400": "#c4eee3"
-      },
-      "lavanda": {
-        "200": "#efe1e8",
-        "300": "#e8d5df",
-        "400": "#f5d6e6"
-      },
-      "yellow": {
-        "200": "#f2ecd9",
-        "300": "#ede4c9",
-        "400": "#f7eaba"
-      },
-      "blue": {
-        "200": "#e1ebef",
-        "300": "#d5e3e8",
-        "400": "#c2e3f0"
-      },
-      "greenish": {
-        "200": "#e0ebe0",
-        "300": "#d3e3d3",
-        "400": "#c6ecc6"
+      "text": {
+        "lightPrimary": "#1a1a1a",
+        "lightSecondary": "#4a4540",
+        "lightTertiary": "#6b6560",
+        "darkPrimary": "#e8e6e1",
+        "darkSecondary": "#c8c5be",
+        "darkTertiary": "#a8a59e"
       },
       "neutral": {
         "000": "#ffffff",
         "100": "#f6f6f6",
-        "200b": "#eef0f2",
+        "200": "#eeeeee",
         "300": "#e0e0e0",
         "400": "#bdbdbd",
         "500": "#828282",
-        "550b": "#646d6d",
         "600": "#4f4f4f",
         "700": "#414141",
         "800": "#333333",
         "900": "#272727",
-        "999": "#111111",
         "1000": "#000000"
       },
       "translucents": {
+        "black10": "rgba(0, 0, 0, 0.1)",
+        "black20": "rgba(0, 0, 0, 0.2)",
         "black40": "rgba(0, 0, 0, 0.4)",
+        "white10": "rgba(255, 255, 255, 0.1)",
+        "white20": "rgba(255, 255, 255, 0.2)",
         "white40": "rgba(255, 255, 255, 0.4)",
         "white60": "rgba(255, 255, 255, 0.6)",
-        "neutral700": "rgba(65, 65, 65, 0.5)",
-        "neutral70080": "rgba(65, 65, 65, 0.8)",
-        "neutral600": "rgba(79, 79, 79, 0.5)",
-        "550b80": "rgba(100, 109, 109, 0.8)"
-      },
-      "special": {
-        "coral700": "#f97575",
-        "primary": "#FF6B6B"
+        "paperLight50": "rgba(250, 248, 243, 0.5)",
+        "paperDark50": "rgba(42, 40, 35, 0.5)"
       }
     },
     "semantic": {
-      "surfaces": {
-        "buttonsPrimary": "neutral.700",
-        "buttonsQuickAction": "translucents.white60",
-        "backgroundPlain": "neutral.000",
-        "backgroundGray": "neutral.100",
-        "backgroundLogo": "neutral.100",
-        "backgroundModal": "neutral.000",
-        "firstLayer": "primary",
-        "secondLayer": "primary",
-        "accent": "accent",
-        "discoveryGray": "neutral.100",
-        "discoveryFirstLayer": "neutral.000",
-        "discoverySecondLayer": "primary",
-        "tabsSurface": "translucents.white60",
-        "tabsSecondSurface": "translucents.550b80",
-        "paywallGray": "neutral.200b",
-        "paywallButton": "green.50"
-      },
-      "fonts": {
-        "accent": "neutral.1000",
-        "main": "neutral.700",
-        "secondary": "translucents.neutral70080",
-        "tabs": "green.50",
-        "fancy": "neutral.550b",
-        "buttons": "neutral.000",
-        "nonColor": "neutral.700",
-        "textholder": "translucents.neutral700",
-        "paywall": "neutral.900",
-        "paywallSamecolor": "neutral.900"
-      },
-      "borders": {
-        "active": "neutral.700",
-        "inactive": "neutral.000",
-        "gentle": "translucents.neutral700",
-        "discovery": "neutral.000",
-        "samecolor": "neutral.900"
-      },
-      "icons": {
-        "primary": "translucents.neutral70080",
-        "secondary": "translucents.neutral700"
-      }
-    },
-    "gradients": {
       "light": {
-        "type": "conic",
-        "stops": [
-          { "color": "#f7d9d9", "position": 0.065 },
-          { "color": "#efe1e8", "position": 0.035 },
-          { "color": "#e1e5ef", "position": 0.875 }
-        ]
+        "background": "#faf8f3",
+        "backgroundSecondary": "#f5f2eb",
+        "backgroundTertiary": "#efe9de",
+        "surface": "#ffffff",
+        "surfaceSecondary": "#faf8f3",
+        "surfaceElevated": "#ffffff",
+        "text": "#1a1a1a",
+        "textSecondary": "#4a4540",
+        "textTertiary": "#6b6560",
+        "border": "#e0dbd2",
+        "borderSecondary": "#d0cbc2",
+        "accent": "#414141",
+        "accentText": "#ffffff",
+        "buttonPrimary": "#414141",
+        "buttonPrimaryText": "#ffffff",
+        "buttonSecondary": "#f5f2eb",
+        "buttonSecondaryText": "#1a1a1a"
       },
       "dark": {
-        "type": "conic",
-        "stops": [
-          { "color": "#f7baba", "position": 0.065 },
-          { "color": "#d9c8ea", "position": 0.035 },
-          { "color": "#ffccb3", "position": 0.875 }
-        ]
+        "background": "#2a2823",
+        "backgroundSecondary": "#353129",
+        "backgroundTertiary": "#403b31",
+        "surface": "#353129",
+        "surfaceSecondary": "#403b31",
+        "surfaceElevated": "#4a453a",
+        "text": "#e8e6e1",
+        "textSecondary": "#c8c5be",
+        "textTertiary": "#a8a59e",
+        "border": "#4a453a",
+        "borderSecondary": "#5a5549",
+        "accent": "#e8e6e1",
+        "accentText": "#2a2823",
+        "buttonPrimary": "#e8e6e1",
+        "buttonPrimaryText": "#2a2823",
+        "buttonSecondary": "#403b31",
+        "buttonSecondaryText": "#e8e6e1"
+      },
+      "shared": {
+        "success": "#5a7c5a",
+        "successLight": "#6b8f6b",
+        "warning": "#b5913a",
+        "warningLight": "#c9a54e",
+        "error": "#a85a5a",
+        "errorLight": "#bc6e6e",
+        "info": "#5a6b8f",
+        "infoLight": "#6e7fa3"
+      }
+    },
+    "optional": {
+      "pastels": {
+        "note": "Optional pastel colors - use for accents or category colors, not as defaults",
+        "peach": {
+          "200": "#f7e1d7",
+          "300": "#f4d5c7",
+          "400": "#ffccb3"
+        },
+        "pink": {
+          "200": "#f7d9d9",
+          "300": "#f4c9c9",
+          "400": "#f7baba",
+          "600": "#e57373"
+        },
+        "grayblue": {
+          "200": "#e1e5ef",
+          "300": "#d5dae8",
+          "400": "#d1dcfa"
+        },
+        "green": {
+          "50": "#f1f4ee",
+          "200": "#e6f2d9",
+          "300": "#dcedc9",
+          "400": "#daf0c1"
+        },
+        "purple": {
+          "200": "#e8e1ef",
+          "300": "#dfd5e8",
+          "400": "#d9c8ea"
+        },
+        "mint": {
+          "200": "#deede9",
+          "300": "#d0e6e0",
+          "400": "#c4eee3"
+        },
+        "lavanda": {
+          "200": "#efe1e8",
+          "300": "#e8d5df",
+          "400": "#f5d6e6"
+        },
+        "yellow": {
+          "200": "#f2ecd9",
+          "300": "#ede4c9",
+          "400": "#f7eaba"
+        },
+        "blue": {
+          "200": "#e1ebef",
+          "300": "#d5e3e8",
+          "400": "#c2e3f0"
+        },
+        "greenish": {
+          "200": "#e0ebe0",
+          "300": "#d3e3d3",
+          "400": "#c6ecc6"
+        }
+      },
+      "gradients": {
+        "note": "Optional gradients - not used as defaults",
+        "warmLight": {
+          "type": "linear",
+          "direction": "to bottom",
+          "colors": ["#faf8f3", "#f5f2eb"]
+        },
+        "warmDark": {
+          "type": "linear",
+          "direction": "to bottom",
+          "colors": ["#2a2823", "#353129"]
+        },
+        "pastelConic": {
+          "type": "conic",
+          "center": "center",
+          "stops": [
+            { "color": "#efe1e8", "position": 0.035 },
+            { "color": "#f7d9d9", "position": 0.065 },
+            { "color": "#e1e5ef", "position": 0.875 }
+          ]
+        }
       }
     }
   },
@@ -154,106 +211,318 @@
     "fontFamilies": {
       "sfPro": {
         "value": "SF Pro",
-        "fallback": "system",
+        "fallback": "-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif",
         "description": "San Francisco Pro - iOS system font"
       },
       "ibmPlexMono": {
         "value": "IBM Plex Mono",
-        "fallback": "monospaced",
+        "fallback": "'Courier New', monospace",
         "description": "Monospace font for code"
       },
-      "newYorkMedium": {
-        "value": "New York Medium",
-        "fallback": "serif",
-        "description": "Serif font for elegant headings"
+      "newYork": {
+        "value": "New York",
+        "fallback": "Georgia, 'Times New Roman', serif",
+        "description": "Serif font for elegant text (system serif on iOS)"
       },
       "hacky": {
         "value": "Hacky",
-        "fallback": "monospaced",
-        "description": "Custom display font"
+        "fallback": "'Courier New', monospace",
+        "description": "Custom display font for titles",
+        "variants": {
+          "medium": "Hacky-Medium",
+          "mediumItalic": "Hacky-MediumItalic",
+          "semibold": "Hacky-SemiBold",
+          "extrabold": "Hacky-ExtraBold"
+        }
       }
     },
     "fontSizes": {
+      "papperTitle": 60,
+      "listTitle": 32,
+      "discoveryTitle": 32,
+      "headerDiscovery": 28,
       "header2": 24,
+      "paywallTitleLarge": 32,
+      "paywallSubtitleLarge": 20,
       "paywallTitle": 18,
+      "cardTitle": 16,
+      "cardBody": 16,
       "bodyTitle": 16,
       "body": 14,
       "bodyDiscovery": 13,
+      "bodyTitleBold": 13,
+      "bodyText": 13,
+      "description": 13,
+      "discoveryButtons": 13,
+      "codeMono": 13,
       "paywallSubtitle": 12,
-      "codeMono": 12,
-      "bodySmall": 11
+      "codeMonoLegacy": 12,
+      "bodySmall": 11,
+      "priceDescription": 11
     },
     "fontWeights": {
       "regular": 400,
       "medium": 500,
       "semibold": 600,
-      "bold": 700
+      "bold": 700,
+      "extrabold": 800
+    },
+    "lineHeights": {
+      "header": 1.0,
+      "body": 1.0,
+      "code": 1.0,
+      "relaxed": 1.2,
+      "comfortable": 1.3,
+      "spacious": 1.4,
+      "codeSpacious": 1.5
     },
     "textStyles": {
+      "papperTitle": {
+        "fontFamily": "hacky",
+        "fontVariant": "mediumItalic",
+        "fontSize": 60,
+        "fontWeight": 500,
+        "lineHeight": 1.0,
+        "description": "Main app title - Hacky Medium Italic"
+      },
+      "listTitle": {
+        "fontFamily": "hacky",
+        "fontVariant": "extrabold",
+        "fontSize": 32,
+        "fontWeight": 800,
+        "lineHeight": 1.0,
+        "description": "List/card titles - Hacky Extra Bold"
+      },
+      "discoveryTitle": {
+        "fontFamily": "hacky",
+        "fontVariant": "semibold",
+        "fontSize": 32,
+        "fontWeight": 600,
+        "lineHeight": 1.0,
+        "description": "Discovery section titles - Hacky Semi Bold"
+      },
+      "headerDiscovery": {
+        "fontFamily": "newYork",
+        "fontSize": 28,
+        "fontWeight": 400,
+        "lineHeight": 1.0,
+        "description": "Discovery headers - New York Regular"
+      },
       "header2": {
         "fontFamily": "sfPro",
         "fontSize": 24,
         "fontWeight": 600,
-        "lineHeight": 1.2
+        "lineHeight": 1.2,
+        "description": "Section headers - SF Pro Semibold"
       },
-      "body": {
+      "paywallTitleLarge": {
         "fontFamily": "sfPro",
-        "fontSize": 14,
-        "fontWeight": 400,
-        "lineHeight": 1.4
+        "fontSize": 32,
+        "fontWeight": 700,
+        "lineHeight": 1.2,
+        "description": "Large paywall title - SF Pro Bold"
       },
-      "bodySmall": {
+      "paywallSubtitleLarge": {
         "fontFamily": "sfPro",
-        "fontSize": 11,
+        "fontSize": 20,
+        "fontWeight": 600,
+        "lineHeight": 1.3,
+        "description": "Large paywall subtitle - SF Pro Semibold"
+      },
+      "paywallTitle": {
+        "fontFamily": "newYork",
+        "fontSize": 18,
+        "fontWeight": 700,
+        "lineHeight": 1.2,
+        "description": "Paywall title - New York Bold"
+      },
+      "cardTitle": {
+        "fontFamily": "sfPro",
+        "fontSize": 16,
+        "fontWeight": 600,
+        "lineHeight": 1.3,
+        "description": "Card titles - SF Pro Semibold"
+      },
+      "cardBody": {
+        "fontFamily": "sfPro",
+        "fontSize": 16,
         "fontWeight": 400,
-        "lineHeight": 1.4
+        "lineHeight": 1.4,
+        "description": "Card body text - SF Pro Regular"
       },
       "bodyTitle": {
         "fontFamily": "sfPro",
         "fontSize": 16,
         "fontWeight": 500,
-        "lineHeight": 1.3
+        "lineHeight": 1.3,
+        "description": "Body titles - SF Pro Medium"
       },
-      "paywallTitle": {
-        "fontFamily": "newYorkMedium",
-        "fontSize": 18,
+      "bodyTitleBold": {
+        "fontFamily": "sfPro",
+        "fontSize": 13,
         "fontWeight": 700,
-        "lineHeight": 1.2
+        "lineHeight": 1.4,
+        "description": "Bold body title - SF Pro Bold"
+      },
+      "body": {
+        "fontFamily": "sfPro",
+        "fontSize": 14,
+        "fontWeight": 400,
+        "lineHeight": 1.4,
+        "description": "Standard body text - SF Pro Regular"
+      },
+      "bodyText": {
+        "fontFamily": "sfPro",
+        "fontSize": 13,
+        "fontWeight": 400,
+        "lineHeight": 1.4,
+        "description": "Body text - SF Pro Regular 13px"
+      },
+      "bodyDiscovery": {
+        "fontFamily": "sfPro",
+        "fontSize": 13,
+        "fontWeight": 400,
+        "lineHeight": 1.4,
+        "description": "Discovery body text - SF Pro Regular"
+      },
+      "description": {
+        "fontFamily": "newYork",
+        "fontSize": 13,
+        "fontWeight": 400,
+        "lineHeight": 1.4,
+        "description": "Card descriptions - New York Regular"
+      },
+      "discoveryButtons": {
+        "fontFamily": "newYork",
+        "fontSize": 13,
+        "fontWeight": 600,
+        "lineHeight": 1.4,
+        "description": "Discovery button labels - New York Semibold"
       },
       "paywallSubtitle": {
         "fontFamily": "sfPro",
         "fontSize": 12,
         "fontWeight": 400,
-        "lineHeight": 1.4
+        "lineHeight": 1.4,
+        "description": "Paywall subtitle - SF Pro Regular"
+      },
+      "bodySmall": {
+        "fontFamily": "sfPro",
+        "fontSize": 11,
+        "fontWeight": 400,
+        "lineHeight": 1.4,
+        "description": "Small body text - SF Pro Regular"
+      },
+      "priceDescription": {
+        "fontFamily": "newYork",
+        "fontSize": 11,
+        "fontWeight": 400,
+        "lineHeight": 1.4,
+        "description": "Price labels - New York Regular"
       },
       "codeMono": {
         "fontFamily": "ibmPlexMono",
-        "fontSize": 12,
-        "fontWeight": 400,
-        "lineHeight": 1.5
+        "fontSize": 13,
+        "fontWeight": 500,
+        "lineHeight": 1.5,
+        "description": "Code/mono text - IBM Plex Mono Medium"
       }
     }
   },
   "shadows": {
-    "slightShadow": {
-      "color": "#e0000033",
+    "none": {
+      "color": "transparent",
+      "offsetX": 0,
+      "offsetY": 0,
+      "blur": 0,
+      "spread": 0,
+      "css": "none"
+    },
+    "slight": {
+      "color": "rgba(0, 0, 0, 0.08)",
       "offsetX": 0,
       "offsetY": 1,
       "blur": 4,
-      "spread": 0
+      "spread": 0,
+      "css": "0 1px 4px rgba(0, 0, 0, 0.08)",
+      "description": "Subtle drop shadow for cards"
+    },
+    "soft": {
+      "color": "rgba(0, 0, 0, 0.06)",
+      "offsetX": 0,
+      "offsetY": 2,
+      "blur": 8,
+      "spread": 0,
+      "css": "0 2px 8px rgba(0, 0, 0, 0.06)",
+      "description": "Soft shadow for elevated cards"
+    },
+    "medium": {
+      "color": "rgba(0, 0, 0, 0.1)",
+      "offsetX": 0,
+      "offsetY": 4,
+      "blur": 16,
+      "spread": 0,
+      "css": "0 4px 16px rgba(0, 0, 0, 0.1)",
+      "description": "Medium shadow for modals and popovers"
+    },
+    "strong": {
+      "color": "rgba(0, 0, 0, 0.14)",
+      "offsetX": 0,
+      "offsetY": 8,
+      "blur": 24,
+      "spread": 0,
+      "css": "0 8px 24px rgba(0, 0, 0, 0.14)",
+      "description": "Strong shadow for floating elements"
     }
   },
   "spacing": {
-    "xxxs": 2,
-    "xxs": 4,
-    "xs": 8,
-    "sm": 12,
-    "md": 16,
-    "lg": 20,
-    "xl": 24,
-    "xxl": 32,
-    "xxxl": 40,
-    "xxxxl": 48
+    "scale": {
+      "xxxs": 2,
+      "xxs": 4,
+      "xs": 8,
+      "sm": 12,
+      "md": 16,
+      "lg": 20,
+      "xl": 24,
+      "xxl": 32,
+      "xxxl": 40,
+      "xxxxl": 48
+    },
+    "semantic": {
+      "cardPadding": 16,
+      "screenPadding": 20,
+      "listGap": 12,
+      "sectionGap": 24,
+      "inlineGap": 8,
+      "buttonPaddingH": 16,
+      "buttonPaddingV": 12
+    },
+    "edgeInsets": {
+      "card": {
+        "top": 16,
+        "leading": 16,
+        "bottom": 16,
+        "trailing": 16
+      },
+      "screen": {
+        "top": 16,
+        "leading": 20,
+        "bottom": 16,
+        "trailing": 20
+      },
+      "button": {
+        "top": 12,
+        "leading": 16,
+        "bottom": 12,
+        "trailing": 16
+      },
+      "compact": {
+        "top": 8,
+        "leading": 8,
+        "bottom": 8,
+        "trailing": 8
+      }
+    }
   },
   "components": {
     "cards": {
@@ -274,17 +543,206 @@
       "thick": 2
     },
     "checkbox": {
-      "thickness": 3,
-      "checkerThickness": 2
+      "thickness": 2,
+      "checkerThickness": 2,
+      "sizes": {
+        "large": 32,
+        "medium": 26,
+        "small": 20,
+        "default": 32
+      },
+      "squareRadius": 8
     },
-    "iphone": {
-      "radius": 55
+    "device": {
+      "iphoneRadius": 55
     },
     "logo": {
-      "outline": "neutral.550b",
-      "accent": "special.coral700",
-      "surface": "green.50"
+      "outline": "#6b6560",
+      "accent": "#414141",
+      "surface": "#faf8f3"
+    },
+    "buttons": {
+      "primary": {
+        "radius": 12,
+        "minHeight": 44,
+        "standardHeight": 48
+      },
+      "secondary": {
+        "radius": 10
+      },
+      "small": {
+        "radius": 8
+      },
+      "quickAction": {
+        "radius": 15,
+        "paddingHorizontal": 10,
+        "paddingVertical": 7,
+        "fontSize": 13,
+        "fontFamily": "newYork"
+      },
+      "big": {
+        "radius": 25,
+        "backdropBlur": 30,
+        "borderWidth": 10,
+        "height": 50,
+        "width": 203,
+        "roundSize": 50,
+        "fontSize": 16,
+        "fontFamily": "sfPro",
+        "fontWeight": 600
+      },
+      "tab": {
+        "radius": 35,
+        "backdropBlur": 30,
+        "padding": 10,
+        "gap": 10
+      },
+      "action": {
+        "size": 30,
+        "radius": 22
+      }
+    },
+    "handle": {
+      "width": 39,
+      "height": 4,
+      "radius": 2.5
+    },
+    "printout": {
+      "paper": {
+        "width": 595,
+        "height": 842
+      },
+      "qrFrame": {
+        "size": 131,
+        "qrSize": 88
+      },
+      "logo": {
+        "size": 25
+      },
+      "typography": {
+        "title": 60,
+        "description": 11,
+        "taskTitle": 8,
+        "taskDescription": 8
+      },
+      "checkboxCircle": {
+        "size": 30,
+        "strokeWidth": 1
+      },
+      "checkboxSquare": {
+        "size": 13,
+        "radius": 4,
+        "strokeWidth": 1,
+        "fillSize": 9,
+        "fillRadius": 2
+      },
+      "column": {
+        "single": 311,
+        "double": 254
+      },
+      "margins": {
+        "top": 54,
+        "side": 26,
+        "bodyTop": 270
+      }
+    },
+    "discovery": {
+      "packStack": {
+        "padding": {
+          "horizontal": 25,
+          "top": 20,
+          "bottom": 25
+        },
+        "gap": 3
+      },
+      "card": {
+        "height": 125,
+        "radius": 10,
+        "sizes": {
+          "oneThird": 110,
+          "oneHalf": 165,
+          "twoThirds": 220,
+          "full": 333
+        },
+        "fontSizes": {
+          "small": 11,
+          "normal": 13
+        }
+      },
+      "picture": {
+        "size": 92,
+        "radius": 20
+      }
+    },
+    "paywall": {
+      "bubble": {
+        "radius": 16,
+        "blur": 7.5,
+        "padding": 10,
+        "width": 273
+      },
+      "instruction": {
+        "size": 361,
+        "radius": 32,
+        "bubblePadding": 34
+      },
+      "priceCard": {
+        "width": 110,
+        "height": 156,
+        "radius": 20
+      },
+      "aiWarning": {
+        "radius": 20,
+        "collapsedHeight": 46,
+        "expandedHeight": 168
+      },
+      "chevron": {
+        "size": 26,
+        "padding": 5
+      }
+    },
+    "create": {
+      "tabMenu": {
+        "radius": 27,
+        "tabRadius": 18,
+        "padding": {
+          "horizontal": 5,
+          "vertical": 3
+        }
+      },
+      "newListButton": {
+        "width": 47,
+        "height": 30,
+        "radius": 15
+      },
+      "saveButton": {
+        "size": 30,
+        "radius": 22
+      }
+    },
+    "fullview": {
+      "width": 383,
+      "headerPadding": {
+        "horizontal": 20,
+        "vertical": 10
+      },
+      "taskPadding": {
+        "horizontal": 20,
+        "vertical": 15
+      },
+      "bottomPadding": {
+        "top": 100,
+        "bottom": 150
+      },
+      "divider": {
+        "height": 10,
+        "dashLength": 6,
+        "dashGap": 4
+      }
+    },
+    "cutout": {
+      "size": 10,
+      "containerSize": 56
     }
   }
 }
-

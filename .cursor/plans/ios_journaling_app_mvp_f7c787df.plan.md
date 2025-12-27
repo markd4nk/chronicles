@@ -1,6 +1,6 @@
 ---
 name: iOS Journaling App MVP
-overview: Build a native iOS journaling app with Firebase backend, featuring comprehensive 14-step onboarding, authentication (Google/Apple), paywall with 3-day free trial, and subscription management (monthly/yearly). MVP includes customizable journals, multiple input methods (write/scan/speak), customizable dashboard with widgets, journal templates, list/calendar views, search functionality, password/Face ID protection, and goal-setting features.
+overview: Build a native iOS journaling app with Firebase backend, featuring comprehensive 14-step onboarding, authentication (Google/Apple), paywall with 3-day free trial, and subscription management (monthly/yearly). MVP includes customizable journals, multiple input methods (write/scan/speak), customizable dashboard with widgets, TikTok-style prompts feed, AI reflect/analyze feature with conversational interface, journal templates, list/calendar views, search functionality, and password/Face ID protection.
 todos:
   - id: setup-project
     content: Create Xcode project with SwiftUI, configure Firebase project and add GoogleService-Info.plist
@@ -27,7 +27,7 @@ todos:
     dependencies:
       - subscription-service
   - id: firestore-models
-    content: Define Firestore data models (User, JournalEntry, Goal) and security rules
+    content: Define Firestore data models (User, JournalEntry, Journal, JournalTemplate, JournalPrompt, AIConversation, AIMessage) and security rules
     status: pending
     dependencies:
       - setup-project
@@ -37,12 +37,12 @@ todos:
     dependencies:
       - firestore-models
   - id: ocr-service
-    content: Implement OCR service using Vision Framework for text recognition from photos
+    content: Create OCR input UI placeholder (button/structure ready for GPT integration - not using Vision Framework)
     status: pending
     dependencies:
       - setup-project
   - id: speech-service
-    content: Implement speech-to-text service using Speech Framework for voice transcription
+    content: Create Speech input UI placeholder (button/structure ready for GPT integration - not using Speech Framework)
     status: pending
     dependencies:
       - setup-project
@@ -51,17 +51,11 @@ todos:
     status: pending
     dependencies:
       - journal-features
-  - id: goal-features
-    content: Implement goal creation, tracking, and list views with Firestore integration
-    status: pending
-    dependencies:
-      - firestore-models
   - id: main-navigation
-    content: Create main tab view with navigation between Journal and Goals sections
+    content: Create main tab view with 5-button navigation (Dashboard, AI Reflect, +, All Entries, Prompts)
     status: pending
     dependencies:
       - journal-features
-      - goal-features
   - id: subscription-gating
     content: Implement subscription status checking and app gating (lock features without subscription)
     status: pending
@@ -94,11 +88,17 @@ todos:
     status: pending
     dependencies:
       - auth-system
+  - id: streak-tracking
+    content: Implement streak tracking system - calculate and store current journaling streak based on consecutive days with entries
+    status: pending
+    dependencies:
+      - journal-features
   - id: dashboard-system
-    content: Build customizable dashboard with personalized greeting, weekly calendar, and widget system
+    content: Build dashboard/home page with streak counter (top left), profile/settings button (top right), welcome message, and clickable widgets for quick journal entry creation
     status: pending
     dependencies:
       - custom-journals
+      - streak-tracking
   - id: journal-templates
     content: Implement journal templates system - create templates in settings with prompts and structure, journal-specific
     status: pending
@@ -110,13 +110,25 @@ todos:
     dependencies:
       - dashboard-system
       - journal-templates
+  - id: prompts-feature
+    content: Build TikTok-style prompts feature - swipeable feed of journal prompts (questions, reflections, quotes) with "Write it Out" button to create entries, like/share functionality, and "For You" personalized curation
+    status: pending
+    dependencies:
+      - journal-features
+      - custom-journals
+  - id: ai-reflect-feature
+    content: Build AI reflect/analyze UI - conversational interface ready for GPT API integration (chat UI, journal selection, insights display)
+    status: pending
+    dependencies:
+      - journal-features
+      - custom-journals
 ---
 
 # Chronicles - iOS Journaling App MVP
 
 ## Project Overview
 
-**Chronicles** is a native iOS journaling and goal-setting app built with SwiftUI and Firebase. The app requires a subscription (no free tier) with a 3-day free trial. Users go through an extensive 14-step onboarding process that personalizes their experience and collects preferences.
+**Chronicles** is a native iOS journaling app built with SwiftUI and Firebase. The app requires a subscription (no free tier) with a 3-day free trial. Users go through an extensive 14-step onboarding process that personalizes their experience and collects preferences.
 
 ### Key Requirements
 
@@ -126,18 +138,26 @@ todos:
 - ✅ **Google & Apple Sign-In**: Authentication options
 - ✅ **Comprehensive Onboarding**: 14-step personalized onboarding flow
 - ✅ **Custom Journals**: Users create custom journals with their own names, manage (rename/delete/reorder)
+- ✅ **5-Button Tab Bar Navigation**: Dashboard, AI Reflect, + button (center), All Entries, Prompts
+- ✅ **Central + Button**: Prominent + button in center of tab bar opens journal selection for entry creation
+- ✅ **Journal Selection Flow**: When creating entry, user selects existing journal or creates new one from selection screen
+- ✅ **Settings Access**: Settings accessed via profile button on Dashboard (not a separate tab)
 - ✅ **Journaling Features**: Create, view, and edit journal entries
-- ✅ **Multiple Input Methods**: Write (type), Scan (OCR from photos), and Speak (voice-to-text)
+- ✅ **Multiple Input Methods**: Write (type), Scan (UI placeholder ready for GPT OCR), and Speak (UI placeholder ready for GPT speech-to-text)
 - ✅ **Search Functionality**: Search through all journal entries
 - ✅ **List & Calendar Views**: Separate tabs showing all entries, clickable calendar dates
 - ✅ **All Entries View**: View entries from all journals in one place
 - ✅ **Dark Mode & Light Mode**: Full theme support with system preference
-- ✅ **Customizable Dashboard**: Personalized greeting, weekly calendar, customizable widgets
+- ✅ **Dashboard/Home Page**: Streak counter, welcome message, and clickable widgets for quick entry creation
 - ✅ **Journal Templates**: Create templates with prompts and structure, journal-specific
 - ✅ **Quick Entry Widgets**: Widgets based on templates that open pre-filled entries
 - ✅ **Password/Face ID**: App lock using system authentication, toggle in settings
-- ✅ **Goal Setting**: Create and track goals
 - ✅ **Reminder System**: Morning and evening journaling reminders
+- ✅ **Journal Management**: View, rename, delete, and reorder journals from All Entries view
+- ✅ **Templates Management**: Create and manage journal templates in Settings
+- ✅ **Widget Configuration**: Configure dashboard widgets from Dashboard (long press or edit mode)
+- ✅ **TikTok-Style Prompts Feed**: Swipeable feed of journal prompts (questions, reflections, quotes) with "Write it Out" button, like/share functionality, and personalized "For You" curation
+- ✅ **AI Reflect/Analyze**: AI agent analyzes user's journals and provides conversational interface for reflection, analysis, and thinking support
 
 ---
 
@@ -154,6 +174,7 @@ todos:
 - **Firebase Authentication** (Google & Apple Sign-In)
 - **Cloud Firestore** (NoSQL database)
 - **Firebase Storage** (for future image support)
+- **AI API Integration** (OpenAI API or similar for journal analysis and conversational AI)
 
 ### Subscriptions
 
@@ -164,10 +185,9 @@ todos:
 
 - **UserNotifications** (for reminder notifications)
 - **GoogleSignIn SDK** (for Google authentication)
-- **Vision Framework** (for OCR text recognition from images)
-- **Speech Framework** (for voice-to-text transcription)
-- **AVFoundation** (for camera access and photo capture)
+- **AVFoundation** (for camera access and photo capture - for OCR UI)
 - **LocalAuthentication** (for Face ID/Touch ID/passcode protection)
+- **GPT API** (to be integrated later for OCR, speech-to-text, and AI analysis)
 
 ---
 
@@ -184,7 +204,9 @@ Chronicles/
 │   │   ├── Journal.swift (NEW - custom journals)
 │   │   ├── JournalEntry.swift
 │   │   ├── JournalTemplate.swift (NEW)
-│   │   ├── Goal.swift
+│   │   ├── JournalPrompt.swift (NEW - prompts for feed)
+│   │   ├── AIConversation.swift (NEW - AI chat conversation)
+│   │   ├── AIMessage.swift (NEW - individual AI chat messages)
 │   │   └── Subscription.swift
 │   ├── ViewModels/
 │   │   ├── AuthViewModel.swift
@@ -194,22 +216,22 @@ Chronicles/
 │   │   ├── JournalListViewModel.swift (NEW)
 │   │   ├── DashboardViewModel.swift (NEW)
 │   │   ├── TemplateViewModel.swift (NEW)
-│   │   └── GoalViewModel.swift
+│   │   ├── PromptsViewModel.swift (NEW - prompts feed)
+│   │   └── AIReflectViewModel.swift (NEW - AI reflect/analyze)
 │   ├── Views/
 │   │   ├── Onboarding/ (14 steps)
 │   │   ├── Auth/
 │   │   ├── Paywall/
 │   │   ├── Dashboard/ (NEW)
 │   │   │   ├── DashboardView.swift
-│   │   │   ├── WeeklyCalendarView.swift
+│   │   │   ├── StreakCounterView.swift
 │   │   │   └── Widgets/
-│   │   │       ├── QuickEntryWidget.swift
-│   │   │       ├── DailyQuoteWidget.swift
-│   │   │       └── WidgetContainer.swift
+│   │   │       └── QuickEntryWidget.swift
 │   │   ├── Journals/ (NEW)
 │   │   │   ├── JournalListView.swift (list of user's journals)
 │   │   │   ├── JournalDetailView.swift (entries for a journal)
 │   │   │   ├── CreateJournalView.swift
+│   │   │   ├── JournalSelectionView.swift (NEW - journal selection for entry creation)
 │   │   │   └── ManageJournalsView.swift
 │   │   ├── Entries/
 │   │   │   ├── AllEntriesView.swift (NEW - all entries across journals)
@@ -225,7 +247,14 @@ Chronicles/
 │   │   │   ├── TemplatesListView.swift
 │   │   │   ├── CreateTemplateView.swift
 │   │   │   └── EditTemplateView.swift
-│   │   ├── Goals/
+│   │   ├── Prompts/ (NEW)
+│   │   │   ├── PromptsFeedView.swift
+│   │   │   ├── PromptCardView.swift
+│   │   │   └── ForYouView.swift
+│   │   ├── AIReflect/ (NEW)
+│   │   │   ├── AIReflectView.swift
+│   │   │   ├── AIChatView.swift
+│   │   │   └── JournalInsightsView.swift
 │   │   ├── Settings/
 │   │   │   ├── SettingsView.swift
 │   │   │   ├── SecuritySettingsView.swift (NEW - password/Face ID)
@@ -241,6 +270,7 @@ Chronicles/
 │   │   ├── OCRService.swift
 │   │   ├── SpeechService.swift
 │   │   ├── SecurityService.swift (NEW - password/Face ID)
+│   │   ├── AIService.swift (NEW - AI journal analysis and chat)
 │   │   └── StorageService.swift
 │   └── Utilities/
 │       ├── Extensions/
@@ -302,12 +332,14 @@ struct Journal {
 - Search across all journals
 - Same entry creation/editing capabilities
 - Date-based organization
+- **Journal Management**: Access to manage journals (rename, delete, reorder) from this view
 
 **UI**:
 
 - `AllEntriesView`: Main view showing all entries
 - Filter bar to filter by journal
 - Search integration
+- Journal management interface (rename, delete, reorder)
 
 ---
 
@@ -332,45 +364,32 @@ struct Journal {
 
 ---
 
-### 4. Customizable Dashboard
+### 4. Dashboard/Home Page
 
-**Dashboard Design** (based on reference image):
+**Dashboard Layout**:
 
-- **Top Section**:
-- Personalized greeting: "Good [Morning/Afternoon/Evening], [Name]!"
-- Current date display: "FRIDAY 26 DECEMBER 2025"
-- User profile icon (top right)
-- **Weekly Calendar Selector**:
-- Horizontal row showing week (Mo-Su with dates)
-- Current day highlighted
-- Clickable dates to view entries for that day
-- **Widget Cards**:
-- Customizable widget system
-- Long press to drag and reorder
-- Tap to configure widget settings
-- Widgets show completion status (e.g., "Completed" if entry done today)
+- **Top Bar**:
+- **Top Left**: Streak counter (displays current journaling streak)
+- **Top Right**: Profile/Settings button (navigates to settings)
+- **Welcome Message**: Simple welcome message displayed at the top
+- **Widgets Section**: 
+- Widgets displayed below welcome message
+- Each widget represents a quick entry option (e.g., "Morning Goal", "Reflection")
+- Clicking a widget opens journal entry creation directly
+- Widgets are based on templates (e.g., morning reflection template creates a morning reflection widget)
 
-**Widget Types**:
+**Widget Behavior**:
 
-- **Quick Entry Widgets**: Based on templates, open pre-filled entries when tapped
-- **Daily Quote Widget**: Shows inspirational quotes
-- **Future Widgets**: Expandable system for more widgets
-
-**Features**:
-
-- Widget layout saved per user
-- Add/remove widgets
-- Reorder widgets (long press drag)
-- Configure widget settings (tap widget)
-- Dashboard appears as main tab AND first screen after unlock
+- Widgets are clickable and open `CreateEntryView` with template pre-filled
+- Widgets can be created from journal templates
+- Example: Creating a "Morning Goal" template allows user to add a "Morning Goal" widget to dashboard
+- Tapping widget creates a new journal entry using that template
 
 **UI Components**:
 
-- `DashboardView`: Main dashboard screen
-- `WeeklyCalendarView`: Weekly calendar selector
-- `QuickEntryWidget`: Widget for quick entry from templates
-- `DailyQuoteWidget`: Daily quote display widget
-- `WidgetContainer`: Container for managing widgets
+- `DashboardView`: Main dashboard/home page screen
+- `StreakCounterView`: Displays current journaling streak
+- `QuickEntryWidget`: Widget component for quick entry creation from templates
 
 ---
 
@@ -392,7 +411,7 @@ struct JournalTemplate {
 
 **Features**:
 
-- **Create Templates**: In dedicated settings screen
+- **Create Templates**: In Settings screen
 - **Template Content**:
 - Prompts/questions (e.g., "What are your goals today?")
 - Structure/format (sections, headings)
@@ -401,7 +420,7 @@ struct JournalTemplate {
 
 **UI Components**:
 
-- `TemplatesListView`: List of templates for a journal
+- `TemplatesListView`: List of templates for a journal (accessible from Settings)
 - `CreateTemplateView`: Form to create template
 - `EditTemplateView`: Edit existing template
 
@@ -417,6 +436,7 @@ struct JournalTemplate {
 - Tap widget to open pre-filled entry with template
 - Users can add multiple widgets based on different templates
 - Widgets appear on customizable dashboard
+- **Widget Configuration**: Configure widgets from Dashboard (long press or edit mode)
 
 **Widget Behavior**:
 
@@ -424,10 +444,109 @@ struct JournalTemplate {
 - Displays status (Completed/Pending)
 - Tapping opens `CreateEntryView` with template pre-filled
 - Completion status updates based on entries created today
+- Long press or edit mode on Dashboard to add/remove/reorder widgets
 
 ---
 
-### 7. Password/Face ID Protection
+### 7. TikTok-Style Prompts Feed
+
+**Prompt Model**:
+
+```swift
+struct JournalPrompt {
+    let id: String
+    let question: String // Main prompt question
+    let hint: String // Descriptive hint/guidance
+    let category: String // "question", "reflection", "quote", etc.
+    let createdAt: Date
+    let likes: Int // Number of likes
+    let shares: Int // Number of shares
+}
+```
+
+**Features**:
+
+- **TikTok-Style Swipeable Feed**: Vertical swipeable feed of journal prompts
+- **Prompt Types**: Questions, reflections, deep quotes, and other inspirational prompts
+- **Top Navigation**:
+- "For You" button (centered) - personalized curated prompts
+- Paintbrush icon (right) - customization options
+- Play button icon (right) - audio playback of prompt (optional)
+- **Prompt Display**:
+- Lightbulb icon at top
+- Large, bold prompt question
+- Descriptive hint below question
+- Action bar at bottom with:
+                - Share icon (left)
+                - "Write it Out" button (center) - opens entry creation with prompt pre-filled
+                - Heart icon (right) - like/save prompt
+- **Interaction**:
+- Swipe up/down to navigate between prompts
+- Tap "Write it Out" to create journal entry with prompt as starting point
+- Like prompts to save them
+- Share prompts
+- **Personalization**: "For You" section shows curated prompts based on user preferences
+
+**UI Components**:
+
+- `PromptsFeedView`: Main swipeable feed view
+- `PromptCardView`: Individual prompt card component
+- `ForYouView`: Personalized prompts view
+
+---
+
+### 8. AI Reflect/Analyze Feature
+
+**AI Conversation Model**:
+
+```swift
+struct AIConversation {
+    let id: String
+    let userId: String
+    let createdAt: Date
+    let updatedAt: Date
+    let messages: [AIMessage]
+}
+
+struct AIMessage {
+    let id: String
+    let role: String // "user" or "assistant"
+    let content: String
+    let createdAt: Date
+}
+```
+
+**Features**:
+
+- **Journal Selection**: User selects which journals to analyze (not all automatically)
+- **Manual Analysis Trigger**: User taps a button to start AI analysis (not automatic on page open)
+- **AI Journal Analysis**: AI agent analyzes selected journal entries
+- **Conversational Interface**: Chat-based interface for talking with AI about journal insights
+- **Reflection Support**: AI helps users think through patterns, themes, and insights from their journals
+- **Journal Insights**: AI provides analysis of:
+- Patterns and themes across entries
+- Emotional trends
+- Recurring topics
+- Growth and progress over time
+- **Interactive Chat**: Users can ask questions and have conversations with AI about their journaling
+- **Conversation History**: Previous conversations are saved and can be reviewed
+- **Context Awareness**: AI has access to selected journal entries for context-aware responses
+
+**UI Components**:
+
+- `AIReflectView`: Main reflect/analyze page
+- `AIChatView`: Chat interface for conversing with AI
+- `JournalInsightsView`: Display of AI-generated insights and analysis
+- Journal selection interface for choosing which journals to analyze
+
+**Navigation**:
+
+- Accessible via "AI Reflect" tab in main tab bar (5-button navigation)
+- Opens full-screen reflect/analyze interface
+
+---
+
+### 12. Password/Face ID Protection
 
 **Features**:
 
@@ -454,7 +573,33 @@ struct JournalTemplate {
 
 ---
 
-### 8. Journaling Features (Enhanced)
+### 10. Journal Selection & Entry Creation Flow
+
+**Journal Selection View**:
+
+- **Trigger**: Central + button in tab bar
+- **Layout**: 
+- List of existing journals (e.g., "Reflection", "Dream Journal", etc.)
+- Each journal shows name and can be tapped to select
+- "Add New Journal" button/card at bottom or top of list
+- **Flow**:
+
+1. User taps + button in tab bar
+2. JournalSelectionView appears (modal or navigation)
+3. User can:
+
+                - **Select existing journal**: Tap on journal → opens CreateEntryView for that journal
+                - **Create new journal**: Tap "Add New Journal" → opens CreateJournalView → after creation, opens CreateEntryView for new journal
+- **Empty State**: If user has no journals, show "Create Your First Journal" prompt
+
+**UI Components**:
+
+- `JournalSelectionView`: Modal/sheet showing journal list with "Add New Journal" option
+- `JournalSelectionCard`: Individual journal card in selection view
+
+---
+
+### 11. Journaling Features (Enhanced)
 
 **Journal Entry Model**:
 
@@ -464,6 +609,7 @@ struct JournalEntry {
     let userId: String
     let journalId: String // NEW - which journal it belongs to
     let templateId: String? // NEW - if created from template
+    let promptId: String? // NEW - if created from prompt feed
     let title: String
     let content: String
     let createdAt: Date
@@ -475,12 +621,13 @@ struct JournalEntry {
 
 **Features**:
 
-- **Create Entry**: Must select journal first (or create one)
+- **Create Entry**: Entry creation always starts with journal selection (via + button or other entry points)
 - **Multiple Input Methods**:
-- **Write**: Text input
-- **Scan**: OCR from photos (Vision Framework)
-- **Speak**: Voice-to-text (Speech Framework)
+- **Write**: Text input (fully implemented)
+- **Scan**: OCR input UI placeholder (button/structure ready for GPT OCR integration)
+- **Speak**: Speech input UI placeholder (button/structure ready for GPT speech-to-text integration)
 - **Template Support**: Create entry from template (pre-filled)
+- **Prompt Support**: Create entry from prompt feed (pre-filled with prompt question)
 - **Entry List**: Chronological list per journal
 - **All Entries View**: View entries from all journals
 - **Search**: Full-text search across all entries
@@ -498,79 +645,114 @@ struct JournalEntry {
 ```javascript
 users/
   {userId}/
-    - email: String
-    - displayName: String
-    - preferredName: String
-    - createdAt: Timestamp
-    - onboardingCompleted: Bool
-    - onboardingData: {...}
-    - subscriptionStatus: String
-    - securityEnabled: Bool (NEW - password/Face ID toggle)
-    - dashboardLayout: Array (NEW - widget configuration)
+ - email: String
+ - displayName: String
+ - preferredName: String
+ - createdAt: Timestamp
+ - onboardingCompleted: Bool
+ - onboardingData: {...}
+ - subscriptionStatus: String
+ - securityEnabled: Bool (NEW - password/Face ID toggle)
+ - dashboardLayout: Array (NEW - widget configuration)
+ - currentStreak: Int (NEW - current journaling streak count)
+ - lastEntryDate: Timestamp (NEW - date of last journal entry for streak calculation)
 ```
-
-
 
 #### Journals Collection (NEW)
 
 ```javascript
 journals/
   {journalId}/
-    - userId: String
-    - name: String
-    - createdAt: Timestamp
-    - order: Int
-    - color: String?
+ - userId: String
+ - name: String
+ - createdAt: Timestamp
+ - order: Int
+ - color: String?
 ```
-
-
 
 #### Journal Templates Collection (NEW)
 
 ```javascript
 journalTemplates/
   {templateId}/
-    - userId: String
-    - journalId: String
-    - name: String
-    - prompts: [String]
-    - structure: String
-    - createdAt: Timestamp
+ - userId: String
+ - journalId: String
+ - name: String
+ - prompts: [String]
+ - structure: String
+ - createdAt: Timestamp
 ```
-
-
 
 #### Journal Entries Collection
 
 ```javascript
 journalEntries/
   {entryId}/
-    - userId: String
-    - journalId: String (NEW)
-    - templateId: String? (NEW)
-    - title: String
-    - content: String
-    - createdAt: Timestamp
-    - updatedAt: Timestamp
-    - inputMethod: String?
-    - mood: String?
+ - userId: String
+ - journalId: String (NEW)
+ - templateId: String? (NEW)
+ - promptId: String? (NEW - if created from prompt feed)
+ - title: String
+ - content: String
+ - createdAt: Timestamp
+ - updatedAt: Timestamp
+ - inputMethod: String?
+ - mood: String?
 ```
 
-
-
-#### Goals Collection
+#### Journal Prompts Collection (NEW)
 
 ```javascript
-goals/
-  {goalId}/
-    - userId: String
-    - title: String
-    - description: String
-    - targetDate: Timestamp
-    - status: String
-    - progress: Int
-    - createdAt: Timestamp
+journalPrompts/
+  {promptId}/
+ - question: String
+ - hint: String
+ - category: String ("question", "reflection", "quote", etc.)
+ - createdAt: Timestamp
+ - likes: Int
+ - shares: Int
 ```
+
+#### User Liked Prompts Collection (NEW)
+
+```javascript
+userLikedPrompts/
+  {userId}/
+ - likedPromptIds: [String] // Array of prompt IDs user has liked
+```
+
+#### AI Conversations Collection (NEW)
+
+```javascript
+aiConversations/
+  {conversationId}/
+ - userId: String
+ - createdAt: Timestamp
+ - updatedAt: Timestamp
+```
+
+#### AI Messages Collection (NEW)
+
+```javascript
+aiMessages/
+  {messageId}/
+ - conversationId: String
+ - userId: String
+ - role: String ("user" or "assistant")
+ - content: String
+ - createdAt: Timestamp
+```
+
+---**Note**: Prompts can be either:
+
+- **Global Prompts**: Pre-populated prompts available to all users (stored in `journalPrompts` collection)
+- **User-Specific**: Users can like prompts, tracked in `userLikedPrompts` collection
+
+**Note**: AI Conversations:
+
+- Each conversation contains multiple messages
+- AI has access to user's journal entries for context
+- Conversations are stored per user for privacy
 
 ---
 
@@ -622,10 +804,16 @@ goals/
 
 1. Update JournalEntry model (add journalId)
 2. Build FirebaseService for entries
-3. Create entry creation with journal selection
-4. Implement multiple input methods (write/scan/speak)
-5. Create entry list view per journal
-6. Implement real-time sync
+3. Create JournalSelectionView (journal selection screen with "Add New Journal" option)
+4. Create entry creation flow (journal selection → CreateEntryView)
+5. Implement multiple input methods:
+
+            - **Write**: Full text input implementation
+            - **Scan**: UI placeholder (button/structure ready for GPT OCR integration)
+            - **Speak**: UI placeholder (button/structure ready for GPT speech-to-text integration)
+
+6. Create entry list view per journal
+7. Implement real-time sync
 
 ### Phase 7: All Entries & Views
 
@@ -647,11 +835,11 @@ goals/
 ### Phase 9: Dashboard System
 
 1. Create DashboardView
-2. Implement personalized greeting
-3. Build WeeklyCalendarView
-4. Create widget system architecture
-5. Implement widget drag and drop
-6. Create DailyQuoteWidget
+2. Implement streak counter (top left)
+3. Add profile/settings button (top right)
+4. Add welcome message
+5. Create widget system for quick entry widgets
+6. Implement widget click to open entry creation
 
 ### Phase 10: Quick Entry Widgets
 
@@ -670,38 +858,74 @@ goals/
 5. Implement app launch protection
 6. Test biometric and passcode flows
 
-### Phase 12: Goal Features
+### Phase 12: Prompts Feed
 
-1. Create Goal model
-2. Build FirebaseService for goals
-3. Create goals list view
-4. Create goal detail/edit view
-5. Implement progress tracking
+1. Create JournalPrompt model
+2. Build PromptsFeedView with swipeable interface
+3. Implement PromptCardView component
+4. Add "For You" personalized curation
+5. Implement like/share functionality
+6. Connect "Write it Out" button to entry creation
+7. Store prompts in Firestore
+8. Track user liked prompts
 
-### Phase 13: Main Navigation
+### Phase 13: AI Reflect/Analyze Feature
 
-1. Create MainTabView with tabs:
+**Note**: UI will be fully built and ready. GPT API integration will be added later.
 
-- Dashboard
-- All Entries (with List/Calendar sub-tabs)
-- Journals
-- Goals
-- Settings
+1. Create AIConversation and AIMessage models
+2. Build AIService structure (placeholder methods ready for GPT API integration)
+3. Create journal selection interface (user selects which journals to analyze)
+4. Implement manual analysis trigger button (user taps to start analysis)
+5. Create AIReflectView (main reflect/analyze page)
+6. Build AIChatView (conversational interface - fully functional UI)
+7. Create JournalInsightsView (display AI insights - UI ready)
+8. Implement conversation history storage in Firestore
+9. Add placeholder for GPT API integration (methods ready, API calls to be added)
+10. Test UI and navigation flow
 
-2. Integrate all features
-3. Implement navigation flow
+### Phase 14: Main Navigation
 
-### Phase 14: Design System Implementation
+1. Create MainTabView with 5-button tab bar:
 
-1. Create ColorTokens.swift with Papper color palette
-2. Create TypographyTokens.swift with font styles
-3. Create ShadowTokens.swift with shadow styles
-4. Implement gradient backgrounds for light/dark modes
-5. Apply design tokens throughout app
-6. Test color contrast and accessibility
-7. Verify design consistency across all screens
+- **Dashboard** (left) - Home page with streak counter, welcome message, widgets
+- **AI Reflect** - Reflect/analyze page with AI conversational interface
+- **+ button** (center, prominent) - Opens journal selection for entry creation
+- **All Entries** - View all entries with List/Calendar sub-tabs
+- **Prompts** (right) - TikTok-style swipeable prompts feed
 
-### Phase 15: Polish & Testing
+2. Create JournalSelectionView - shows list of existing journals with "Add New Journal" option
+3. Implement + button tap flow:
+
+- Tap + button → JournalSelectionView
+- User selects existing journal OR taps "Add New Journal"
+- If existing journal selected → CreateEntryView for that journal
+- If "Add New Journal" → CreateJournalView → then CreateEntryView for new journal
+
+4. Settings access: Profile button on Dashboard → SettingsView
+5. Integrate all features
+6. Implement navigation flow
+
+**Note**: Journals are accessible via + button flow (journal selection) and can be managed (rename, delete, reorder) from All Entries view.
+
+### Phase 15: Design System Implementation
+
+**Design Reference**: Match `chronicles-preview.html` design exactly
+
+1. Use existing PapperDesignSystem.swift and PapperUIComponents.swift (already created)
+2. Apply design tokens throughout app:
+
+            - Neutral colors (#414141 accent, warm paper backgrounds #faf8f3 light / #2a2823 dark)
+            - Dashboard layout: streak badge (top left), settings gear (top right), welcome message, 2x2 widget grid
+            - Tab bar: Home, Reflect, + button (center), Entries, Prompts
+            - SF Symbols only (no emojis)
+            - Clean, minimal spacing and typography
+
+3. Implement light/dark mode support
+4. Test color contrast and accessibility
+5. Verify design matches preview HTML exactly
+
+### Phase 16: Polish & Testing
 
 1. Add loading states
 2. Implement error handling
@@ -726,37 +950,34 @@ The app follows the **Papper Design Library** style guide with soft, calming aes
 ### Design Principles
 
 - **Minimalist Aesthetic**: Clean, uncluttered interface
-- **Journaling Focus**: Calming, reflective design with soft pastel colors
+- **Journaling Focus**: Calming, reflective design with neutral black and white palette
 - **Modern iOS Design**: Follows iOS Human Interface Guidelines
 - **Accessibility**: VoiceOver support, dynamic type
-- **Dark Mode & Light Mode**: Full theme support with adaptive gradients
+- **Dark Mode & Light Mode**: Full theme support with warm paper backgrounds
 - Automatic system preference detection
 - Smooth theme transitions
+- **No Emojis**: Use SF Symbols for all icons
 
 ### Color Palette
 
-**Primary Color**:
+**Primary Colors**:
 
-- **Coral/Red Accent**: `#FF6B6B` - Primary accent color for CTAs, highlights, and interactive elements
+- **Neutral Accent**: `#414141` (neutral700) - Primary accent color for CTAs, buttons, and interactive elements
+- **Pure Black**: `#000000` (neutral1000) - For text and strong accents
+- **White**: `#ffffff` (neutral000) - For surfaces and backgrounds
 
-**Gradients** (Background):
+**Backgrounds**:
 
-- **Light Mode**: Conic gradient with soft pastels
-                - `#f7d9d9` (6.5%) - Soft pink
-                - `#efe1e8` (3.5%) - Lavender
-                - `#e1e5ef` (87.5%) - Soft blue-gray
-- **Dark Mode**: Conic gradient with warmer tones
-                - `#f7baba` (6.5%) - Warm pink
-                - `#d9c8ea` (3.5%) - Purple
-                - `#ffccb3` (87.5%) - Peach
+- **Light Mode**: Warm paper background `#faf8f3` with white surfaces `#ffffff`
+- **Dark Mode**: Neutral dark background `#272727` (neutral-900) with elevated surfaces `#333333` (neutral-800)
 
 **Shadows**:
 
 - **Slight Shadow**: Subtle drop shadow for depth
-                - Color: `#e0000033` (transparent black)
-                - Offset: (0, 1)
-                - Blur: 4px
-                - Spread: 0
+                                                                - Color: `rgba(0, 0, 0, 0.08)` (transparent black)
+                                                                - Offset: (0, 1)
+                                                                - Blur: 4px
+                                                                - Spread: 0
 
 ### Typography
 
@@ -789,8 +1010,8 @@ The app follows the **Papper Design Library** style guide with soft, calming aes
 
 **Color Usage**:
 
-- Primary coral (`#FF6B6B`) for buttons, links, and interactive elements
-- Soft gradient backgrounds create calming atmosphere
+- Primary neutral gray (`#414141`) for buttons, links, and interactive elements
+- Warm paper backgrounds create calming atmosphere
 - High contrast text for readability
 - Adaptive colors for light/dark modes
 
@@ -798,24 +1019,24 @@ The app follows the **Papper Design Library** style guide with soft, calming aes
 
 - Rounded corners for cards and buttons
 - Subtle shadows for depth and elevation
-- Soft, pastel color palette throughout
+- Clean, neutral color palette throughout (black, white, grays)
 - Clean spacing and padding
 
 **Dashboard Design**:
 
-- Personalized greeting with time-based message
-- Weekly calendar with highlighted current day (using primary color)
-- Widget cards with icons and status indicators
-- Long press to reorder widgets
-- Tap widgets to configure or use
+- Streak counter in top left corner
+- Profile/settings button in top right corner
+- Simple welcome message at the top
+- Widget cards below welcome message
+- Click widgets to create journal entries directly
 - Gradient backgrounds for visual interest
 
 **Paywall Design**:
 
 - New York Medium serif font for titles (elegant, premium feel)
 - SF Pro for subtitles and body text
-- Coral accent color for CTAs
-- Soft gradient backgrounds
+- Neutral gray accent color for CTAs
+- Warm paper backgrounds
 
 ---
 
@@ -830,6 +1051,7 @@ The app follows the **Papper Design Library** style guide with soft, calming aes
 - Speech Framework
 - AVFoundation
 - LocalAuthentication framework
+- GPT API (to be integrated later) for OCR, speech-to-text, and journal analysis/conversational AI
 
 ---
 
@@ -838,10 +1060,5 @@ The app follows the **Papper Design Library** style guide with soft, calming aes
 - `GoogleService-Info.plist` (from Firebase Console)
 - App Store Connect configuration for subscriptions
 - Info.plist permissions:
-- Camera usage description
-- Microphone usage description
-- Speech recognition usage description
-- Xcode Capabilities:
-- Sign in with Apple
-- In-App Purchase
-- Camera
+- Camera usage description (for OCR photo capture UI)
+- Microphone usage description (for speech input UI)
