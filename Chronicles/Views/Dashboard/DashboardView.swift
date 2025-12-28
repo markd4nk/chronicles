@@ -152,7 +152,7 @@ struct DashboardView: View {
                 
                 Spacer()
                 
-                NavigationLink(destination: AllEntriesView()) {
+                NavigationLink(destination: EntriesListView()) {
                     Text("See All")
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(PapperColors.neutral600)

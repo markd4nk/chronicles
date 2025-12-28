@@ -69,7 +69,7 @@ struct CustomTabBar: View {
     var body: some View {
         HStack(spacing: 0) {
             // Dashboard
-            TabBarButton(
+            MainTabBarButton(
                 icon: "house.fill",
                 label: "Home",
                 isSelected: selectedTab == .dashboard,
@@ -77,7 +77,7 @@ struct CustomTabBar: View {
             )
             
             // AI Reflect
-            TabBarButton(
+            MainTabBarButton(
                 icon: "brain.head.profile",
                 label: "Reflect",
                 isSelected: selectedTab == .reflect,
@@ -88,7 +88,7 @@ struct CustomTabBar: View {
             CenterCreateButton(action: onCreateTapped)
             
             // All Entries
-            TabBarButton(
+            MainTabBarButton(
                 icon: "doc.text.fill",
                 label: "Entries",
                 isSelected: selectedTab == .entries,
@@ -96,7 +96,7 @@ struct CustomTabBar: View {
             )
             
             // Prompts
-            TabBarButton(
+            MainTabBarButton(
                 icon: "lightbulb.fill",
                 label: "Prompts",
                 isSelected: selectedTab == .prompts,
@@ -115,9 +115,9 @@ struct CustomTabBar: View {
     }
 }
 
-// MARK: - Tab Bar Button
+// MARK: - Main Tab Bar Button
 
-struct TabBarButton: View {
+struct MainTabBarButton: View {
     let icon: String
     let label: String
     let isSelected: Bool
