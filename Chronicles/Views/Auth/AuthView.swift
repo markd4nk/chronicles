@@ -127,7 +127,7 @@ struct AuthView: View {
         } message: {
             Text(viewModel.error ?? "An error occurred")
         }
-        .onChange(of: viewModel.isAuthenticated) { isAuthenticated in
+        .onChange(of: viewModel.isAuthenticated) { _, isAuthenticated in
             if isAuthenticated {
                 // Check if onboarding needed
                 if viewModel.currentUser?.onboardingCompleted == false {
