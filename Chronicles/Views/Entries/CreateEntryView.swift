@@ -3,7 +3,7 @@
 //  Chronicles
 //
 //  Entry creation with unified interface - text editor always visible
-//  Write/Scan/Speak are action buttons that enhance the editor
+//  Scan and Speak are subtle action buttons that enhance the writing experience
 //
 
 import SwiftUI
@@ -34,37 +34,30 @@ struct CreateEntryView: View {
                 Color(hex: "#faf8f3")
                     .ignoresSafeArea()
                 
-                // Main content - text editor always visible
-                ScrollView {
-                    VStack(alignment: .leading, spacing: Papper.spacing.lg) {
-                        // Text Editor
-                        TextEditor(text: $content)
-                            .font(.system(size: 16))
-                            .foregroundColor(PapperColors.neutral800)
-                            .scrollContentBackground(.hidden)
-                            .frame(minHeight: 400)
-                            .padding()
-                            .background(PapperColors.surfaceBackgroundPlain)
-                            .cornerRadius(16)
-                            .focused($isEditorFocused)
-                        
-                        // Word count
-                        HStack {
-                            Spacer()
-                            Text("\(wordCount) words")
-                                .font(.system(size: 12))
-                                .foregroundColor(PapperColors.neutral500)
+                VStack(spacing: 0) {
+                    // Main content - text editor always visible
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: Papper.spacing.md) {
+                            // Text Editor
+                            TextEditor(text: $content)
+                                .font(.system(size: 16))
+                                .foregroundColor(PapperColors.neutral800)
+                                .scrollContentBackground(.hidden)
+                                .frame(minHeight: 350)
+                                .padding()
+                                .background(PapperColors.surfaceBackgroundPlain)
+                                .cornerRadius(16)
+                                .focused($isEditorFocused)
                         }
+                        .padding(Papper.spacing.lg)
                     }
-                    .padding(Papper.spacing.lg)
+                    .onTapGesture {
+                        isEditorFocused = true
+                    }
+                    
+                    // Bottom bar with word count and action buttons
+                    bottomBar
                 }
-                .onTapGesture {
-                    isEditorFocused = true
-                }
-            }
-            .safeAreaInset(edge: .bottom) {
-                // Bottom action buttons - keyboard aware
-                actionButtonsBar
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -75,16 +68,22 @@ struct CreateEntryView: View {
                     .foregroundColor(PapperColors.neutral600)
                 }
                 
-                // Journal indicator in center (replacing title)
+                // Journal indicator and date in center
                 ToolbarItem(placement: .principal) {
-                    HStack(spacing: Papper.spacing.xs) {
-                        Circle()
-                            .fill(journal.displayColor)
-                            .frame(width: 8, height: 8)
+                    VStack(spacing: 2) {
+                        HStack(spacing: Papper.spacing.xs) {
+                            Circle()
+                                .fill(journal.displayColor)
+                                .frame(width: 8, height: 8)
+                            
+                            Text(journal.name)
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundColor(PapperColors.neutral700)
+                        }
                         
-                        Text(journal.name)
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundColor(PapperColors.neutral700)
+                        Text(Date(), format: .dateTime.weekday(.wide).month(.wide).day())
+                            .font(.system(size: 11))
+                            .foregroundColor(PapperColors.neutral500)
                     }
                 }
                 
@@ -138,44 +137,49 @@ struct CreateEntryView: View {
         }
     }
     
-    // MARK: - Action Buttons Bar
+    // MARK: - Bottom Bar
     
-    private var actionButtonsBar: some View {
-        HStack(spacing: Papper.spacing.lg) {
-            // Write button (focuses editor)
-            ActionButton(
-                icon: "pencil",
-                label: "Write",
-                action: {
-                    isEditorFocused = true
-                }
-            )
+    private var bottomBar: some View {
+        HStack(spacing: Papper.spacing.md) {
+            // Word count
+            Text("\(wordCount) words")
+                .font(.system(size: 12))
+                .foregroundColor(PapperColors.neutral500)
             
-            // Scan button (shows action sheet)
-            ActionButton(
-                icon: "doc.text.viewfinder",
-                label: "Scan",
-                action: {
+            Spacer()
+            
+            // Compact action buttons
+            HStack(spacing: Papper.spacing.sm) {
+                // Scan button
+                Button(action: {
                     showScanActionSheet = true
+                }) {
+                    Image(systemName: "doc.text.viewfinder")
+                        .font(.system(size: 16))
+                        .foregroundColor(PapperColors.neutral600)
+                        .frame(width: 36, height: 36)
+                        .background(PapperColors.neutral100)
+                        .clipShape(Circle())
                 }
-            )
-            
-            // Speak button (opens listening view)
-            ActionButton(
-                icon: "mic.fill",
-                label: "Speak",
-                action: {
+                
+                // Speak button
+                Button(action: {
                     showListeningView = true
+                }) {
+                    Image(systemName: "mic.fill")
+                        .font(.system(size: 16))
+                        .foregroundColor(PapperColors.neutral600)
+                        .frame(width: 36, height: 36)
+                        .background(PapperColors.neutral100)
+                        .clipShape(Circle())
                 }
-            )
+            }
         }
         .padding(.horizontal, Papper.spacing.xl)
         .padding(.vertical, Papper.spacing.md)
         .background(
-            Rectangle()
-                .fill(PapperColors.surfaceBackgroundPlain)
-                .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: -4)
-                .ignoresSafeArea()
+            Color(hex: "#faf8f3")
+                .shadow(color: Color.black.opacity(0.04), radius: 4, x: 0, y: -2)
         )
     }
     
@@ -274,34 +278,6 @@ struct CreateEntryView: View {
             let formatter = DateFormatter()
             formatter.dateFormat = "MMM d, yyyy 'at' h:mm a"
             return formatter.string(from: Date())
-        }
-    }
-}
-
-// MARK: - Action Button
-
-struct ActionButton: View {
-    let icon: String
-    let label: String
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 4) {
-                ZStack {
-                    Circle()
-                        .fill(PapperColors.neutral100)
-                        .frame(width: 50, height: 50)
-                    
-                    Image(systemName: icon)
-                        .font(.system(size: 20))
-                        .foregroundColor(PapperColors.neutral700)
-                }
-                
-                Text(label)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(PapperColors.neutral600)
-            }
         }
     }
 }

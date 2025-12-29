@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Firebase
 
 @main
 struct ChroniclesApp: App {
@@ -15,6 +16,10 @@ struct ChroniclesApp: App {
     
     @State private var isLocked = false
     @State private var showPaywall = false
+    
+    init() {
+        FirebaseApp.configure()
+    }
     
     var body: some Scene {
         WindowGroup {
