@@ -7,7 +7,6 @@
 //
 
 import SwiftUI
-import Speech
 import AVFoundation
 
 struct CreateEntryView: View {
@@ -126,7 +125,7 @@ struct CreateEntryView: View {
                     content += transcribedText
                 })
             }
-            .onChange(of: selectedImage) { newImage in
+            .onChange(of: selectedImage) { _, newImage in
                 if let image = newImage {
                     processOCR(image: image)
                 }

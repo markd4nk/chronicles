@@ -185,7 +185,7 @@ class AIService: ObservableObject {
         do {
             let title = try await functionsService.generateTitle(for: cleanContent)
             return title
-        } catch let functionsError as FirebaseFunctionsError {
+        } catch _ as FirebaseFunctionsError {
             // Fallback to local title generation if Cloud Function fails
             return try generateLocalTitle(for: cleanContent)
         } catch {

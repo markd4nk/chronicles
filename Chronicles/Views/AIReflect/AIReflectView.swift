@@ -126,7 +126,7 @@ struct AIReflectView: View {
                     }
                     .padding(.vertical, Papper.spacing.md)
                 }
-                .onChange(of: viewModel.messages.count) { _ in
+                .onChange(of: viewModel.messages.count) {
                     if let lastMessage = viewModel.messages.last {
                         withAnimation {
                             proxy.scrollTo(lastMessage.id, anchor: .bottom)

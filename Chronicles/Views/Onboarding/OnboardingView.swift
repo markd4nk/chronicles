@@ -45,7 +45,7 @@ struct OnboardingView: View {
                 navigationButtons
             }
         }
-        .onChange(of: viewModel.isComplete) { isComplete in
+        .onChange(of: viewModel.isComplete) { _, isComplete in
             if isComplete {
                 dismiss()
             }

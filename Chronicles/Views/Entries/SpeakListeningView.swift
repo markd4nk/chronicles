@@ -3,22 +3,24 @@
 //  Chronicles
 //
 //  Full-screen listening page with animated blob for speech-to-text
+//  Uses OpenAI Whisper API via Firebase Cloud Functions
 //
 
 import SwiftUI
-import Speech
 import AVFoundation
-import Combine
 
 struct SpeakListeningView: View {
     let onComplete: (String) -> Void
     
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var speechRecognizer = SpeechRecognizer()
+    @StateObject private var audioRecorder = WhisperAudioRecorder()
     
     @State private var isRecording = false
+    @State private var isTranscribing = false
     @State private var transcribedText = ""
     @State private var showPermissionAlert = false
+    @State private var showErrorAlert = false
+    @State private var errorMessage = ""
     @State private var animationScale: CGFloat = 1.0
     @State private var pulseOpacity: Double = 0.3
     
@@ -49,7 +51,7 @@ struct SpeakListeningView: View {
                 
                 // Status text
                 VStack(spacing: Papper.spacing.sm) {
-                    Text(isRecording ? "Listening..." : "Tap to start")
+                    Text(statusText)
                         .font(.system(size: 20, weight: .semibold))
                         .foregroundColor(PapperColors.neutral800)
                     
@@ -57,10 +59,14 @@ struct SpeakListeningView: View {
                         Text("Speak clearly into your device")
                             .font(.system(size: 14))
                             .foregroundColor(PapperColors.neutral600)
+                    } else if isTranscribing {
+                        Text("Processing with Whisper AI...")
+                            .font(.system(size: 14))
+                            .foregroundColor(PapperColors.neutral600)
                     }
                 }
                 
-                // Live transcription preview
+                // Transcription preview
                 if !transcribedText.isEmpty {
                     ScrollView {
                         Text(transcribedText)
@@ -78,13 +84,32 @@ struct SpeakListeningView: View {
                 // Action buttons
                 actionButtons
             }
+            
+            // Loading overlay for transcription
+            if isTranscribing {
+                Color.black.opacity(0.3)
+                    .ignoresSafeArea()
+                
+                VStack(spacing: Papper.spacing.md) {
+                    ProgressView()
+                        .scaleEffect(1.5)
+                        .tint(.white)
+                    
+                    Text("Transcribing...")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.white)
+                }
+                .padding(Papper.spacing.xl)
+                .background(PapperColors.neutral800.opacity(0.9))
+                .cornerRadius(16)
+            }
         }
         .onAppear {
             checkPermissions()
         }
         .onDisappear {
             if isRecording {
-                stopRecording()
+                audioRecorder.stopRecording()
             }
         }
         .alert("Microphone Access Required", isPresented: $showPermissionAlert) {
@@ -99,8 +124,22 @@ struct SpeakListeningView: View {
         } message: {
             Text("Please enable microphone access in Settings to use voice recording.")
         }
-        .onChange(of: speechRecognizer.transcript) { newValue in
-            transcribedText = newValue
+        .alert("Transcription Error", isPresented: $showErrorAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(errorMessage)
+        }
+    }
+    
+    private var statusText: String {
+        if isTranscribing {
+            return "Transcribing..."
+        } else if isRecording {
+            return "Listening..."
+        } else if !transcribedText.isEmpty {
+            return "Recording complete"
+        } else {
+            return "Tap to start"
         }
     }
     
@@ -137,16 +176,24 @@ struct SpeakListeningView: View {
                 .shadow(color: PapperColors.neutral700.opacity(0.3), radius: 20, x: 0, y: 10)
             
             // Inner icon
-            Image(systemName: isRecording ? "waveform" : "mic.fill")
-                .font(.system(size: isRecording ? 40 : 50))
-                .foregroundColor(.white)
-                .symbolEffect(.variableColor.iterative, options: .repeating, isActive: isRecording)
+            if isTranscribing {
+                ProgressView()
+                    .scaleEffect(1.5)
+                    .tint(.white)
+            } else {
+                Image(systemName: isRecording ? "waveform" : "mic.fill")
+                    .font(.system(size: isRecording ? 40 : 50))
+                    .foregroundColor(.white)
+                    .symbolEffect(.variableColor.iterative, options: .repeating, isActive: isRecording)
+            }
         }
         .onTapGesture {
-            if isRecording {
-                stopRecording()
-            } else {
-                startRecording()
+            if !isTranscribing {
+                if isRecording {
+                    stopRecording()
+                } else {
+                    startRecording()
+                }
             }
         }
         .onAppear {
@@ -173,6 +220,20 @@ struct SpeakListeningView: View {
                     .background(PapperColors.pink600)
                     .cornerRadius(14)
                 }
+                .padding(.horizontal, Papper.spacing.xl)
+            } else if isTranscribing {
+                // Transcribing state - disabled button
+                HStack(spacing: Papper.spacing.sm) {
+                    ProgressView()
+                        .tint(.white)
+                    Text("Processing...")
+                        .font(.system(size: 16, weight: .semibold))
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 54)
+                .background(PapperColors.neutral500)
+                .cornerRadius(14)
                 .padding(.horizontal, Papper.spacing.xl)
             } else if !transcribedText.isEmpty {
                 // Done button (when we have text)
@@ -228,16 +289,9 @@ struct SpeakListeningView: View {
     }
     
     private func checkPermissions() {
-        SFSpeechRecognizer.requestAuthorization { status in
-            DispatchQueue.main.async {
-                if status != .authorized {
-                    showPermissionAlert = true
-                }
-            }
-        }
-        
-        AVAudioSession.sharedInstance().requestRecordPermission { granted in
-            DispatchQueue.main.async {
+        Task {
+            let granted = await AVAudioApplication.requestRecordPermission()
+            await MainActor.run {
                 if !granted {
                     showPermissionAlert = true
                 }
@@ -247,17 +301,43 @@ struct SpeakListeningView: View {
     
     private func startRecording() {
         do {
-            try speechRecognizer.startTranscribing()
+            try audioRecorder.startRecording()
             isRecording = true
         } catch {
-            // Handle error
-            print("Failed to start recording: \(error)")
+            errorMessage = "Failed to start recording: \(error.localizedDescription)"
+            showErrorAlert = true
         }
     }
     
     private func stopRecording() {
-        speechRecognizer.stopTranscribing()
         isRecording = false
+        isTranscribing = true
+        
+        Task {
+            do {
+                let audioData = try audioRecorder.stopRecordingAndGetData()
+                let newTranscription = try await AIService.shared.transcribeAudio(
+                    audioData: audioData,
+                    mimeType: "audio/m4a"
+                )
+                
+                await MainActor.run {
+                    // Append to existing text if "Record More" was used
+                    if !transcribedText.isEmpty {
+                        transcribedText += " " + newTranscription
+                    } else {
+                        transcribedText = newTranscription
+                    }
+                    isTranscribing = false
+                }
+            } catch {
+                await MainActor.run {
+                    isTranscribing = false
+                    errorMessage = "Failed to transcribe: \(error.localizedDescription)"
+                    showErrorAlert = true
+                }
+            }
+        }
     }
     
     private func completeRecording() {
@@ -266,118 +346,72 @@ struct SpeakListeningView: View {
     }
 }
 
-// MARK: - Speech Recognizer
+// MARK: - Whisper Audio Recorder
 
-class SpeechRecognizer: ObservableObject {
-    @Published var transcript = ""
-    @Published var isTranscribing = false
+class WhisperAudioRecorder: ObservableObject {
+    private var audioRecorder: AVAudioRecorder?
+    private var audioFileURL: URL?
     
-    private var audioEngine: AVAudioEngine?
-    private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
-    private var recognitionTask: SFSpeechRecognitionTask?
-    private let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
-    
-    /// Text from previous recording sessions (preserved when "Record More" is used)
-    private var baseTranscript = ""
-    
-    func startTranscribing() throws {
-        // Cancel any ongoing task
-        recognitionTask?.cancel()
-        recognitionTask = nil
-        
-        // Preserve existing transcript for "Record More"
-        baseTranscript = transcript
-        
-        // Configure audio session
+    func startRecording() throws {
+        // Set up audio session
         let audioSession = AVAudioSession.sharedInstance()
-        try audioSession.setCategory(.record, mode: .measurement, options: .duckOthers)
-        try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
+        try audioSession.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker])
+        try audioSession.setActive(true)
         
-        // Create audio engine
-        audioEngine = AVAudioEngine()
+        // Create unique file URL for recording
+        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let audioFilename = documentsPath.appendingPathComponent("recording_\(UUID().uuidString).m4a")
+        audioFileURL = audioFilename
         
-        guard let audioEngine = audioEngine else {
-            throw NSError(domain: "SpeechRecognizer", code: 1, userInfo: [NSLocalizedDescriptionKey: "Audio engine not available"])
+        // Recording settings optimized for Whisper
+        let settings: [String: Any] = [
+            AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
+            AVSampleRateKey: 16000,  // 16kHz is optimal for Whisper
+            AVNumberOfChannelsKey: 1,  // Mono
+            AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
+        ]
+        
+        // Create and start recorder
+        audioRecorder = try AVAudioRecorder(url: audioFilename, settings: settings)
+        audioRecorder?.record()
+    }
+    
+    func stopRecordingAndGetData() throws -> Data {
+        audioRecorder?.stop()
+        
+        guard let fileURL = audioFileURL else {
+            throw RecordingError.noRecording
         }
         
-        // Create recognition request
-        recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
+        // Read the audio file data
+        let audioData = try Data(contentsOf: fileURL)
         
-        guard let recognitionRequest = recognitionRequest else {
-            throw NSError(domain: "SpeechRecognizer", code: 2, userInfo: [NSLocalizedDescriptionKey: "Unable to create recognition request"])
-        }
+        // Clean up the file
+        try? FileManager.default.removeItem(at: fileURL)
+        audioFileURL = nil
         
-        recognitionRequest.shouldReportPartialResults = true
+        return audioData
+    }
+    
+    func stopRecording() {
+        audioRecorder?.stop()
         
-        // Configure for on-device recognition if available
-        if #available(iOS 13, *) {
-            recognitionRequest.requiresOnDeviceRecognition = false
-        }
-        
-        // Get input node
-        let inputNode = audioEngine.inputNode
-        
-        // Start recognition task
-        recognitionTask = speechRecognizer?.recognitionTask(with: recognitionRequest) { [weak self] result, error in
-            guard let self = self else { return }
-            
-            var isFinal = false
-            
-            if let result = result {
-                let newText = result.bestTranscription.formattedString
-                DispatchQueue.main.async {
-                    // Append to base transcript if we have previous text
-                    if self.baseTranscript.isEmpty {
-                        self.transcript = newText
-                    } else {
-                        self.transcript = self.baseTranscript + " " + newText
-                    }
-                }
-                isFinal = result.isFinal
-            }
-            
-            if error != nil || isFinal {
-                self.audioEngine?.stop()
-                inputNode.removeTap(onBus: 0)
-                
-                self.recognitionRequest = nil
-                self.recognitionTask = nil
-                
-                DispatchQueue.main.async {
-                    self.isTranscribing = false
-                }
-            }
-        }
-        
-        // Configure microphone input
-        let recordingFormat = inputNode.outputFormat(forBus: 0)
-        inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { buffer, _ in
-            self.recognitionRequest?.append(buffer)
-        }
-        
-        // Start audio engine
-        audioEngine.prepare()
-        try audioEngine.start()
-        
-        DispatchQueue.main.async {
-            self.isTranscribing = true
+        // Clean up any existing file
+        if let fileURL = audioFileURL {
+            try? FileManager.default.removeItem(at: fileURL)
+            audioFileURL = nil
         }
     }
     
-    func stopTranscribing() {
-        audioEngine?.stop()
-        audioEngine?.inputNode.removeTap(onBus: 0)
-        recognitionRequest?.endAudio()
+    enum RecordingError: LocalizedError {
+        case noRecording
         
-        DispatchQueue.main.async {
-            self.isTranscribing = false
+        var errorDescription: String? {
+            switch self {
+            case .noRecording:
+                return "No recording available"
+            }
         }
-    }
-    
-    func reset() {
-        stopTranscribing()
-        transcript = ""
-        baseTranscript = ""
     }
 }
 
@@ -390,4 +424,3 @@ struct SpeakListeningView_Previews: PreviewProvider {
     }
 }
 #endif
-
