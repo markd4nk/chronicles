@@ -13,7 +13,7 @@ struct SpeakListeningView: View {
     let onComplete: (String) -> Void
     
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var audioRecorder = WhisperAudioRecorder()
+    private let audioRecorder = WhisperAudioRecorder()
     
     @State private var isRecording = false
     @State private var isTranscribing = false
@@ -348,7 +348,7 @@ struct SpeakListeningView: View {
 
 // MARK: - Whisper Audio Recorder
 
-class WhisperAudioRecorder: ObservableObject {
+class WhisperAudioRecorder {
     private var audioRecorder: AVAudioRecorder?
     private var audioFileURL: URL?
     
