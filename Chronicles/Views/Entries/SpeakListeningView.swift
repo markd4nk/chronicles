@@ -276,10 +276,16 @@ class SpeechRecognizer: ObservableObject {
     private var recognitionTask: SFSpeechRecognitionTask?
     private let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
     
+    /// Text from previous recording sessions (preserved when "Record More" is used)
+    private var baseTranscript = ""
+    
     func startTranscribing() throws {
         // Cancel any ongoing task
         recognitionTask?.cancel()
         recognitionTask = nil
+        
+        // Preserve existing transcript for "Record More"
+        baseTranscript = transcript
         
         // Configure audio session
         let audioSession = AVAudioSession.sharedInstance()
@@ -317,8 +323,14 @@ class SpeechRecognizer: ObservableObject {
             var isFinal = false
             
             if let result = result {
+                let newText = result.bestTranscription.formattedString
                 DispatchQueue.main.async {
-                    self.transcript = result.bestTranscription.formattedString
+                    // Append to base transcript if we have previous text
+                    if self.baseTranscript.isEmpty {
+                        self.transcript = newText
+                    } else {
+                        self.transcript = self.baseTranscript + " " + newText
+                    }
                 }
                 isFinal = result.isFinal
             }
@@ -364,6 +376,7 @@ class SpeechRecognizer: ObservableObject {
     func reset() {
         stopTranscribing()
         transcript = ""
+        baseTranscript = ""
     }
 }
 
