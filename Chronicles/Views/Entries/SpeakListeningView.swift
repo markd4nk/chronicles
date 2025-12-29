@@ -8,6 +8,7 @@
 import SwiftUI
 import Speech
 import AVFoundation
+import Combine
 
 struct SpeakListeningView: View {
     let onComplete: (String) -> Void

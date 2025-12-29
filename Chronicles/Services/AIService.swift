@@ -134,10 +134,13 @@ class AIService: ObservableObject {
             
             return JournalPrompt(
                 id: UUID().uuidString,
-                text: generatedPrompt.prompt,
+                question: generatedPrompt.prompt,
+                hint: generatedPrompt.followUp ?? "Reflect on this prompt and write freely.",
                 category: category,
-                isPersonalized: true,
-                createdAt: Date()
+                createdAt: Date(),
+                likes: 0,
+                shares: 0,
+                isLiked: false
             )
         } catch let functionsError as FirebaseFunctionsError {
             throw mapFunctionsError(functionsError)
@@ -147,8 +150,8 @@ class AIService: ObservableObject {
         }
     }
     
-    /// Map string category to JournalPrompt.Category
-    private func mapPromptCategory(_ category: String) -> JournalPrompt.Category {
+    /// Map string category to JournalPrompt.PromptCategory
+    private func mapPromptCategory(_ category: String) -> JournalPrompt.PromptCategory {
         switch category.lowercased() {
         case "gratitude":
             return .gratitude
@@ -156,14 +159,12 @@ class AIService: ObservableObject {
             return .reflection
         case "growth":
             return .growth
-        case "creativity":
-            return .creativity
-        case "relationships":
-            return .relationships
-        case "goals":
-            return .goals
-        case "mindfulness":
-            return .mindfulness
+        case "creative", "creativity":
+            return .creative
+        case "question":
+            return .question
+        case "quote":
+            return .quote
         default:
             return .reflection
         }
