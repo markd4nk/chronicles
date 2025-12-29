@@ -8,6 +8,8 @@
 
 import Foundation
 import Combine
+import Vision
+import UIKit
 
 // MARK: - AI Service
 
@@ -176,22 +178,123 @@ class AIService: ObservableObject {
         // In production, this would call GPT API
         return "Your journaling streak is strong! This week's themes: growth, gratitude, and productivity."
     }
+    
+    // MARK: - Title Generation
+    
+    /// Generate a concise title for a journal entry based on its content
+    /// - Parameter content: The journal entry content
+    /// - Returns: A generated title (max ~50 characters)
+    func generateTitle(for content: String) async throws -> String {
+        // Simulate AI processing
+        try await Task.sleep(nanoseconds: 800_000_000)
+        
+        // In production, this would call GPT API with a prompt like:
+        // "Generate a concise, meaningful title (max 50 chars) for this journal entry: [content]"
+        
+        // For now, use smart extraction from content
+        let cleanContent = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        guard !cleanContent.isEmpty else {
+            throw AIError.titleGenerationFailed
+        }
+        
+        // Extract key phrases or first meaningful sentence
+        let sentences = cleanContent.components(separatedBy: CharacterSet(charactersIn: ".!?\n"))
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        
+        if let firstSentence = sentences.first {
+            // Truncate to 50 chars if needed
+            if firstSentence.count <= 50 {
+                return firstSentence
+            } else {
+                // Find a good breaking point
+                let truncated = String(firstSentence.prefix(47))
+                if let lastSpace = truncated.lastIndex(of: " ") {
+                    return String(truncated[..<lastSpace]) + "..."
+                }
+                return truncated + "..."
+            }
+        }
+        
+        // Fallback: use first few words
+        let words = cleanContent.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }
+        let titleWords = words.prefix(6).joined(separator: " ")
+        
+        if titleWords.count > 50 {
+            return String(titleWords.prefix(47)) + "..."
+        }
+        
+        return titleWords
+    }
+    
+    // MARK: - OCR (Text Extraction from Image)
+    
+    /// Extract text from an image using Vision framework
+    /// - Parameter image: The UIImage to process
+    /// - Returns: Extracted text from the image
+    func extractTextFromImage(_ image: UIImage) async throws -> String {
+        guard let cgImage = image.cgImage else {
+            throw AIError.ocrFailed
+        }
+        
+        return try await withCheckedThrowingContinuation { continuation in
+            let request = VNRecognizeTextRequest { request, error in
+                if error != nil {
+                    continuation.resume(throwing: AIError.ocrFailed)
+                    return
+                }
+                
+                guard let observations = request.results as? [VNRecognizedTextObservation] else {
+                    continuation.resume(throwing: AIError.ocrFailed)
+                    return
+                }
+                
+                // Extract text from observations
+                let recognizedText = observations.compactMap { observation in
+                    observation.topCandidates(1).first?.string
+                }.joined(separator: "\n")
+                
+                if recognizedText.isEmpty {
+                    continuation.resume(throwing: AIError.ocrNoTextFound)
+                } else {
+                    continuation.resume(returning: recognizedText)
+                }
+            }
+            
+            // Configure for best accuracy
+            request.recognitionLevel = .accurate
+            request.usesLanguageCorrection = true
+            
+            // Perform request
+            let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+            
+            do {
+                try handler.perform([request])
+            } catch {
+                continuation.resume(throwing: AIError.ocrFailed)
+            }
+        }
+    }
 }
 
 // MARK: - AI Error
 
 enum AIError: LocalizedError {
-    case analysisFaile
+    case analysisFailed
     case responseGenerationFailed
     case contextTooLarge
     case rateLimited
     case networkError
     case apiKeyMissing
+    case titleGenerationFailed
+    case ocrFailed
+    case ocrNoTextFound
     case unknown
     
     var errorDescription: String? {
         switch self {
-        case .analysisFaile:
+        case .analysisFailed:
             return "Failed to analyze journals. Please try again."
         case .responseGenerationFailed:
             return "Failed to generate response. Please try again."
@@ -203,6 +306,12 @@ enum AIError: LocalizedError {
             return "Network error. Please check your connection."
         case .apiKeyMissing:
             return "AI service not configured."
+        case .titleGenerationFailed:
+            return "Failed to generate title. Using fallback."
+        case .ocrFailed:
+            return "Failed to extract text from image. Please try again."
+        case .ocrNoTextFound:
+            return "No text found in the image. Please try a different image."
         case .unknown:
             return "An unknown error occurred."
         }

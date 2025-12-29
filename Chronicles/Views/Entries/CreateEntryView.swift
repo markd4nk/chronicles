@@ -2,10 +2,13 @@
 //  CreateEntryView.swift
 //  Chronicles
 //
-//  Entry creation with multiple input methods (Write, Scan, Speak)
+//  Entry creation with unified interface - text editor always visible
+//  Write/Scan/Speak are action buttons that enhance the editor
 //
 
 import SwiftUI
+import Speech
+import AVFoundation
 
 struct CreateEntryView: View {
     let journal: Journal
@@ -15,11 +18,16 @@ struct CreateEntryView: View {
     @StateObject private var viewModel = JournalViewModel()
     @Environment(\.dismiss) private var dismiss
     
-    @State private var title = ""
     @State private var content = ""
-    @State private var selectedInputMethod: JournalEntry.InputMethod = .write
     @State private var isSaving = false
-    @State private var showInputMethodPicker = false
+    @State private var showScanActionSheet = false
+    @State private var showImagePicker = false
+    @State private var showCamera = false
+    @State private var showListeningView = false
+    @State private var selectedImage: UIImage?
+    @State private var isProcessingOCR = false
+    
+    @FocusState private var isEditorFocused: Bool
     
     var body: some View {
         NavigationView {
@@ -27,48 +35,38 @@ struct CreateEntryView: View {
                 Color(hex: "#faf8f3")
                     .ignoresSafeArea()
                 
-                VStack(spacing: 0) {
-                    // Input Method Tabs
-                    inputMethodTabs
-                    
-                    // Content based on input method
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: Papper.spacing.xl) {
-                            // Journal indicator
-                            HStack(spacing: Papper.spacing.xs) {
-                                Circle()
-                                    .fill(journal.displayColor)
-                                    .frame(width: 8, height: 8)
-                                
-                                Text(journal.name)
-                                    .font(.system(size: 13))
-                                    .foregroundColor(PapperColors.neutral600)
-                            }
-                            .padding(.horizontal, Papper.spacing.sm)
-                            .padding(.vertical, 6)
-                            .background(journal.displayColor.opacity(0.1))
-                            .cornerRadius(20)
-                            
-                            // Title
-                            TextField("Entry title", text: $title)
-                                .font(.system(size: 20, weight: .semibold))
-                                .foregroundColor(PapperColors.neutral800)
-                            
-                            // Content based on method
-                            switch selectedInputMethod {
-                            case .write:
-                                writeInput
-                            case .scan:
-                                scanInput
-                            case .speak:
-                                speakInput
-                            }
+                // Main content - text editor always visible
+                ScrollView {
+                    VStack(alignment: .leading, spacing: Papper.spacing.lg) {
+                        // Text Editor
+                        TextEditor(text: $content)
+                            .font(.system(size: 16))
+                            .foregroundColor(PapperColors.neutral800)
+                            .scrollContentBackground(.hidden)
+                            .frame(minHeight: 400)
+                            .padding()
+                            .background(PapperColors.surfaceBackgroundPlain)
+                            .cornerRadius(16)
+                            .focused($isEditorFocused)
+                        
+                        // Word count
+                        HStack {
+                            Spacer()
+                            Text("\(wordCount) words")
+                                .font(.system(size: 12))
+                                .foregroundColor(PapperColors.neutral500)
                         }
-                        .padding(Papper.spacing.lg)
                     }
+                    .padding(Papper.spacing.lg)
+                }
+                .onTapGesture {
+                    isEditorFocused = true
                 }
             }
-            .navigationTitle("New Entry")
+            .safeAreaInset(edge: .bottom) {
+                // Bottom action buttons - keyboard aware
+                actionButtonsBar
+            }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -78,187 +76,129 @@ struct CreateEntryView: View {
                     .foregroundColor(PapperColors.neutral600)
                 }
                 
+                // Journal indicator in center (replacing title)
+                ToolbarItem(placement: .principal) {
+                    HStack(spacing: Papper.spacing.xs) {
+                        Circle()
+                            .fill(journal.displayColor)
+                            .frame(width: 8, height: 8)
+                        
+                        Text(journal.name)
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundColor(PapperColors.neutral700)
+                    }
+                }
+                
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Save") {
                         saveEntry()
                     }
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(PapperColors.neutral700)
-                    .disabled(title.isEmpty || content.isEmpty || isSaving)
+                    .foregroundColor(content.isEmpty || isSaving ? PapperColors.neutral400 : PapperColors.neutral700)
+                    .disabled(content.isEmpty || isSaving)
                 }
             }
             .onAppear {
                 setupFromTemplate()
+                isEditorFocused = true
             }
-        }
-    }
-    
-    // MARK: - Input Method Tabs
-    
-    private var inputMethodTabs: some View {
-        HStack(spacing: 0) {
-            ForEach(JournalEntry.InputMethod.allCases, id: \.self) { method in
-                Button(action: { selectedInputMethod = method }) {
-                    VStack(spacing: 4) {
-                        Image(systemName: method.icon)
-                            .font(.system(size: 18))
-                        
-                        Text(method.displayName)
-                            .font(.system(size: 12, weight: .medium))
+            .confirmationDialog("Add from Photo", isPresented: $showScanActionSheet, titleVisibility: .visible) {
+                Button("Take Photo") {
+                    showCamera = true
+                }
+                Button("Choose from Library") {
+                    showImagePicker = true
+                }
+                Button("Cancel", role: .cancel) { }
+            }
+            .sheet(isPresented: $showImagePicker) {
+                ImagePicker(image: $selectedImage, sourceType: .photoLibrary)
+            }
+            .sheet(isPresented: $showCamera) {
+                ImagePicker(image: $selectedImage, sourceType: .camera)
+            }
+            .fullScreenCover(isPresented: $showListeningView) {
+                SpeakListeningView(onComplete: { transcribedText in
+                    // Append transcribed text to content
+                    if !content.isEmpty && !content.hasSuffix("\n") {
+                        content += "\n\n"
                     }
-                    .foregroundColor(selectedInputMethod == method ? PapperColors.neutral700 : PapperColors.neutral400)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, Papper.spacing.sm)
-                    .background(selectedInputMethod == method ? PapperColors.surfaceBackgroundPlain : Color.clear)
-                    .cornerRadius(10)
+                    content += transcribedText
+                })
+            }
+            .onChange(of: selectedImage) { newImage in
+                if let image = newImage {
+                    processOCR(image: image)
+                }
+            }
+            .overlay {
+                if isSaving || isProcessingOCR {
+                    loadingOverlay
                 }
             }
         }
-        .padding(4)
-        .background(PapperColors.neutral100)
-        .cornerRadius(12)
-        .padding(.horizontal, Papper.spacing.lg)
-        .padding(.vertical, Papper.spacing.sm)
     }
     
-    // MARK: - Write Input
+    // MARK: - Action Buttons Bar
     
-    private var writeInput: some View {
-        VStack(alignment: .leading, spacing: Papper.spacing.xs) {
-            TextEditor(text: $content)
-                .font(.system(size: 16))
-                .foregroundColor(PapperColors.neutral800)
-                .frame(minHeight: 300)
-                .padding()
-                .background(PapperColors.surfaceBackgroundPlain)
-                .cornerRadius(16)
+    private var actionButtonsBar: some View {
+        HStack(spacing: Papper.spacing.lg) {
+            // Write button (focuses editor)
+            ActionButton(
+                icon: "pencil",
+                label: "Write",
+                action: {
+                    isEditorFocused = true
+                }
+            )
             
-            // Word count
-            HStack {
-                Spacer()
-                Text("\(wordCount) words")
-                    .font(.system(size: 12))
-                    .foregroundColor(PapperColors.neutral500)
-            }
+            // Scan button (shows action sheet)
+            ActionButton(
+                icon: "doc.text.viewfinder",
+                label: "Scan",
+                action: {
+                    showScanActionSheet = true
+                }
+            )
+            
+            // Speak button (opens listening view)
+            ActionButton(
+                icon: "mic.fill",
+                label: "Speak",
+                action: {
+                    showListeningView = true
+                }
+            )
         }
+        .padding(.horizontal, Papper.spacing.xl)
+        .padding(.vertical, Papper.spacing.md)
+        .background(
+            Rectangle()
+                .fill(PapperColors.surfaceBackgroundPlain)
+                .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: -4)
+                .ignoresSafeArea()
+        )
     }
     
-    // MARK: - Scan Input (Placeholder for GPT OCR)
+    // MARK: - Loading Overlay
     
-    private var scanInput: some View {
-        VStack(spacing: Papper.spacing.xl) {
-            // Placeholder for OCR
-            VStack(spacing: Papper.spacing.lg) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(style: StrokeStyle(lineWidth: 2, dash: [8]))
-                        .foregroundColor(PapperColors.neutral300)
-                        .frame(height: 200)
-                    
-                    VStack(spacing: Papper.spacing.md) {
-                        Image(systemName: "doc.text.viewfinder")
-                            .font(.system(size: 48))
-                            .foregroundColor(PapperColors.neutral400)
-                        
-                        Text("Scan text from a photo")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(PapperColors.neutral600)
-                        
-                        Text("Coming soon with AI integration")
-                            .font(.system(size: 13))
-                            .foregroundColor(PapperColors.neutral500)
-                    }
-                }
-                
-                // Camera Button (Placeholder)
-                Button(action: {
-                    // TODO: Implement camera for OCR
-                }) {
-                    HStack(spacing: Papper.spacing.xs) {
-                        Image(systemName: "camera.fill")
-                        Text("Take Photo")
-                    }
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 50)
-                    .background(PapperColors.neutral400)
-                    .cornerRadius(12)
-                }
-                .disabled(true)
-            }
+    private var loadingOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.3)
+                .ignoresSafeArea()
             
-            // Manual text entry fallback
-            VStack(alignment: .leading, spacing: Papper.spacing.xs) {
-                Text("Or type your entry")
-                    .font(Papper.typography.bodySmall)
-                    .foregroundColor(PapperColors.neutral500)
+            VStack(spacing: Papper.spacing.md) {
+                ProgressView()
+                    .scaleEffect(1.2)
+                    .tint(PapperColors.neutral700)
                 
-                TextEditor(text: $content)
-                    .font(.system(size: 16))
-                    .frame(minHeight: 150)
-                    .padding()
-                    .background(PapperColors.surfaceBackgroundPlain)
-                    .cornerRadius(12)
+                Text(isSaving ? "Generating title..." : "Processing image...")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(PapperColors.neutral700)
             }
-        }
-    }
-    
-    // MARK: - Speak Input (Placeholder for GPT Speech-to-Text)
-    
-    private var speakInput: some View {
-        VStack(spacing: Papper.spacing.xl) {
-            // Placeholder for Speech
-            VStack(spacing: Papper.spacing.lg) {
-                ZStack {
-                    Circle()
-                        .fill(PapperColors.neutral100)
-                        .frame(width: 120, height: 120)
-                    
-                    Image(systemName: "mic.fill")
-                        .font(.system(size: 48))
-                        .foregroundColor(PapperColors.neutral400)
-                }
-                
-                Text("Voice recording")
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(PapperColors.neutral600)
-                
-                Text("Coming soon with AI integration")
-                    .font(.system(size: 13))
-                    .foregroundColor(PapperColors.neutral500)
-                
-                // Record Button (Placeholder)
-                Button(action: {
-                    // TODO: Implement voice recording
-                }) {
-                    HStack(spacing: Papper.spacing.xs) {
-                        Image(systemName: "mic.fill")
-                        Text("Start Recording")
-                    }
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 50)
-                    .background(PapperColors.neutral400)
-                    .cornerRadius(12)
-                }
-                .disabled(true)
-            }
-            
-            // Manual text entry fallback
-            VStack(alignment: .leading, spacing: Papper.spacing.xs) {
-                Text("Or type your entry")
-                    .font(Papper.typography.bodySmall)
-                    .foregroundColor(PapperColors.neutral500)
-                
-                TextEditor(text: $content)
-                    .font(.system(size: 16))
-                    .frame(minHeight: 150)
-                    .padding()
-                    .background(PapperColors.surfaceBackgroundPlain)
-                    .cornerRadius(12)
-            }
+            .padding(Papper.spacing.xl)
+            .background(PapperColors.surfaceBackgroundPlain)
+            .cornerRadius(16)
         }
     }
     
@@ -270,13 +210,37 @@ struct CreateEntryView: View {
     
     private func setupFromTemplate() {
         if let template = template {
-            title = template.name
             content = template.formattedPrompts + "\n\n"
         }
         
         if let prompt = prompt {
-            title = String(prompt.question.prefix(50))
             content = "Prompt: \(prompt.question)\n\n"
+        }
+    }
+    
+    private func processOCR(image: UIImage) {
+        isProcessingOCR = true
+        
+        Task {
+            do {
+                let extractedText = try await AIService.shared.extractTextFromImage(image)
+                
+                await MainActor.run {
+                    // Append extracted text to content
+                    if !content.isEmpty && !content.hasSuffix("\n") {
+                        content += "\n\n"
+                    }
+                    content += extractedText
+                    selectedImage = nil
+                    isProcessingOCR = false
+                }
+            } catch {
+                await MainActor.run {
+                    // Fallback - just show error state
+                    selectedImage = nil
+                    isProcessingOCR = false
+                }
+            }
         }
     }
     
@@ -284,15 +248,101 @@ struct CreateEntryView: View {
         isSaving = true
         
         Task {
+            // Generate title using AI
+            let title = await generateTitle()
+            
             await viewModel.createEntry(
                 journalId: journal.id,
                 title: title,
                 content: content,
-                inputMethod: selectedInputMethod,
+                inputMethod: .write,
                 templateId: template?.id,
                 promptId: prompt?.id
             )
-            dismiss()
+            
+            await MainActor.run {
+                dismiss()
+            }
+        }
+    }
+    
+    private func generateTitle() async -> String {
+        do {
+            let generatedTitle = try await AIService.shared.generateTitle(for: content)
+            return generatedTitle
+        } catch {
+            // Fallback to date/time
+            let formatter = DateFormatter()
+            formatter.dateFormat = "MMM d, yyyy 'at' h:mm a"
+            return formatter.string(from: Date())
+        }
+    }
+}
+
+// MARK: - Action Button
+
+struct ActionButton: View {
+    let icon: String
+    let label: String
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 4) {
+                ZStack {
+                    Circle()
+                        .fill(PapperColors.neutral100)
+                        .frame(width: 50, height: 50)
+                    
+                    Image(systemName: icon)
+                        .font(.system(size: 20))
+                        .foregroundColor(PapperColors.neutral700)
+                }
+                
+                Text(label)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(PapperColors.neutral600)
+            }
+        }
+    }
+}
+
+// MARK: - Image Picker
+
+struct ImagePicker: UIViewControllerRepresentable {
+    @Binding var image: UIImage?
+    let sourceType: UIImagePickerController.SourceType
+    @Environment(\.dismiss) private var dismiss
+    
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.sourceType = sourceType
+        picker.delegate = context.coordinator
+        return picker
+    }
+    
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+    
+    class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        let parent: ImagePicker
+        
+        init(_ parent: ImagePicker) {
+            self.parent = parent
+        }
+        
+        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+            if let image = info[.originalImage] as? UIImage {
+                parent.image = image
+            }
+            parent.dismiss()
+        }
+        
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            parent.dismiss()
         }
     }
 }

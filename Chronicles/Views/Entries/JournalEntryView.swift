@@ -121,15 +121,23 @@ struct JournalEntryView: View {
                 .font(.system(size: 14))
                 .foregroundColor(PapperColors.neutral500)
             
-            // Title
+            // Title (tappable to edit)
             if isEditing {
                 TextField("Title", text: $editedTitle)
                     .font(.system(size: 24, weight: .bold, design: .serif))
                     .foregroundColor(PapperColors.neutral800)
             } else {
-                Text(entry.title)
-                    .font(.system(size: 24, weight: .bold, design: .serif))
-                    .foregroundColor(PapperColors.neutral800)
+                HStack(alignment: .top, spacing: Papper.spacing.xs) {
+                    Text(entry.title)
+                        .font(.system(size: 24, weight: .bold, design: .serif))
+                        .foregroundColor(PapperColors.neutral800)
+                    
+                    Button(action: startEditing) {
+                        Image(systemName: "pencil.circle")
+                            .font(.system(size: 16))
+                            .foregroundColor(PapperColors.neutral400)
+                    }
+                }
             }
             
             // Stats
