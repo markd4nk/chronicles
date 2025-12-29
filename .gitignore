@@ -1,6 +1,16 @@
 # Firebase Configuration
 GoogleService-Info.plist
 
+# Firebase Functions
+functions/node_modules/
+functions/lib/
+functions/.env
+functions/.env.local
+functions/*.local
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+
 # Xcode
 *.xcodeproj/*
 !*.xcodeproj/project.pbxproj
