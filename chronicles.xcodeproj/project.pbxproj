@@ -19,9 +19,9 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		1C8AEA912F00BC7E00FE69BC /* chronicles 2 */ = {
+		1C8AEA912F00BC7E00FE69BC /* Chronicles */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "chronicles 2";
+			path = Chronicles;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -43,7 +43,7 @@
 		1C8AE9B12F00BC3C00FE69BC = {
 			isa = PBXGroup;
 			children = (
-				1C8AEA912F00BC7E00FE69BC /* chronicles 2 */,
+				1C8AEA912F00BC7E00FE69BC /* Chronicles */,
 				1C8AE9BB2F00BC3C00FE69BC /* Products */,
 				1C8AEACD2F00BD4700FE69BC /* GoogleService-Info.plist */,
 			);
@@ -73,7 +73,7 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				1C8AEA912F00BC7E00FE69BC /* chronicles 2 */,
+				1C8AEA912F00BC7E00FE69BC /* Chronicles */,
 			);
 			name = chronicles;
 			packageProductDependencies = (
