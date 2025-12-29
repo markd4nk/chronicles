@@ -111,7 +111,7 @@ struct User: Identifiable, Codable {
             displayName: "Mark Johnson",
             preferredName: "Mark",
             createdAt: Date().addingTimeInterval(-86400 * 90),
-            onboardingCompleted: true,
+            onboardingCompleted: false,  // Set to false for testing onboarding
             onboardingData: OnboardingData(
                 journalingExperience: "beginner",
                 primaryGoals: ["mindfulness", "productivity", "gratitude"],

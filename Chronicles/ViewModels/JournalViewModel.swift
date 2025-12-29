@@ -139,7 +139,10 @@ class JournalViewModel: ObservableObject {
         let grouped = Dictionary(grouping: entries) { entry in
             entry.createdAt.relativeString
         }
-        return grouped.sorted { $0.value.first!.createdAt > $1.value.first!.createdAt }
+        return grouped.sorted { 
+            guard let first0 = $0.value.first, let first1 = $1.value.first else { return false }
+            return first0.createdAt > first1.createdAt
+        }
     }
     
     func createEntry(journalId: String, title: String, content: String, inputMethod: JournalEntry.InputMethod, templateId: String? = nil, promptId: String? = nil) async {

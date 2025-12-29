@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct PaywallView: View {
-    @StateObject private var subscriptionService = SubscriptionService.shared
+    @ObservedObject private var subscriptionService = SubscriptionService.shared
     @Environment(\.dismiss) private var dismiss
     
     @State private var selectedPlan: Subscription.PlanType = .yearly

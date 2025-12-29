@@ -9,6 +9,7 @@ import SwiftUI
 
 struct DashboardView: View {
     @StateObject private var viewModel = DashboardViewModel()
+    @ObservedObject private var firebaseService = FirebaseService.shared
     @State private var showSettings = false
     @State private var showCreateEntry = false
     @State private var selectedWidget: DashboardWidget?
@@ -160,7 +161,10 @@ struct DashboardView: View {
             }
             
             ForEach(viewModel.recentEntries.prefix(3)) { entry in
-                RecentEntryCard(entry: entry)
+                RecentEntryCard(
+                    entry: entry,
+                    journalColor: firebaseService.journals.first { $0.id == entry.journalId }?.color ?? "#414141"
+                )
             }
         }
     }
@@ -227,14 +231,14 @@ struct QuickEntryWidgetCard: View {
 
 struct RecentEntryCard: View {
     let entry: JournalEntry
-    @StateObject private var viewModel = JournalViewModel()
+    let journalColor: String
     
     var body: some View {
         NavigationLink(destination: JournalEntryView(entry: entry)) {
             HStack(spacing: Papper.spacing.md) {
                 // Color indicator
                 RoundedRectangle(cornerRadius: 2)
-                    .fill(Color(hex: viewModel.getJournalColor(for: entry)))
+                    .fill(Color(hex: journalColor))
                     .frame(width: 4, height: 50)
                 
                 // Content
@@ -271,6 +275,7 @@ struct RecentEntryCard: View {
 struct CreateEntryFromWidgetView: View {
     let widget: DashboardWidget
     @StateObject private var viewModel = JournalViewModel()
+    @ObservedObject private var firebaseService = FirebaseService.shared
     @Environment(\.dismiss) private var dismiss
     
     @State private var selectedJournal: Journal?

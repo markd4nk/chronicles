@@ -8,9 +8,9 @@
 import SwiftUI
 
 struct SettingsView: View {
-    @StateObject private var authService = AuthService.shared
-    @StateObject private var subscriptionService = SubscriptionService.shared
-    @StateObject private var notificationService = NotificationService.shared
+    @ObservedObject private var authService = AuthService.shared
+    @ObservedObject private var subscriptionService = SubscriptionService.shared
+    @ObservedObject private var notificationService = NotificationService.shared
     
     @State private var showSignOutAlert = false
     @State private var showTemplates = false

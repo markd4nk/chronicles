@@ -9,9 +9,9 @@ import SwiftUI
 
 @main
 struct ChroniclesApp: App {
-    @StateObject private var authService = AuthService.shared
-    @StateObject private var subscriptionService = SubscriptionService.shared
-    @StateObject private var securityService = SecurityService.shared
+    @ObservedObject private var authService = AuthService.shared
+    @ObservedObject private var subscriptionService = SubscriptionService.shared
+    @ObservedObject private var securityService = SecurityService.shared
     
     @State private var isLocked = false
     @State private var showPaywall = false
@@ -80,7 +80,7 @@ struct ChroniclesApp: App {
 // MARK: - Lock Screen View
 
 struct LockScreenView: View {
-    @StateObject private var securityService = SecurityService.shared
+    @ObservedObject private var securityService = SecurityService.shared
     @State private var isAuthenticating = false
     
     var body: some View {

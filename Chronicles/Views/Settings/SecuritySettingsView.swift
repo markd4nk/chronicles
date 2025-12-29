@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct SecuritySettingsView: View {
-    @StateObject private var securityService = SecurityService.shared
+    @ObservedObject private var securityService = SecurityService.shared
     @State private var isEnabling = false
     @State private var showError = false
     @State private var errorMessage = ""
