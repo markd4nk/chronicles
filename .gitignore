@@ -1,0 +1,33 @@
+# Firebase Configuration
+GoogleService-Info.plist
+
+# Xcode
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata/
+*.xcworkspace/*
+!*.xcworkspace/contents.xcworkspacedata
+!*.xcworkspace/xcshareddata/
+*.xcuserstate
+*.xcuserdatad
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Build
+build/
+DerivedData/
+
+# Swift Package Manager
+.swiftpm/
+Package.resolved
+
+# CocoaPods
+Pods/
+
+# Temporary files
+*.swp
+*~.nib
+
