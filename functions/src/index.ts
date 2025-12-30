@@ -673,6 +673,88 @@ export const seedPrompts = onRequest(
   }
 );
 
+/**
+ * Cleanup bad quotes from Firestore using improved filtering
+ * Tests all quotes against isValidQuote() and deletes invalid ones
+ */
+export const cleanupBadQuotes = onRequest(
+  {
+    cors: true,
+    timeoutSeconds: 300,
+    memory: "512MiB",
+  },
+  async (req, res) => {
+    logger.info("Starting bad quote cleanup process");
+
+    try {
+      // Query all quotes from Firestore
+      const quotesSnapshot = await db.collection("prompts")
+        .where("category", "==", "quote")
+        .get();
+
+      logger.info(`Found ${quotesSnapshot.size} quotes to check`);
+
+      const badQuotes: Array<{id: string; question: string}> = [];
+      const goodQuotes: string[] = [];
+
+      // Test each quote against improved isValidQuote()
+      quotesSnapshot.docs.forEach((doc) => {
+        const data = doc.data();
+        const question = data.question as string;
+
+        if (!isValidQuote(question)) {
+          badQuotes.push({id: doc.id, question: question});
+        } else {
+          goodQuotes.push(doc.id);
+        }
+      });
+
+      logger.info(`Found ${badQuotes.length} bad quotes to delete`);
+      logger.info(`Found ${goodQuotes.length} good quotes to keep`);
+
+      // Delete bad quotes in batches of 500
+      const batchSize = 500;
+      let totalDeleted = 0;
+
+      for (let i = 0; i < badQuotes.length; i += batchSize) {
+        const batch = db.batch();
+        const batchQuotes = badQuotes.slice(i, i + batchSize);
+
+        batchQuotes.forEach((quote) => {
+          const docRef = db.collection("prompts").doc(quote.id);
+          batch.delete(docRef);
+        });
+
+        await batch.commit();
+        totalDeleted += batchQuotes.length;
+        logger.info(`Deleted batch: ${totalDeleted}/${badQuotes.length} quotes`);
+      }
+
+      logger.info(`Successfully cleaned up ${totalDeleted} bad quotes`);
+
+      // Return summary with examples of deleted quotes
+      const exampleBadQuotes = badQuotes.slice(0, 10).map((q) => ({
+        id: q.id,
+        question: q.question.substring(0, 100) + (q.question.length > 100 ? "..." : ""),
+      }));
+
+      res.status(200).json({
+        status: "success",
+        totalChecked: quotesSnapshot.size,
+        totalDeleted: totalDeleted,
+        totalRemaining: goodQuotes.length,
+        exampleDeletedQuotes: exampleBadQuotes,
+      });
+    } catch (error) {
+      logger.error("Error cleaning up quotes", error);
+      res.status(500).json({
+        status: "error",
+        message: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
+);
+
 // Type for prompt data
 type PromptData = {
   id: string;
@@ -766,6 +848,29 @@ function isValidQuote(text: string): boolean {
     return false;
   }
   if (/for .* (birthday|anniversary|occasion)/i.test(text)) return false;
+
+  // Filter out book titles, document metadata, and publication patterns
+  const titleMetadataPatterns = [
+    // Document structure references
+    /\b(chapters?|part|section|volume|edition|appendix)\s*\d/i,
+    /\bchapters?\s+\d+\s*[-–]\s*\d+/i, // "Chapters 1-37"
+    // Publication metadata
+    /\b(interpolation|translation|compiled|published|edited)\s+(of|by)\b/i,
+    /\b(plain english|online|digital|print|paperback|hardcover)\b/i,
+    // Institutional attributions (common in book titles)
+    /\bby the\s+[A-Z][a-z]+(\s+[A-Z][a-z]+)*\s+(Institute|Society|Press|University|Foundation|Academy|Center|Centre)\b/,
+    /\b(Institute|Society|Press|University|Foundation|Academy):/i,
+    // Title structure patterns (colons followed by subtitle)
+    /:\s*The\s+(Way|Art|Book|Path|Science|History|Study)\s+of\b/i,
+    // Common book title patterns
+    /^(The|A|An)\s+(Complete|Collected|Selected|Essential)\s+/i,
+    /\b(foreword|preface|introduction|afterword)\s+by\b/i,
+    // ISBN, page numbers, etc.
+    /\b(ISBN|pp\.|pages?)\s*[\d-]+/i,
+  ];
+  for (const pattern of titleMetadataPatterns) {
+    if (pattern.test(text)) return false;
+  }
 
   // Filter out factual statements (not philosophical/life-focused)
   const factualPatterns = [

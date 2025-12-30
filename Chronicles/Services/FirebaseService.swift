@@ -262,29 +262,37 @@ class FirebaseService: ObservableObject {
         let promptRef = db.collection("prompts").document(promptId)
         let userLikesRef = db.collection("userLikes").document("\(userId)_\(promptId)")
         
-        try await db.runTransaction { transaction -> Void in
-            let promptDoc = try transaction.getDocument(promptRef)
-            guard var promptData = promptDoc.data() else {
-                throw NSError(domain: "FirebaseService", code: 404, userInfo: [NSLocalizedDescriptionKey: "Prompt not found"])
-            }
-            
-            let userLikesDoc = try? transaction.getDocument(userLikesRef)
-            let isCurrentlyLiked = userLikesDoc?.exists ?? false
-            
-            if isCurrentlyLiked {
-                // Unlike
-                transaction.deleteDocument(userLikesRef)
-                if let currentLikes = promptData["likes"] as? Int, currentLikes > 0 {
-                    promptData["likes"] = currentLikes - 1
+        let _: Any? = try await db.runTransaction { (transaction, errorPointer) -> Any? in
+            do {
+                let promptDoc = try transaction.getDocument(promptRef)
+                guard var promptData = promptDoc.data() else {
+                    let error = NSError(domain: "FirebaseService", code: 404, userInfo: [NSLocalizedDescriptionKey: "Prompt not found"])
+                    errorPointer?.pointee = error
+                    return nil
                 }
-            } else {
-                // Like
-                transaction.setData(["userId": userId, "promptId": promptId, "createdAt": FieldValue.serverTimestamp()], forDocument: userLikesRef)
-                let currentLikes = promptData["likes"] as? Int ?? 0
-                promptData["likes"] = currentLikes + 1
+                
+                let userLikesDoc = try? transaction.getDocument(userLikesRef)
+                let isCurrentlyLiked = userLikesDoc?.exists ?? false
+                
+                if isCurrentlyLiked {
+                    // Unlike
+                    transaction.deleteDocument(userLikesRef)
+                    if let currentLikes = promptData["likes"] as? Int, currentLikes > 0 {
+                        promptData["likes"] = currentLikes - 1
+                    }
+                } else {
+                    // Like
+                    transaction.setData(["userId": userId, "promptId": promptId, "createdAt": FieldValue.serverTimestamp()], forDocument: userLikesRef)
+                    let currentLikes = promptData["likes"] as? Int ?? 0
+                    promptData["likes"] = currentLikes + 1
+                }
+                
+                transaction.updateData(promptData, forDocument: promptRef)
+                return nil
+            } catch let fetchError as NSError {
+                errorPointer?.pointee = fetchError
+                return nil
             }
-            
-            transaction.updateData(promptData, forDocument: promptRef)
         }
         
         // Update local state
@@ -299,15 +307,23 @@ class FirebaseService: ObservableObject {
     func sharePrompt(_ promptId: String) async throws {
         let promptRef = db.collection("prompts").document(promptId)
         
-        try await db.runTransaction { transaction -> Void in
-            let promptDoc = try transaction.getDocument(promptRef)
-            guard var promptData = promptDoc.data() else {
-                throw NSError(domain: "FirebaseService", code: 404, userInfo: [NSLocalizedDescriptionKey: "Prompt not found"])
+        let _: Any? = try await db.runTransaction { (transaction, errorPointer) -> Any? in
+            do {
+                let promptDoc = try transaction.getDocument(promptRef)
+                guard var promptData = promptDoc.data() else {
+                    let error = NSError(domain: "FirebaseService", code: 404, userInfo: [NSLocalizedDescriptionKey: "Prompt not found"])
+                    errorPointer?.pointee = error
+                    return nil
+                }
+                
+                let currentShares = promptData["shares"] as? Int ?? 0
+                promptData["shares"] = currentShares + 1
+                transaction.updateData(promptData, forDocument: promptRef)
+                return nil
+            } catch let fetchError as NSError {
+                errorPointer?.pointee = fetchError
+                return nil
             }
-            
-            let currentShares = promptData["shares"] as? Int ?? 0
-            promptData["shares"] = currentShares + 1
-            transaction.updateData(promptData, forDocument: promptRef)
         }
         
         // Update local state
