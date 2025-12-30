@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import AVFoundation
+import UIKit
 
 struct PromptsFeedView: View {
     @StateObject private var viewModel = PromptsViewModel()
@@ -21,23 +21,26 @@ struct PromptsFeedView: View {
                     .ignoresSafeArea()
                 
                 // Prompts Feed - Vertical scrolling
-                if viewModel.prompts.isEmpty {
+                if viewModel.filteredPrompts.isEmpty {
                     emptyState
                 } else {
                     ScrollView(.vertical, showsIndicators: false) {
                         LazyVStack(spacing: 0) {
-                            ForEach(viewModel.prompts) { prompt in
+                            ForEach(viewModel.filteredPrompts) { prompt in
                                 PromptCardView(
                                     prompt: prompt,
                                     onLike: {
                                         Task {
                                             await viewModel.likePrompt(prompt)
                                         }
+                                        let generator = UIImpactFeedbackGenerator(style: .light)
+                                        generator.impactOccurred()
                                     },
                                     onShare: {
-                                        Task {
-                                            await viewModel.sharePrompt(prompt)
-                                        }
+                                        // Copy prompt question to clipboard
+                                        UIPasteboard.general.string = prompt.question
+                                        let generator = UINotificationFeedbackGenerator()
+                                        generator.notificationOccurred(.success)
                                     },
                                     onWriteItOut: {
                                         selectedPrompt = prompt
@@ -51,6 +54,12 @@ struct PromptsFeedView: View {
                     }
                     .scrollTargetBehavior(.paging)
                 }
+                
+                // Overlay segmented control at top (TikTok-style)
+                VStack {
+                    segmentedControl
+                    Spacer()
+                }
             }
         }
         .sheet(isPresented: $showCreateEntry) {
@@ -60,15 +69,36 @@ struct PromptsFeedView: View {
         }
     }
     
+    // MARK: - Segmented Control Overlay
+    
+    private var segmentedControl: some View {
+        Picker("Feed Type", selection: $viewModel.showLikedOnly) {
+            Text("For You").tag(false)
+            Text("Liked").tag(true)
+        }
+        .pickerStyle(.segmented)
+        .padding(.horizontal, 100)
+        .padding(.vertical, Papper.spacing.sm)
+        .background(
+            Color(hex: "#faf8f3").opacity(0.95)
+        )
+    }
+    
     private var emptyState: some View {
         VStack(spacing: Papper.spacing.lg) {
-            Image(systemName: "lightbulb.fill")
+            Image(systemName: viewModel.showLikedOnly ? "heart" : "lightbulb.fill")
                 .font(.system(size: 60))
                 .foregroundColor(PapperColors.neutral400)
             
-            Text("No prompts yet")
+            Text(viewModel.showLikedOnly ? "No liked prompts yet" : "No prompts yet")
                 .font(Papper.typography.body)
                 .foregroundColor(PapperColors.neutral600)
+            
+            if viewModel.showLikedOnly {
+                Text("Tap the heart on prompts you love")
+                    .font(Papper.typography.bodySmall)
+                    .foregroundColor(PapperColors.neutral500)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -120,15 +150,12 @@ struct PromptCardView: View {
                 
                 // Action Bar - pushed up for better visibility
                 HStack(spacing: Papper.spacing.xxl) {
-                    // Share Button
+                    // Share Button (copies prompt to clipboard)
                     Button(action: onShare) {
-                        VStack(spacing: 4) {
-                            Image(systemName: "square.and.arrow.up")
-                                .font(.system(size: 24))
-                            Text("\(prompt.shares)")
-                                .font(.system(size: 12))
-                        }
-                        .foregroundColor(PapperColors.neutral600)
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 24))
+                            .foregroundColor(PapperColors.neutral600)
+                            .frame(width: 44, height: 44)
                     }
                     
                     // Write It Out Button - prominent
@@ -146,16 +173,12 @@ struct PromptCardView: View {
                         .cornerRadius(25)
                     }
                     
-                    // Like Button
+                    // Like Button (saves to Liked section)
                     Button(action: onLike) {
-                        VStack(spacing: 4) {
-                            Image(systemName: prompt.isLiked ? "heart.fill" : "heart")
-                                .font(.system(size: 24))
-                                .foregroundColor(prompt.isLiked ? PapperColors.pink600 : PapperColors.neutral600)
-                            Text("\(prompt.likes)")
-                                .font(.system(size: 12))
-                                .foregroundColor(PapperColors.neutral600)
-                        }
+                        Image(systemName: prompt.isLiked ? "heart.fill" : "heart")
+                            .font(.system(size: 24))
+                            .foregroundColor(prompt.isLiked ? PapperColors.pink600 : PapperColors.neutral600)
+                            .frame(width: 44, height: 44)
                     }
                 }
                 .padding(.bottom, 120) // Space for tab bar

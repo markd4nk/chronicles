@@ -17,7 +17,12 @@ class PromptsViewModel: ObservableObject {
     @Published var currentIndex = 0
     @Published var selectedCategory: JournalPrompt.PromptCategory?
     @Published var isLoading = false
-    @Published var showForYou = true
+    @Published var showLikedOnly = false
+    
+    // Computed property for filtered prompts
+    var filteredPrompts: [JournalPrompt] {
+        showLikedOnly ? prompts.filter { $0.isLiked } : prompts
+    }
     
     private let firebaseService = FirebaseService.shared
     private var cancellables = Set<AnyCancellable>()
@@ -137,17 +142,5 @@ class PromptsViewModel: ObservableObject {
         }
     }
     
-    func toggleForYou() {
-        showForYou.toggle()
-        currentIndex = 0
-        
-        Task {
-            if showForYou {
-                await loadForYouPrompts()
-            } else {
-                await loadPrompts()
-            }
-        }
-    }
 }
 
