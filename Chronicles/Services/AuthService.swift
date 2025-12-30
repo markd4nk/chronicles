@@ -25,6 +25,7 @@ class AuthService: NSObject, ObservableObject {
     
     private var cancellables = Set<AnyCancellable>()
     private var authStateHandle: AuthStateDidChangeListenerHandle?
+    private var isConfigured = false
     
     // For Apple Sign-In
     private var currentNonce: String?
@@ -32,13 +33,22 @@ class AuthService: NSObject, ObservableObject {
     
     private override init() {
         super.init()
-        setupAuthStateListener()
+        // Don't call Auth.auth() here - Firebase may not be configured yet
     }
     
     deinit {
         if let handle = authStateHandle {
             Auth.auth().removeStateDidChangeListener(handle)
         }
+    }
+    
+    // MARK: - Configuration
+    
+    /// Must be called after FirebaseApp.configure()
+    func configure() {
+        guard !isConfigured else { return }
+        isConfigured = true
+        setupAuthStateListener()
     }
     
     // MARK: - Auth State Listener
