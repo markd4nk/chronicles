@@ -379,7 +379,7 @@ struct CreateEntryFromPromptView: View {
                 .font(.system(size: 16, weight: .medium))
                 .foregroundColor(PapperColors.neutral700)
                 .frame(width: 32, height: 32)
-                .background(PapperColors.neutral200)
+                .background(PapperColors.neutral100)
                 .clipShape(Circle())
         }
         
@@ -390,7 +390,7 @@ struct CreateEntryFromPromptView: View {
                 .font(.system(size: 16))
                 .foregroundColor(PapperColors.neutral700)
                 .frame(width: 32, height: 32)
-                .background(PapperColors.neutral200)
+                .background(PapperColors.neutral100)
                 .clipShape(Circle())
         }
         
@@ -399,7 +399,7 @@ struct CreateEntryFromPromptView: View {
                 .font(.system(size: 16))
                 .foregroundColor(PapperColors.neutral700)
                 .frame(width: 32, height: 32)
-                .background(PapperColors.neutral200)
+                .background(PapperColors.neutral100)
                 .clipShape(Circle())
         }
     }
