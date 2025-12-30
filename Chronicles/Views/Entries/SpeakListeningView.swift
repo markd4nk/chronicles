@@ -353,9 +353,9 @@ class WhisperAudioRecorder {
     private var audioFileURL: URL?
     
     func startRecording() throws {
-        // Set up audio session
+        // Set up audio session first
         let audioSession = AVAudioSession.sharedInstance()
-        try audioSession.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker])
+        try audioSession.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth])
         try audioSession.setActive(true)
         
         // Create unique file URL for recording
@@ -366,14 +366,24 @@ class WhisperAudioRecorder {
         // Recording settings optimized for Whisper
         let settings: [String: Any] = [
             AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
-            AVSampleRateKey: 16000,  // 16kHz is optimal for Whisper
+            AVSampleRateKey: 16000.0,  // 16kHz is optimal for Whisper
             AVNumberOfChannelsKey: 1,  // Mono
-            AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
+            AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue,
+            AVEncoderBitRateKey: 128000
         ]
         
-        // Create and start recorder
+        // Create recorder
         audioRecorder = try AVAudioRecorder(url: audioFilename, settings: settings)
-        audioRecorder?.record()
+        
+        // Prepare the recorder (this validates the settings)
+        guard let recorder = audioRecorder, recorder.prepareToRecord() else {
+            throw RecordingError.setupFailed
+        }
+        
+        // Start recording
+        guard recorder.record() else {
+            throw RecordingError.startFailed
+        }
     }
     
     func stopRecordingAndGetData() throws -> Data {
@@ -405,11 +415,17 @@ class WhisperAudioRecorder {
     
     enum RecordingError: LocalizedError {
         case noRecording
+        case setupFailed
+        case startFailed
         
         var errorDescription: String? {
             switch self {
             case .noRecording:
                 return "No recording available"
+            case .setupFailed:
+                return "Failed to set up audio recorder. Please check your microphone permissions."
+            case .startFailed:
+                return "Failed to start recording. Please try again."
             }
         }
     }

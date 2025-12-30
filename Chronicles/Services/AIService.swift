@@ -295,8 +295,14 @@ class AIService: ObservableObject {
         do {
             return try await functionsService.transcribeAudio(audioData: audioData, mimeType: mimeType)
         } catch let functionsError as FirebaseFunctionsError {
-            throw mapFunctionsError(functionsError)
+            // Map to AIError but preserve the original error message
+            let aiError = mapFunctionsError(functionsError)
+            // Log the original error for debugging
+            print("Transcription error: \(functionsError.localizedDescription)")
+            throw aiError
         } catch {
+            // Log the original error for debugging
+            print("Transcription error: \(error.localizedDescription)")
             throw AIError.transcriptionFailed
         }
     }
@@ -361,7 +367,7 @@ enum AIError: LocalizedError {
         case .promptGenerationFailed:
             return "Failed to generate prompt. Please try again."
         case .unknown:
-            return "An unknown error occurred."
+            return "An error occurred. Please check your connection and try again."
         }
     }
 }
