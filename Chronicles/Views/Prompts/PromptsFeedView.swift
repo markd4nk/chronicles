@@ -228,11 +228,9 @@ struct CreateEntryFromPromptView: View {
                 }
                 .confirmationDialog("Add from Photo", isPresented: $showScanActionSheet, titleVisibility: .visible) {
                     Button("Take Photo") {
-                        isEditorFocused = false // Dismiss keyboard first
                         showCamera = true
                     }
                     Button("Choose from Library") {
-                        isEditorFocused = false // Dismiss keyboard first
                         showImagePicker = true
                     }
                     Button("Cancel", role: .cancel) { }
@@ -414,7 +412,13 @@ struct CreateEntryFromPromptView: View {
         
         Spacer()
         
-        Button(action: { showScanActionSheet = true }) {
+        Button(action: {
+            // Dismiss keyboard first, then show dialog after animation completes
+            isEditorFocused = false
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                showScanActionSheet = true
+            }
+        }) {
             Image(systemName: "doc.text.viewfinder")
                 .font(.system(size: 16))
                 .foregroundColor(PapperColors.neutral700)

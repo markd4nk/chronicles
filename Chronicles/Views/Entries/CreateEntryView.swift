@@ -109,7 +109,11 @@ struct CreateEntryView: View {
                     
                     // Right: Scan button
                     Button(action: {
-                        showScanActionSheet = true
+                        // Dismiss keyboard first, then show dialog after animation completes
+                        isEditorFocused = false
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                            showScanActionSheet = true
+                        }
                     }) {
                         Image(systemName: "doc.text.viewfinder")
                             .font(.system(size: 16))
@@ -141,11 +145,9 @@ struct CreateEntryView: View {
             }
             .confirmationDialog("Add from Photo", isPresented: $showScanActionSheet, titleVisibility: .visible) {
                 Button("Take Photo") {
-                    isEditorFocused = false // Dismiss keyboard first
                     showCamera = true
                 }
                 Button("Choose from Library") {
-                    isEditorFocused = false // Dismiss keyboard first
                     showImagePicker = true
                 }
                 Button("Cancel", role: .cancel) { }
