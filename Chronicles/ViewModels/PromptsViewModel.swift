@@ -29,9 +29,24 @@ class PromptsViewModel: ObservableObject {
     private func setupBindings() {
         firebaseService.$prompts
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] prompts in
-                self?.prompts = prompts.shuffled()
-                self?.updateLikedPrompts()
+            .sink { [weak self] updatedPrompts in
+                guard let self = self else { return }
+                
+                // If we already have prompts, just update the like/share counts
+                // without reshuffling the order
+                if !self.prompts.isEmpty {
+                    for updatedPrompt in updatedPrompts {
+                        if let index = self.prompts.firstIndex(where: { $0.id == updatedPrompt.id }) {
+                            self.prompts[index].isLiked = updatedPrompt.isLiked
+                            self.prompts[index].likes = updatedPrompt.likes
+                            self.prompts[index].shares = updatedPrompt.shares
+                        }
+                    }
+                } else {
+                    // Initial load - shuffle the prompts
+                    self.prompts = updatedPrompts.shuffled()
+                }
+                self.updateLikedPrompts()
             }
             .store(in: &cancellables)
     }
