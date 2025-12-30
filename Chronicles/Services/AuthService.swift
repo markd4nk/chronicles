@@ -2,15 +2,20 @@
 //  AuthService.swift
 //  Chronicles
 //
-//  Authentication service for Google and Apple Sign-In
+//  Authentication service for Google and Apple Sign-In with Firebase Auth
 //
 
 import Foundation
 import Combine
+import FirebaseAuth
+import FirebaseCore
+import AuthenticationServices
+import CryptoKit
+import UIKit
 
 // MARK: - Auth Service
 
-class AuthService: ObservableObject {
+class AuthService: NSObject, ObservableObject {
     static let shared = AuthService()
     
     @Published var currentUser: User?
@@ -19,91 +24,210 @@ class AuthService: ObservableObject {
     @Published var error: AuthError?
     
     private var cancellables = Set<AnyCancellable>()
+    private var authStateHandle: AuthStateDidChangeListenerHandle?
     
-    private init() {
-        // Check for existing session
-        checkAuthStatus()
+    // For Apple Sign-In
+    private var currentNonce: String?
+    private var appleSignInContinuation: CheckedContinuation<ASAuthorizationAppleIDCredential, Error>?
+    
+    private override init() {
+        super.init()
+        setupAuthStateListener()
     }
     
-    // MARK: - Auth Status
-    
-    func checkAuthStatus() {
-        // In production, this would check Firebase Auth state
-        // For now, we'll use UserDefaults to persist demo state
-        if let userId = UserDefaults.standard.string(forKey: "currentUserId") {
-            // Load user from cache or Firestore
-            loadUser(userId: userId)
+    deinit {
+        if let handle = authStateHandle {
+            Auth.auth().removeStateDidChangeListener(handle)
         }
     }
     
-    private func loadUser(userId: String) {
-        // In production, fetch from Firestore
-        // For demo, use sample user
-        isLoading = true
+    // MARK: - Auth State Listener
+    
+    private func setupAuthStateListener() {
+        authStateHandle = Auth.auth().addStateDidChangeListener { [weak self] _, firebaseUser in
+            Task { @MainActor in
+                if let firebaseUser = firebaseUser {
+                    await self?.loadOrCreateUser(from: firebaseUser)
+                } else {
+                    self?.currentUser = nil
+                    self?.isAuthenticated = false
+                }
+            }
+        }
+    }
+    
+    // MARK: - Load or Create User
+    
+    @MainActor
+    private func loadOrCreateUser(from firebaseUser: FirebaseAuth.User) async {
+        // Load saved user data
+        let savedOnboardingCompleted = UserDefaults.standard.bool(forKey: "onboarding_\(firebaseUser.uid)")
+        let savedOnboardingData = loadOnboardingData(for: firebaseUser.uid)
+        let savedCurrentStreak = UserDefaults.standard.integer(forKey: "currentStreak_\(firebaseUser.uid)")
+        let savedLongestStreak = UserDefaults.standard.integer(forKey: "longestStreak_\(firebaseUser.uid)")
+        let savedTotalEntries = UserDefaults.standard.integer(forKey: "totalEntries_\(firebaseUser.uid)")
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-            self?.currentUser = User.sample
-            self?.isAuthenticated = true
-            self?.isLoading = false
-        }
+        // Create app user from Firebase user
+        let user = User(
+            id: firebaseUser.uid,
+            email: firebaseUser.email ?? "",
+            displayName: firebaseUser.displayName ?? "User",
+            preferredName: firebaseUser.displayName?.components(separatedBy: " ").first ?? "User",
+            createdAt: firebaseUser.metadata.creationDate ?? Date(),
+            onboardingCompleted: savedOnboardingCompleted,
+            onboardingData: savedOnboardingData,
+            subscriptionStatus: .trial, // Default to trial for new users
+            securityEnabled: false,
+            dashboardLayout: ["morning_reflection", "gratitude", "evening_review", "goals"],
+            currentStreak: savedCurrentStreak,
+            longestStreak: savedLongestStreak,
+            lastEntryDate: nil,
+            totalEntries: savedTotalEntries
+        )
+        
+        self.currentUser = user
+        self.isAuthenticated = true
+        self.isLoading = false
     }
     
-    // MARK: - Sign In Methods
+    private func loadOnboardingData(for userId: String) -> User.OnboardingData? {
+        guard let data = UserDefaults.standard.data(forKey: "onboardingData_\(userId)"),
+              let onboardingData = try? JSONDecoder().decode(User.OnboardingData.self, from: data) else {
+            return nil
+        }
+        return onboardingData
+    }
     
+    // MARK: - Google Sign In
+    
+    @MainActor
     func signInWithGoogle() async throws {
         isLoading = true
         error = nil
         
-        // Simulate network delay
-        try await Task.sleep(nanoseconds: 1_000_000_000)
+        defer {
+            Task { @MainActor in
+                isLoading = false
+            }
+        }
         
-        await MainActor.run {
-            // In production, this would use GoogleSignIn SDK
-            // For demo, create a sample user
-            let user = User.sample
-            self.currentUser = user
-            self.isAuthenticated = true
-            self.isLoading = false
-            
-            // Persist session
-            UserDefaults.standard.set(user.id, forKey: "currentUserId")
+        // Get the client ID from Firebase config
+        guard let clientID = FirebaseApp.app()?.options.clientID else {
+            throw AuthError.signInFailed
+        }
+        
+        // Get the root view controller
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let rootViewController = windowScene.windows.first?.rootViewController else {
+            throw AuthError.signInFailed
+        }
+        
+        // Find the top-most presented view controller
+        var topController = rootViewController
+        while let presented = topController.presentedViewController {
+            topController = presented
+        }
+        
+        // Create Google Sign-In configuration and perform sign-in
+        // Note: GoogleSignIn SDK needs to be added separately
+        // For now, we'll use a web-based OAuth flow via Firebase
+        
+        // Create Google OAuth provider
+        let provider = OAuthProvider(providerID: "google.com")
+        provider.customParameters = [
+            "prompt": "select_account"
+        ]
+        provider.scopes = ["email", "profile"]
+        
+        do {
+            let result = try await provider.credential(with: topController)
+            let authResult = try await Auth.auth().signIn(with: result)
+            await loadOrCreateUser(from: authResult.user)
+        } catch {
+            self.error = .signInFailed
+            throw AuthError.signInFailed
         }
     }
     
+    // MARK: - Apple Sign In
+    
+    @MainActor
     func signInWithApple() async throws {
         isLoading = true
         error = nil
         
-        // Simulate network delay
-        try await Task.sleep(nanoseconds: 1_000_000_000)
+        // Generate nonce for security
+        let nonce = randomNonceString()
+        currentNonce = nonce
         
-        await MainActor.run {
-            // In production, this would use AuthenticationServices
-            // For demo, create a sample user
-            let user = User.sample
-            self.currentUser = user
-            self.isAuthenticated = true
-            self.isLoading = false
+        // Create Apple ID request
+        let appleIDProvider = ASAuthorizationAppleIDProvider()
+        let request = appleIDProvider.createRequest()
+        request.requestedScopes = [.fullName, .email]
+        request.nonce = sha256(nonce)
+        
+        // Perform the request
+        let authorizationController = ASAuthorizationController(authorizationRequests: [request])
+        authorizationController.delegate = self
+        authorizationController.presentationContextProvider = self
+        
+        do {
+            let credential = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<ASAuthorizationAppleIDCredential, Error>) in
+                self.appleSignInContinuation = continuation
+                authorizationController.performRequests()
+            }
             
-            // Persist session
-            UserDefaults.standard.set(user.id, forKey: "currentUserId")
+            // Get identity token
+            guard let appleIDToken = credential.identityToken,
+                  let idTokenString = String(data: appleIDToken, encoding: .utf8),
+                  let nonce = currentNonce else {
+                isLoading = false
+                throw AuthError.signInFailed
+            }
+            
+            // Create Firebase credential
+            let firebaseCredential = OAuthProvider.appleCredential(
+                withIDToken: idTokenString,
+                rawNonce: nonce,
+                fullName: credential.fullName
+            )
+            
+            // Sign in to Firebase
+            let authResult = try await Auth.auth().signIn(with: firebaseCredential)
+            await loadOrCreateUser(from: authResult.user)
+            
+        } catch {
+            isLoading = false
+            self.error = .signInFailed
+            throw AuthError.signInFailed
         }
+        
+        isLoading = false
     }
     
     // MARK: - Sign Out
     
     func signOut() {
-        currentUser = nil
-        isAuthenticated = false
-        UserDefaults.standard.removeObject(forKey: "currentUserId")
+        do {
+            try Auth.auth().signOut()
+            currentUser = nil
+            isAuthenticated = false
+        } catch {
+            self.error = .signOutFailed
+        }
     }
     
     // MARK: - User Management
     
     func updateUser(_ user: User) async throws {
-        // In production, update Firestore document
         await MainActor.run {
             self.currentUser = user
+        }
+        
+        // Save onboarding data locally (could also save to Firestore)
+        if let onboardingData = user.onboardingData,
+           let encoded = try? JSONEncoder().encode(onboardingData) {
+            UserDefaults.standard.set(encoded, forKey: "onboardingData_\(user.id)")
         }
     }
     
@@ -115,15 +239,89 @@ class AuthService: ObservableObject {
         user.onboardingCompleted = true
         user.onboardingData = data
         
-        // In production, save to Firestore
+        // Save locally
+        UserDefaults.standard.set(true, forKey: "onboarding_\(user.id)")
+        if let encoded = try? JSONEncoder().encode(data) {
+            UserDefaults.standard.set(encoded, forKey: "onboardingData_\(user.id)")
+        }
+        
         await MainActor.run {
             self.currentUser = user
         }
     }
     
     func deleteAccount() async throws {
-        // In production, delete from Firebase Auth and Firestore
-        signOut()
+        guard let firebaseUser = Auth.auth().currentUser else {
+            throw AuthError.notAuthenticated
+        }
+        
+        let userId = firebaseUser.uid
+        
+        // Delete Firebase user
+        try await firebaseUser.delete()
+        
+        // Clean up local data
+        UserDefaults.standard.removeObject(forKey: "onboarding_\(userId)")
+        UserDefaults.standard.removeObject(forKey: "onboardingData_\(userId)")
+        
+        await MainActor.run {
+            self.currentUser = nil
+            self.isAuthenticated = false
+        }
+    }
+    
+    // MARK: - Helper Methods
+    
+    private func randomNonceString(length: Int = 32) -> String {
+        precondition(length > 0)
+        var randomBytes = [UInt8](repeating: 0, count: length)
+        let errorCode = SecRandomCopyBytes(kSecRandomDefault, randomBytes.count, &randomBytes)
+        if errorCode != errSecSuccess {
+            fatalError("Unable to generate nonce. SecRandomCopyBytes failed with OSStatus \(errorCode)")
+        }
+        
+        let charset: [Character] = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._")
+        let nonce = randomBytes.map { byte in
+            charset[Int(byte) % charset.count]
+        }
+        return String(nonce)
+    }
+    
+    private func sha256(_ input: String) -> String {
+        let inputData = Data(input.utf8)
+        let hashedData = SHA256.hash(data: inputData)
+        let hashString = hashedData.compactMap {
+            String(format: "%02x", $0)
+        }.joined()
+        return hashString
+    }
+}
+
+// MARK: - ASAuthorizationControllerDelegate
+
+extension AuthService: ASAuthorizationControllerDelegate {
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
+        if let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential {
+            appleSignInContinuation?.resume(returning: appleIDCredential)
+            appleSignInContinuation = nil
+        }
+    }
+    
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
+        appleSignInContinuation?.resume(throwing: error)
+        appleSignInContinuation = nil
+    }
+}
+
+// MARK: - ASAuthorizationControllerPresentationContextProviding
+
+extension AuthService: ASAuthorizationControllerPresentationContextProviding {
+    func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let window = windowScene.windows.first else {
+            return UIWindow()
+        }
+        return window
     }
 }
 
@@ -151,4 +349,3 @@ enum AuthError: LocalizedError {
         }
     }
 }
-

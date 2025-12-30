@@ -227,8 +227,14 @@ struct CreateEntryFromPromptView: View {
                     }
                 }
                 .confirmationDialog("Add from Photo", isPresented: $showScanActionSheet, titleVisibility: .visible) {
-                    Button("Take Photo") { showCamera = true }
-                    Button("Choose from Library") { showImagePicker = true }
+                    Button("Take Photo") {
+                        isEditorFocused = false // Dismiss keyboard first
+                        showCamera = true
+                    }
+                    Button("Choose from Library") {
+                        isEditorFocused = false // Dismiss keyboard first
+                        showImagePicker = true
+                    }
                     Button("Cancel", role: .cancel) { }
                 }
                 .sheet(isPresented: $showImagePicker) {
