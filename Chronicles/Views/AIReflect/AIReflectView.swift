@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Combine
 
 struct AIReflectView: View {
     @StateObject private var viewModel = AIReflectViewModel()
@@ -302,7 +303,7 @@ struct AnalysisLoadingView: View {
                     GeometryReader { geometry in
                         ZStack(alignment: .leading) {
                             RoundedRectangle(cornerRadius: 4)
-                                .fill(PapperColors.neutral200)
+                                .fill(PapperColors.neutral300)
                                 .frame(height: 8)
                             
                             RoundedRectangle(cornerRadius: 4)
