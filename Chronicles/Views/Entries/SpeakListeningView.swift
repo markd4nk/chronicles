@@ -389,6 +389,9 @@ class WhisperAudioRecorder {
     func stopRecordingAndGetData() throws -> Data {
         audioRecorder?.stop()
         
+        // Deactivate audio session
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        
         guard let fileURL = audioFileURL else {
             throw RecordingError.noRecording
         }
@@ -400,11 +403,19 @@ class WhisperAudioRecorder {
         try? FileManager.default.removeItem(at: fileURL)
         audioFileURL = nil
         
+        // Validate audio data isn't empty or too small (at least 1KB)
+        guard audioData.count > 1024 else {
+            throw RecordingError.noAudioData
+        }
+        
         return audioData
     }
     
     func stopRecording() {
         audioRecorder?.stop()
+        
+        // Deactivate audio session
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
         
         // Clean up any existing file
         if let fileURL = audioFileURL {
@@ -417,6 +428,7 @@ class WhisperAudioRecorder {
         case noRecording
         case setupFailed
         case startFailed
+        case noAudioData
         
         var errorDescription: String? {
             switch self {
@@ -426,6 +438,8 @@ class WhisperAudioRecorder {
                 return "Failed to set up audio recorder. Please check your microphone permissions."
             case .startFailed:
                 return "Failed to start recording. Please try again."
+            case .noAudioData:
+                return "Recording was too short or empty. Please try again and speak for longer."
             }
         }
     }

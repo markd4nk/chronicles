@@ -115,17 +115,8 @@ class AuthService: NSObject, ObservableObject {
         isLoading = true
         error = nil
         
-        // Get the root view controller for presenting
-        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-              let rootViewController = windowScene.windows.first?.rootViewController else {
+        defer {
             isLoading = false
-            throw AuthError.signInFailed
-        }
-        
-        // Find the top-most presented view controller
-        var topController = rootViewController
-        while let presented = topController.presentedViewController {
-            topController = presented
         }
         
         // Create Google OAuth provider
@@ -153,9 +144,7 @@ class AuthService: NSObject, ObservableObject {
             
             let authResult = try await Auth.auth().signIn(with: credential)
             await loadOrCreateUser(from: authResult.user)
-            isLoading = false
         } catch {
-            isLoading = false
             self.error = .signInFailed
             throw AuthError.signInFailed
         }
@@ -165,8 +154,17 @@ class AuthService: NSObject, ObservableObject {
     
     @MainActor
     func signInWithApple() async throws {
+        // Cancel any existing sign-in continuation
+        appleSignInContinuation?.resume(throwing: AuthError.signInFailed)
+        appleSignInContinuation = nil
+        
         isLoading = true
         error = nil
+        
+        defer {
+            isLoading = false
+            currentNonce = nil
+        }
         
         // Generate nonce for security
         let nonce = randomNonceString()
@@ -189,18 +187,20 @@ class AuthService: NSObject, ObservableObject {
                 authorizationController.performRequests()
             }
             
+            // Clear continuation after use
+            appleSignInContinuation = nil
+            
             // Get identity token
             guard let appleIDToken = credential.identityToken,
                   let idTokenString = String(data: appleIDToken, encoding: .utf8),
-                  let nonce = currentNonce else {
-                isLoading = false
+                  let storedNonce = currentNonce else {
                 throw AuthError.signInFailed
             }
             
             // Create Firebase credential
             let firebaseCredential = OAuthProvider.appleCredential(
                 withIDToken: idTokenString,
-                rawNonce: nonce,
+                rawNonce: storedNonce,
                 fullName: credential.fullName
             )
             
@@ -209,12 +209,10 @@ class AuthService: NSObject, ObservableObject {
             await loadOrCreateUser(from: authResult.user)
             
         } catch {
-            isLoading = false
+            appleSignInContinuation = nil
             self.error = .signInFailed
             throw AuthError.signInFailed
         }
-        
-        isLoading = false
     }
     
     // MARK: - Sign Out

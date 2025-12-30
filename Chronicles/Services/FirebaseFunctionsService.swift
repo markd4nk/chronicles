@@ -8,6 +8,7 @@
 
 import Foundation
 import FirebaseFunctions
+import FirebaseAuth
 import UIKit
 
 // MARK: - Firebase Functions Service
@@ -23,6 +24,13 @@ class FirebaseFunctionsService {
         // Uncomment to use local emulator:
         // functions.useEmulator(withHost: "localhost", port: 5001)
         #endif
+    }
+    
+    /// Check if user is authenticated before making a request
+    private func ensureAuthenticated() throws {
+        guard Auth.auth().currentUser != nil else {
+            throw FirebaseFunctionsError.unauthenticated
+        }
     }
     
     // MARK: - Function Types
@@ -226,6 +234,9 @@ class FirebaseFunctionsService {
     ///   - data: Data to send to the function
     /// - Returns: Response dictionary
     private func callFunction(_ functionType: AIFunctionType, data: [String: Any]) async throws -> [String: Any] {
+        // Verify user is authenticated before making the call
+        try ensureAuthenticated()
+        
         do {
             let result = try await functions.httpsCallable(functionType.rawValue).call(data)
             
