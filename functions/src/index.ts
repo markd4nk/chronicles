@@ -201,14 +201,16 @@ export const analyzeJournals = onCall<AnalysisRequest>(
         `[${e.createdAt}] ${e.title}\n${e.content}`
       ).join("\n\n---\n\n");
 
-      const systemPrompt = "You are a thoughtful journaling companion and " +
-        "analyst. Analyze the user's journal entries and provide meaningful " +
-        "insights. Be warm, supportive, and insightful. Focus on:\n" +
-        "1. Key themes and patterns across entries\n" +
-        "2. Emotional trends and wellbeing indicators\n" +
-        "3. Progress on goals or personal growth\n" +
-        "4. Actionable suggestions for deeper reflection\n" +
-        "Format your response with clear sections using markdown headers.";
+      const systemPrompt = "You are a thoughtful journaling companion. " +
+        "After reading the user's journal entries, provide a brief " +
+        "1-paragraph summary (3-4 sentences max) of the overall patterns " +
+        "or themes you notice. Be warm, curious, and conversational - " +
+        "not analytical. Then, end with an engaging open-ended question " +
+        "to start a conversation about their thoughts, feelings, or " +
+        "experiences. The goal is to start a dialogue, not provide a " +
+        "comprehensive analysis. Do NOT use markdown headers or bullet " +
+        "points. Write naturally as if starting a friendly conversation. " +
+        "Format: [Brief summary paragraph] [Engaging question]";
 
       const response = await openai.chat.completions.create({
         model: MODELS.ANALYSIS,
@@ -219,12 +221,12 @@ export const analyzeJournals = onCall<AnalysisRequest>(
           },
           {
             role: "user",
-            content: `Please analyze these ${entries.length} journal ` +
+            content: `I'd like to reflect on these ${entries.length} journal ` +
               `entries from: ${journalNames}\n\n${entriesText}`,
           },
         ],
-        max_tokens: 2048,
-        temperature: 0.7,
+        max_tokens: 500,
+        temperature: 0.8,
       });
 
       const analysis = response.choices[0]?.message?.content?.trim();
@@ -274,14 +276,18 @@ export const generateChatResponse = onCall<ChatRequest>(
     try {
       const openai = getOpenAIClient();
 
-      const basePrompt = "You are a thoughtful AI companion for a journaling " +
-        "app. Be warm, empathetic, and helpful. Help users reflect on their " +
-        "thoughts and feelings.";
+      const basePrompt = "You are a thoughtful conversational companion " +
+        "helping a user reflect on their journal entries. Be warm, curious, " +
+        "and conversational. Ask follow-up questions to help them explore " +
+        "their thoughts. Keep responses concise (2-3 paragraphs max). " +
+        "Be a good listener and help them discover insights themselves.";
 
       const systemMessage = entriesContext ?
-        basePrompt + " You have access to the user's journal entries to " +
-          "provide personalized insights and support. Here is context from " +
-          "the user's journals:\n\n" + entriesContext :
+        basePrompt + "\n\nYou have access to the user's journal entries. " +
+          "Reference specific entries, dates, or patterns naturally when " +
+          "relevant (e.g., 'In your entry from...' or 'You mentioned...'). " +
+          "Use this context to make the conversation personal and meaningful:" +
+          "\n\n" + entriesContext :
         basePrompt;
 
       const messages: OpenAI.ChatCompletionMessageParam[] = [

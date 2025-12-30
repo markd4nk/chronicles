@@ -38,14 +38,15 @@ struct AIReflectView: View {
                     }
                 }
                 
-                // Only show + button when in chat interface (not on start screen)
+                // Only show New Chat button when in chat interface (not on start screen)
                 if viewModel.currentConversation != nil || viewModel.analysisSummary != nil {
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button(action: { 
                             // Show confirmation if there's an active conversation
                             showNewConversationAlert = true
                         }) {
-                            Image(systemName: "plus.circle")
+                            Text("New Chat")
+                                .font(.system(size: 14, weight: .medium))
                                 .foregroundColor(PapperColors.neutral700)
                         }
                     }
@@ -159,33 +160,51 @@ struct AIReflectView: View {
     }
     
     private var chatInputBar: some View {
-        HStack(spacing: Papper.spacing.sm) {
-            TextField("Ask about your journals...", text: $viewModel.inputText)
-                .font(.system(size: 16))
-                .padding(.horizontal, Papper.spacing.md)
-                .padding(.vertical, Papper.spacing.sm)
-                .background(PapperColors.surfaceBackgroundPlain)
-                .cornerRadius(20)
+        VStack(spacing: 0) {
+            // Divider line
+            Rectangle()
+                .fill(PapperColors.neutral300)
+                .frame(height: 1)
             
-            Button(action: {
-                Task {
-                    await viewModel.sendMessage()
+            HStack(spacing: Papper.spacing.md) {
+                // Input field with prominent styling
+                HStack {
+                    TextField("Share your thoughts...", text: $viewModel.inputText)
+                        .font(.system(size: 16))
                 }
-            }) {
-                ZStack {
-                    Circle()
-                        .fill(viewModel.inputText.isEmpty ? PapperColors.neutral300 : PapperColors.neutral700)
-                        .frame(width: 40, height: 40)
-                    
-                    Image(systemName: "arrow.up")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.white)
+                .padding(.horizontal, Papper.spacing.md)
+                .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 24)
+                        .fill(Color.white)
+                        .shadow(color: Color.black.opacity(0.08), radius: 4, x: 0, y: 2)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24)
+                        .stroke(PapperColors.neutral300, lineWidth: 1)
+                )
+                
+                // Send button
+                Button(action: {
+                    Task {
+                        await viewModel.sendMessage()
+                    }
+                }) {
+                    ZStack {
+                        Circle()
+                            .fill(viewModel.inputText.isEmpty ? PapperColors.neutral300 : PapperColors.neutral700)
+                            .frame(width: 44, height: 44)
+                        
+                        Image(systemName: "arrow.up")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.white)
+                    }
                 }
+                .disabled(viewModel.inputText.isEmpty || viewModel.isGenerating)
             }
-            .disabled(viewModel.inputText.isEmpty || viewModel.isGenerating)
+            .padding(.horizontal, Papper.spacing.lg)
+            .padding(.vertical, Papper.spacing.md)
         }
-        .padding(.horizontal, Papper.spacing.lg)
-        .padding(.vertical, Papper.spacing.md)
         .background(Color(hex: "#faf8f3"))
     }
 }
