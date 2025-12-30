@@ -224,5 +224,22 @@ class AIReflectViewModel: ObservableObject {
             showError = true
         }
     }
+    
+    /// Delete multiple conversations at once
+    func deleteConversations(_ conversationIds: Set<String>) async {
+        for conversationId in conversationIds {
+            do {
+                try await firebaseService.deleteConversation(conversationId)
+                
+                if currentConversation?.id == conversationId {
+                    startNewConversation()
+                }
+            } catch {
+                self.error = error.localizedDescription
+                showError = true
+            }
+        }
+    }
 }
+
 

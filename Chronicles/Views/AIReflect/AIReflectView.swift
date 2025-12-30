@@ -11,6 +11,7 @@ struct AIReflectView: View {
     @StateObject private var viewModel = AIReflectViewModel()
     @State private var showJournalSelection = false
     @State private var showHistory = false
+    @State private var showNewConversationAlert = false
     
     var body: some View {
         NavigationView {
@@ -26,7 +27,7 @@ struct AIReflectView: View {
                     chatInterface
                 }
             }
-            .navigationTitle("AI Reflect")
+            .navigationTitle("Reflect")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -36,10 +37,16 @@ struct AIReflectView: View {
                     }
                 }
                 
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { viewModel.startNewConversation() }) {
-                        Image(systemName: "plus.circle")
-                            .foregroundColor(PapperColors.neutral700)
+                // Only show + button when in chat interface (not on start screen)
+                if viewModel.currentConversation != nil || viewModel.analysisSummary != nil {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button(action: { 
+                            // Show confirmation if there's an active conversation
+                            showNewConversationAlert = true
+                        }) {
+                            Image(systemName: "plus.circle")
+                                .foregroundColor(PapperColors.neutral700)
+                        }
                     }
                 }
             }
@@ -49,13 +56,23 @@ struct AIReflectView: View {
             .sheet(isPresented: $showHistory) {
                 ConversationHistoryView(viewModel: viewModel)
             }
+            .alert("Start New Analysis?", isPresented: $showNewConversationAlert) {
+                Button("Cancel", role: .cancel) { }
+                Button("Start New", role: .destructive) {
+                    withAnimation {
+                        viewModel.startNewConversation()
+                    }
+                }
+            } message: {
+                Text("This will end your current conversation and start a new analysis.")
+            }
         }
     }
     
     // MARK: - Start Screen
     
     private var startScreen: some View {
-        VStack(spacing: Papper.spacing.xxl) {
+        VStack(spacing: Papper.spacing.xl) {
             Spacer()
             
             // Icon
@@ -71,7 +88,7 @@ struct AIReflectView: View {
             
             // Title
             VStack(spacing: Papper.spacing.md) {
-                Text("AI Reflect")
+                Text("Reflect")
                     .font(.system(size: 28, weight: .bold))
                     .foregroundColor(PapperColors.neutral800)
                 
@@ -81,9 +98,7 @@ struct AIReflectView: View {
                     .multilineTextAlignment(.center)
             }
             
-            Spacer()
-            
-            // Start Analysis Button
+            // Start Analysis Button - positioned higher
             Button(action: { showJournalSelection = true }) {
                 HStack(spacing: Papper.spacing.sm) {
                     Image(systemName: "sparkles")
@@ -98,7 +113,9 @@ struct AIReflectView: View {
                 .cornerRadius(14)
             }
             .padding(.horizontal, Papper.spacing.xl)
-            .padding(.bottom, Papper.spacing.xxxl)
+            .padding(.top, Papper.spacing.xxl)
+            
+            Spacer()
         }
         .padding(Papper.spacing.lg)
     }
@@ -236,6 +253,87 @@ struct TypingIndicator: View {
     }
 }
 
+// MARK: - Analysis Loading View
+
+struct AnalysisLoadingView: View {
+    @State private var progress: Double = 0
+    @State private var currentQuoteIndex: Int = 0
+    
+    private let inspirationalQuotes = [
+        "\"The unexamined life is not worth living.\" - Socrates",
+        "\"In the middle of difficulty lies opportunity.\" - Albert Einstein",
+        "\"Growth begins at the end of your comfort zone.\"",
+        "\"What lies behind us and what lies before us are tiny matters compared to what lies within us.\" - Ralph Waldo Emerson",
+        "\"The only journey is the journey within.\" - Rainer Maria Rilke",
+        "\"Reflection is the lamp of the heart.\" - Proverb",
+        "\"Knowing yourself is the beginning of all wisdom.\" - Aristotle"
+    ]
+    
+    private let timer = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
+    
+    var body: some View {
+        ZStack {
+            Color(hex: "#faf8f3")
+                .ignoresSafeArea()
+            
+            VStack(spacing: Papper.spacing.xxl) {
+                Spacer()
+                
+                // Inspirational Quote
+                VStack(spacing: Papper.spacing.lg) {
+                    Image(systemName: "quote.opening")
+                        .font(.system(size: 32))
+                        .foregroundColor(PapperColors.neutral300)
+                    
+                    Text(inspirationalQuotes[currentQuoteIndex])
+                        .font(.system(size: 18, weight: .regular, design: .serif))
+                        .foregroundColor(PapperColors.neutral700)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, Papper.spacing.xxl)
+                        .lineSpacing(6)
+                }
+                .padding(.horizontal, Papper.spacing.lg)
+                
+                Spacer()
+                
+                // Progress Section
+                VStack(spacing: Papper.spacing.md) {
+                    // Progress Bar
+                    GeometryReader { geometry in
+                        ZStack(alignment: .leading) {
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(PapperColors.neutral200)
+                                .frame(height: 8)
+                            
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(PapperColors.neutral700)
+                                .frame(width: geometry.size.width * progress, height: 8)
+                                .animation(.easeInOut(duration: 0.1), value: progress)
+                        }
+                    }
+                    .frame(height: 8)
+                    .padding(.horizontal, Papper.spacing.xxxl)
+                    
+                    // Analyzing Text
+                    Text("Analyzing your journals...")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(PapperColors.neutral600)
+                }
+                .padding(.bottom, Papper.spacing.xxxl)
+            }
+        }
+        .onReceive(timer) { _ in
+            // Simulate progress (caps at 90% until actually complete)
+            if progress < 0.9 {
+                progress += 0.005
+            }
+        }
+        .onAppear {
+            currentQuoteIndex = Int.random(in: 0..<inspirationalQuotes.count)
+        }
+    }
+}
+
 // MARK: - Journal Analysis Selection
 
 struct JournalAnalysisSelectionView: View {
@@ -248,84 +346,100 @@ struct JournalAnalysisSelectionView: View {
                 Color(hex: "#faf8f3")
                     .ignoresSafeArea()
                 
-                ScrollView {
-                    VStack(spacing: Papper.spacing.lg) {
-                        Text("Select journals to analyze")
-                            .font(Papper.typography.body)
-                            .foregroundColor(PapperColors.neutral600)
-                            .padding(.top, Papper.spacing.md)
-                        
-                        // Select All / None
-                        HStack {
-                            Button("Select All") {
-                                viewModel.selectAllJournals()
-                            }
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(PapperColors.neutral700)
-                            
-                            Spacer()
-                            
-                            Button("Deselect All") {
-                                viewModel.deselectAllJournals()
-                            }
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(PapperColors.neutral500)
-                        }
-                        .padding(.horizontal, Papper.spacing.lg)
-                        
-                        // Journal List
-                        ForEach(viewModel.availableJournals) { journal in
-                            JournalSelectionRow(
-                                journal: journal,
-                                isSelected: viewModel.selectedJournals.contains(journal.id),
-                                onToggle: { viewModel.toggleJournalSelection(journal.id) }
-                            )
-                        }
-                        .padding(.horizontal, Papper.spacing.lg)
-                    }
-                    .padding(.bottom, 100)
-                }
-                
-                // Analyze Button
-                VStack {
-                    Spacer()
-                    
-                    Button(action: {
-                        Task {
-                            await viewModel.startAnalysis()
-                            dismiss()
-                        }
-                    }) {
-                        HStack(spacing: Papper.spacing.xs) {
-                            if viewModel.isAnalyzing {
-                                ProgressView()
-                                    .tint(.white)
-                            } else {
-                                Image(systemName: "sparkles")
-                                Text("Analyze \(viewModel.selectedJournals.count) Journal\(viewModel.selectedJournals.count == 1 ? "" : "s")")
-                            }
-                        }
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 54)
-                        .background(viewModel.selectedJournals.isEmpty ? PapperColors.neutral400 : PapperColors.neutral700)
-                        .cornerRadius(14)
-                    }
-                    .disabled(viewModel.selectedJournals.isEmpty || viewModel.isAnalyzing)
-                    .padding(Papper.spacing.lg)
-                    .background(Color(hex: "#faf8f3"))
+                if viewModel.isAnalyzing {
+                    // Show full-screen loading view
+                    AnalysisLoadingView()
+                        .transition(.opacity)
+                } else {
+                    // Journal selection content
+                    journalSelectionContent
                 }
             }
-            .navigationTitle("Select Journals")
+            .animation(.easeInOut(duration: 0.3), value: viewModel.isAnalyzing)
+            .navigationTitle(viewModel.isAnalyzing ? "" : "Select Journals")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
-                        dismiss()
+                    if !viewModel.isAnalyzing {
+                        Button("Cancel") {
+                            dismiss()
+                        }
+                        .foregroundColor(PapperColors.neutral600)
                     }
-                    .foregroundColor(PapperColors.neutral600)
                 }
+            }
+            .onChange(of: viewModel.analysisSummary) { oldValue, newValue in
+                // Dismiss when analysis completes
+                if newValue != nil && oldValue == nil {
+                    dismiss()
+                }
+            }
+        }
+    }
+    
+    private var journalSelectionContent: some View {
+        ZStack {
+            ScrollView {
+                VStack(spacing: Papper.spacing.lg) {
+                    Text("Select journals to analyze")
+                        .font(Papper.typography.body)
+                        .foregroundColor(PapperColors.neutral600)
+                        .padding(.top, Papper.spacing.md)
+                    
+                    // Deselect All / Select All
+                    HStack {
+                        Button("Deselect All") {
+                            viewModel.deselectAllJournals()
+                        }
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(PapperColors.neutral500)
+                        
+                        Spacer()
+                        
+                        Button("Select All") {
+                            viewModel.selectAllJournals()
+                        }
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(PapperColors.neutral700)
+                    }
+                    .padding(.horizontal, Papper.spacing.lg)
+                    
+                    // Journal List
+                    ForEach(viewModel.availableJournals) { journal in
+                        JournalSelectionRow(
+                            journal: journal,
+                            isSelected: viewModel.selectedJournals.contains(journal.id),
+                            onToggle: { viewModel.toggleJournalSelection(journal.id) }
+                        )
+                    }
+                    .padding(.horizontal, Papper.spacing.lg)
+                }
+                .padding(.bottom, 100)
+            }
+            
+            // Analyze Button
+            VStack {
+                Spacer()
+                
+                Button(action: {
+                    Task {
+                        await viewModel.startAnalysis()
+                    }
+                }) {
+                    HStack(spacing: Papper.spacing.sm) {
+                        Image(systemName: "sparkles")
+                        Text("Analyze \(viewModel.selectedJournals.count) Journal\(viewModel.selectedJournals.count == 1 ? "" : "s")")
+                    }
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 54)
+                    .background(viewModel.selectedJournals.isEmpty ? PapperColors.neutral400 : PapperColors.neutral700)
+                    .cornerRadius(14)
+                }
+                .disabled(viewModel.selectedJournals.isEmpty)
+                .padding(Papper.spacing.lg)
+                .background(Color(hex: "#faf8f3"))
             }
         }
     }
@@ -383,6 +497,9 @@ struct JournalSelectionRow: View {
 struct ConversationHistoryView: View {
     @ObservedObject var viewModel: AIReflectViewModel
     @Environment(\.dismiss) private var dismiss
+    @State private var isEditMode = false
+    @State private var selectedConversations: Set<String> = []
+    @State private var showDeleteConfirmation = false
     
     var body: some View {
         NavigationView {
@@ -401,67 +518,174 @@ struct ConversationHistoryView: View {
                             .foregroundColor(PapperColors.neutral600)
                     }
                 } else {
-                    List {
-                        ForEach(viewModel.conversations) { conversation in
-                            ConversationRow(conversation: conversation)
+                    VStack(spacing: 0) {
+                        List {
+                            ForEach(viewModel.conversations) { conversation in
+                                ConversationRow(
+                                    conversation: conversation,
+                                    isEditMode: isEditMode,
+                                    isSelected: selectedConversations.contains(conversation.id)
+                                )
                                 .listRowBackground(Color.clear)
                                 .listRowSeparator(.hidden)
                                 .onTapGesture {
-                                    viewModel.loadConversation(conversation)
-                                    dismiss()
+                                    if isEditMode {
+                                        toggleSelection(conversation.id)
+                                    } else {
+                                        viewModel.loadConversation(conversation)
+                                        dismiss()
+                                    }
                                 }
-                        }
-                        .onDelete { indexSet in
-                            for index in indexSet {
-                                let conversation = viewModel.conversations[index]
-                                Task {
-                                    await viewModel.deleteConversation(conversation)
+                            }
+                            .onDelete { indexSet in
+                                if !isEditMode {
+                                    for index in indexSet {
+                                        let conversation = viewModel.conversations[index]
+                                        Task {
+                                            await viewModel.deleteConversation(conversation)
+                                        }
+                                    }
                                 }
                             }
                         }
+                        .listStyle(.plain)
+                        
+                        // Delete button when in edit mode with selections
+                        if isEditMode && !selectedConversations.isEmpty {
+                            Button(action: {
+                                showDeleteConfirmation = true
+                            }) {
+                                HStack(spacing: Papper.spacing.sm) {
+                                    Image(systemName: "trash")
+                                    Text("Delete \(selectedConversations.count) Conversation\(selectedConversations.count == 1 ? "" : "s")")
+                                }
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 54)
+                                .background(Color.red)
+                                .cornerRadius(14)
+                            }
+                            .padding(Papper.spacing.lg)
+                            .background(Color(hex: "#faf8f3"))
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                        }
                     }
-                    .listStyle(.plain)
+                    .animation(.easeInOut(duration: 0.2), value: isEditMode)
+                    .animation(.easeInOut(duration: 0.2), value: selectedConversations.isEmpty)
                 }
             }
             .navigationTitle("History")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    if !viewModel.conversations.isEmpty {
+                        Button(action: {
+                            withAnimation {
+                                isEditMode.toggle()
+                                if !isEditMode {
+                                    selectedConversations.removeAll()
+                                }
+                            }
+                        }) {
+                            Image(systemName: isEditMode ? "xmark" : "trash")
+                                .foregroundColor(isEditMode ? PapperColors.neutral600 : PapperColors.neutral700)
+                        }
+                    }
+                }
+                
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        dismiss()
+                    Button(isEditMode ? "Select All" : "Done") {
+                        if isEditMode {
+                            // Select all or deselect all
+                            if selectedConversations.count == viewModel.conversations.count {
+                                selectedConversations.removeAll()
+                            } else {
+                                selectedConversations = Set(viewModel.conversations.map { $0.id })
+                            }
+                        } else {
+                            dismiss()
+                        }
                     }
                     .foregroundColor(PapperColors.neutral700)
                 }
             }
+            .alert("Delete Conversations?", isPresented: $showDeleteConfirmation) {
+                Button("Cancel", role: .cancel) { }
+                Button("Delete", role: .destructive) {
+                    Task {
+                        await viewModel.deleteConversations(selectedConversations)
+                        withAnimation {
+                            selectedConversations.removeAll()
+                            isEditMode = false
+                        }
+                    }
+                }
+            } message: {
+                Text("Are you sure you want to delete \(selectedConversations.count) conversation\(selectedConversations.count == 1 ? "" : "s")? This action cannot be undone.")
+            }
+        }
+    }
+    
+    private func toggleSelection(_ id: String) {
+        if selectedConversations.contains(id) {
+            selectedConversations.remove(id)
+        } else {
+            selectedConversations.insert(id)
         }
     }
 }
 
 struct ConversationRow: View {
     let conversation: AIConversation
+    var isEditMode: Bool = false
+    var isSelected: Bool = false
     
     var body: some View {
-        VStack(alignment: .leading, spacing: Papper.spacing.xs) {
-            HStack {
-                Text(conversation.title)
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(PapperColors.neutral800)
-                
-                Spacer()
-                
-                Text(conversation.updatedAt.shortDateString)
-                    .font(Papper.typography.bodySmall)
-                    .foregroundColor(PapperColors.neutral500)
+        HStack(spacing: Papper.spacing.md) {
+            // Checkbox when in edit mode
+            if isEditMode {
+                ZStack {
+                    Circle()
+                        .stroke(isSelected ? PapperColors.neutral700 : PapperColors.neutral300, lineWidth: 2)
+                        .frame(width: 24, height: 24)
+                    
+                    if isSelected {
+                        Circle()
+                            .fill(PapperColors.neutral700)
+                            .frame(width: 16, height: 16)
+                        
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.white)
+                    }
+                }
+                .animation(.easeInOut(duration: 0.15), value: isSelected)
             }
             
-            Text(conversation.preview)
-                .font(Papper.typography.body)
-                .foregroundColor(PapperColors.neutral600)
-                .lineLimit(2)
+            VStack(alignment: .leading, spacing: Papper.spacing.xs) {
+                HStack {
+                    Text(conversation.title)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(PapperColors.neutral800)
+                    
+                    Spacer()
+                    
+                    Text(conversation.updatedAt.shortDateString)
+                        .font(Papper.typography.bodySmall)
+                        .foregroundColor(PapperColors.neutral500)
+                }
+                
+                Text(conversation.preview)
+                    .font(Papper.typography.body)
+                    .foregroundColor(PapperColors.neutral600)
+                    .lineLimit(2)
+            }
         }
         .padding(Papper.spacing.md)
-        .background(PapperColors.surfaceBackgroundPlain)
+        .background(isSelected ? PapperColors.neutral100 : PapperColors.surfaceBackgroundPlain)
         .cornerRadius(12)
+        .animation(.easeInOut(duration: 0.15), value: isSelected)
     }
 }
 
