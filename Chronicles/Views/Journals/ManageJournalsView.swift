@@ -142,24 +142,27 @@ struct JournalManageRow: View {
             
             Spacer()
             
-            // Actions
+            // Actions - properly isolated buttons
             HStack(spacing: Papper.spacing.sm) {
                 Button(action: onEdit) {
                     Image(systemName: "pencil")
                         .font(.system(size: 16))
                         .foregroundColor(PapperColors.neutral600)
                 }
+                .buttonStyle(PlainButtonStyle())
                 
                 Button(action: onDelete) {
                     Image(systemName: "trash")
                         .font(.system(size: 16))
                         .foregroundColor(PapperColors.pink600)
                 }
+                .buttonStyle(PlainButtonStyle())
             }
         }
         .padding(Papper.spacing.md)
         .background(PapperColors.surfaceBackgroundPlain)
         .cornerRadius(12)
+        .contentShape(Rectangle())
     }
 }
 

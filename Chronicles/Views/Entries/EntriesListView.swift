@@ -63,7 +63,8 @@ struct EntriesListView: View {
                         }
                     }
                     .padding(.horizontal, Papper.spacing.lg)
-                    .padding(.vertical, Papper.spacing.md)
+                    .padding(.top, Papper.spacing.xs)
+                    .padding(.bottom, Papper.spacing.md)
                 }
             }
         }
@@ -152,18 +153,10 @@ struct EntryListCard: View {
             
             // Content
             VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Text(entry.title)
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(PapperColors.neutral800)
-                        .lineLimit(1)
-                    
-                    Spacer()
-                    
-                    Image(systemName: entry.inputMethod.icon)
-                        .font(.system(size: 12))
-                        .foregroundColor(PapperColors.neutral400)
-                }
+                Text(entry.title)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(PapperColors.neutral800)
+                    .lineLimit(1)
                 
                 Text(entry.shortPreview)
                     .font(.system(size: 14))

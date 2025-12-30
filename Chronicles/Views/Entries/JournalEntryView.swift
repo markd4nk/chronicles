@@ -39,18 +39,26 @@ struct JournalEntryView: View {
             }
         }
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(isEditing)
         .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                if isEditing {
+                    Button("Cancel") {
+                        cancelEditing()
+                    }
+                    .foregroundColor(PapperColors.neutral700)
+                }
+            }
+            
             ToolbarItem(placement: .navigationBarTrailing) {
-                Menu {
-                    if isEditing {
-                        Button(action: saveChanges) {
-                            Label("Save", systemImage: "checkmark")
-                        }
-                        
-                        Button(action: cancelEditing) {
-                            Label("Cancel", systemImage: "xmark")
-                        }
-                    } else {
+                if isEditing {
+                    Button("Save") {
+                        saveChanges()
+                    }
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(PapperColors.neutral700)
+                } else {
+                    Menu {
                         Button(action: startEditing) {
                             Label("Edit", systemImage: "pencil")
                         }
@@ -62,11 +70,11 @@ struct JournalEntryView: View {
                         Button(role: .destructive, action: { showDeleteAlert = true }) {
                             Label("Delete", systemImage: "trash")
                         }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                            .font(.system(size: 18))
+                            .foregroundColor(PapperColors.neutral700)
                     }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .font(.system(size: 18))
-                        .foregroundColor(PapperColors.neutral700)
                 }
             }
         }
@@ -88,33 +96,20 @@ struct JournalEntryView: View {
     
     private var entryHeader: some View {
         VStack(alignment: .leading, spacing: Papper.spacing.md) {
-            // Journal & Date
-            HStack(spacing: Papper.spacing.md) {
-                HStack(spacing: Papper.spacing.xs) {
-                    Circle()
-                        .fill(Color(hex: viewModel.getJournalColor(for: entry)))
-                        .frame(width: 8, height: 8)
-                    
-                    Text(viewModel.getJournalName(for: entry))
-                        .font(.system(size: 13))
-                        .foregroundColor(PapperColors.neutral600)
-                }
-                .padding(.horizontal, Papper.spacing.sm)
-                .padding(.vertical, 6)
-                .background(Color(hex: viewModel.getJournalColor(for: entry)).opacity(0.1))
-                .cornerRadius(20)
+            // Journal badge
+            HStack(spacing: Papper.spacing.xs) {
+                Circle()
+                    .fill(Color(hex: viewModel.getJournalColor(for: entry)))
+                    .frame(width: 8, height: 8)
                 
-                Spacer()
-                
-                // Input method
-                HStack(spacing: 4) {
-                    Image(systemName: entry.inputMethod.icon)
-                        .font(.system(size: 12))
-                    Text(entry.inputMethod.displayName)
-                        .font(.system(size: 12))
-                }
-                .foregroundColor(PapperColors.neutral500)
+                Text(viewModel.getJournalName(for: entry))
+                    .font(.system(size: 13))
+                    .foregroundColor(PapperColors.neutral600)
             }
+            .padding(.horizontal, Papper.spacing.sm)
+            .padding(.vertical, 6)
+            .background(Color(hex: viewModel.getJournalColor(for: entry)).opacity(0.1))
+            .cornerRadius(20)
             
             // Date
             Text(entry.createdAt.fullDateString)
@@ -127,17 +122,12 @@ struct JournalEntryView: View {
                     .font(.system(size: 24, weight: .bold, design: .serif))
                     .foregroundColor(PapperColors.neutral800)
             } else {
-                HStack(alignment: .top, spacing: Papper.spacing.xs) {
+                Button(action: startEditing) {
                     Text(entry.title)
                         .font(.system(size: 24, weight: .bold, design: .serif))
                         .foregroundColor(PapperColors.neutral800)
-                    
-                    Button(action: startEditing) {
-                        Image(systemName: "pencil.circle")
-                            .font(.system(size: 16))
-                            .foregroundColor(PapperColors.neutral400)
-                    }
                 }
+                .buttonStyle(PlainButtonStyle())
             }
             
             // Stats
@@ -170,17 +160,20 @@ struct JournalEntryView: View {
     // MARK: - Display Content
     
     private var displayContent: some View {
-        VStack(alignment: .leading, spacing: Papper.spacing.md) {
-            Text(entry.content)
-                .font(.system(size: 16))
-                .foregroundColor(PapperColors.neutral700)
-                .lineSpacing(6)
+        Button(action: startEditing) {
+            VStack(alignment: .leading, spacing: Papper.spacing.md) {
+                Text(entry.content)
+                    .font(.system(size: 16))
+                    .foregroundColor(PapperColors.neutral700)
+                    .lineSpacing(6)
+            }
+            .padding(Papper.spacing.lg)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(PapperColors.surfaceBackgroundPlain)
+            .cornerRadius(16)
+            .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 2)
         }
-        .padding(Papper.spacing.lg)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(PapperColors.surfaceBackgroundPlain)
-        .cornerRadius(16)
-        .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 2)
+        .buttonStyle(PlainButtonStyle())
     }
     
     // MARK: - Editing Content
