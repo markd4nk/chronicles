@@ -8,18 +8,25 @@
 import SwiftUI
 import Firebase
 
+// App delegate to configure Firebase before anything else
+class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        FirebaseApp.configure()
+        return true
+    }
+}
+
 @main
 struct ChroniclesApp: App {
+    // Configure Firebase first via AppDelegate
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
+    
     @ObservedObject private var authService = AuthService.shared
     @ObservedObject private var subscriptionService = SubscriptionService.shared
     @ObservedObject private var securityService = SecurityService.shared
     
     @State private var isLocked = false
     @State private var showPaywall = false
-    
-    init() {
-        FirebaseApp.configure()
-    }
     
     var body: some Scene {
         WindowGroup {
