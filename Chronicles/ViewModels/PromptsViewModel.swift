@@ -18,10 +18,28 @@ class PromptsViewModel: ObservableObject {
     @Published var selectedCategory: JournalPrompt.PromptCategory?
     @Published var isLoading = false
     @Published var showLikedOnly = false
+    @Published var isLoadingMore = false
+    @Published var hasMorePrompts = true
+    
+    // For infinite scroll - track if we've reached the end
+    private var hasReachedEnd = false
+    private var isInitialLoad = true
     
     // Computed property for filtered prompts
     var filteredPrompts: [JournalPrompt] {
-        showLikedOnly ? prompts.filter { $0.isLiked } : prompts
+        if showLikedOnly {
+            let liked = prompts.filter { $0.isLiked }
+            // For liked tab, create infinite loop by duplicating if needed
+            if liked.count > 0 && liked.count < 20 {
+                var looped = liked
+                while looped.count < 100 {
+                    looped.append(contentsOf: liked)
+                }
+                return looped
+            }
+            return liked
+        }
+        return prompts
     }
     
     private let firebaseService = FirebaseService.shared
@@ -29,6 +47,9 @@ class PromptsViewModel: ObservableObject {
     
     init() {
         setupBindings()
+        Task {
+            await loadInitialPrompts()
+        }
     }
     
     private func setupBindings() {
@@ -58,29 +79,58 @@ class PromptsViewModel: ObservableObject {
     
     // MARK: - Load Prompts
     
-    func loadPrompts() async {
+    func loadInitialPrompts() async {
         isLoading = true
         defer { isLoading = false }
         
-        do {
-            prompts = try await firebaseService.fetchPrompts(category: selectedCategory)
+        // Prompts are already loaded via FirebaseService binding
+        // Just shuffle them
+        if !prompts.isEmpty {
             prompts.shuffle()
+            updateLikedPrompts()
+        }
+    }
+    
+    /// Load more prompts for infinite scroll
+    func loadMorePrompts() async {
+        guard !isLoadingMore && hasMorePrompts && !showLikedOnly else { return }
+        
+        isLoadingMore = true
+        defer { isLoadingMore = false }
+        
+        do {
+            let newPrompts = try await firebaseService.fetchNextPromptsBatch(category: selectedCategory)
+            
+            if newPrompts.isEmpty {
+                // Reached the end, loop back to beginning
+                hasReachedEnd = true
+                await resetAndShuffle()
+            } else {
+                // Append new prompts (avoid duplicates)
+                let existingIds = Set(prompts.map { $0.id })
+                let uniqueNew = newPrompts.filter { !existingIds.contains($0.id) }
+                prompts.append(contentsOf: uniqueNew)
+            }
         } catch {
             // Handle silently
         }
     }
     
-    func loadForYouPrompts() async {
-        isLoading = true
-        defer { isLoading = false }
-        
-        // In production, this would use AI to personalize
-        // For now, just shuffle all prompts
-        do {
-            prompts = try await firebaseService.fetchPrompts()
-            prompts.shuffle()
-        } catch {
-            // Handle silently
+    /// Reset pagination and shuffle (called when reaching end or on tab return)
+    func resetAndShuffle() async {
+        await firebaseService.resetPromptsPagination()
+        prompts.shuffle()
+        hasReachedEnd = false
+        hasMorePrompts = true
+    }
+    
+    /// Check if we're near the end and should load more
+    func checkIfNearEnd(currentIndex: Int) {
+        let threshold = prompts.count - 5
+        if currentIndex >= threshold && !isLoadingMore && !hasReachedEnd {
+            Task {
+                await loadMorePrompts()
+            }
         }
     }
     
@@ -138,8 +188,20 @@ class PromptsViewModel: ObservableObject {
         currentIndex = 0
         
         Task {
-            await loadPrompts()
+            await resetAndShuffle()
         }
+    }
+    
+    // MARK: - Tab Switching
+    
+    func onTabAppear() {
+        // Shuffle when returning to tab
+        if !isInitialLoad {
+            Task {
+                await resetAndShuffle()
+            }
+        }
+        isInitialLoad = false
     }
     
 }

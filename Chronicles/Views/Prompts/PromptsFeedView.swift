@@ -12,6 +12,8 @@ struct PromptsFeedView: View {
     @StateObject private var viewModel = PromptsViewModel()
     @State private var showCreateEntry = false
     @State private var selectedPrompt: JournalPrompt?
+    @State private var showCopyFeedback = false
+    @State private var currentVisibleIndex = 0
     
     var body: some View {
         GeometryReader { geometry in
@@ -24,35 +26,55 @@ struct PromptsFeedView: View {
                 if viewModel.filteredPrompts.isEmpty {
                     emptyState
                 } else {
-                    ScrollView(.vertical, showsIndicators: false) {
-                        LazyVStack(spacing: 0) {
-                            ForEach(viewModel.filteredPrompts) { prompt in
-                                PromptCardView(
-                                    prompt: prompt,
-                                    onLike: {
-                                        Task {
-                                            await viewModel.likePrompt(prompt)
+                    ScrollViewReader { proxy in
+                        ScrollView(.vertical, showsIndicators: false) {
+                            LazyVStack(spacing: 0) {
+                                ForEach(Array(viewModel.filteredPrompts.enumerated()), id: \.element.id) { index, prompt in
+                                    PromptCardView(
+                                        prompt: prompt,
+                                        showCopyFeedback: showCopyFeedback && currentVisibleIndex == index,
+                                        onLike: {
+                                            Task {
+                                                await viewModel.likePrompt(prompt)
+                                            }
+                                            let generator = UIImpactFeedbackGenerator(style: .light)
+                                            generator.impactOccurred()
+                                        },
+                                        onShare: {
+                                            // Copy prompt question to clipboard
+                                            UIPasteboard.general.string = prompt.question
+                                            let generator = UINotificationFeedbackGenerator()
+                                            generator.notificationOccurred(.success)
+                                            
+                                            // Show copy feedback
+                                            withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                                                showCopyFeedback = true
+                                            }
+                                            
+                                            // Hide after 1 second
+                                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                                                withAnimation(.easeOut(duration: 0.2)) {
+                                                    showCopyFeedback = false
+                                                }
+                                            }
+                                        },
+                                        onWriteItOut: {
+                                            selectedPrompt = prompt
+                                            showCreateEntry = true
                                         }
-                                        let generator = UIImpactFeedbackGenerator(style: .light)
-                                        generator.impactOccurred()
-                                    },
-                                    onShare: {
-                                        // Copy prompt question to clipboard
-                                        UIPasteboard.general.string = prompt.question
-                                        let generator = UINotificationFeedbackGenerator()
-                                        generator.notificationOccurred(.success)
-                                    },
-                                    onWriteItOut: {
-                                        selectedPrompt = prompt
-                                        showCreateEntry = true
+                                    )
+                                    .frame(height: geometry.size.height)
+                                    .id("\(prompt.id)_\(index)")
+                                    .onAppear {
+                                        currentVisibleIndex = index
+                                        // Check if we need to load more prompts
+                                        viewModel.checkIfNearEnd(currentIndex: index)
                                     }
-                                )
-                                .frame(height: geometry.size.height)
-                                .id(prompt.id)
+                                }
                             }
                         }
+                        .scrollTargetBehavior(.paging)
                     }
-                    .scrollTargetBehavior(.paging)
                 }
                 
                 // Overlay segmented control at top (TikTok-style)
@@ -61,6 +83,9 @@ struct PromptsFeedView: View {
                     Spacer()
                 }
             }
+        }
+        .onAppear {
+            viewModel.onTabAppear()
         }
         .sheet(isPresented: $showCreateEntry) {
             if let prompt = selectedPrompt {
@@ -108,6 +133,7 @@ struct PromptsFeedView: View {
 
 struct PromptCardView: View {
     let prompt: JournalPrompt
+    var showCopyFeedback: Bool = false
     let onLike: () -> Void
     let onShare: () -> Void
     let onWriteItOut: () -> Void
@@ -151,11 +177,23 @@ struct PromptCardView: View {
                 // Action Bar - pushed up for better visibility
                 HStack(spacing: Papper.spacing.xxl) {
                     // Share Button (copies prompt to clipboard)
-                    Button(action: onShare) {
-                        Image(systemName: "square.and.arrow.up")
-                            .font(.system(size: 24))
-                            .foregroundColor(PapperColors.neutral600)
-                            .frame(width: 44, height: 44)
+                    ZStack {
+                        Button(action: onShare) {
+                            Image(systemName: "square.and.arrow.up")
+                                .font(.system(size: 24))
+                                .foregroundColor(PapperColors.neutral600)
+                                .frame(width: 44, height: 44)
+                        }
+                        
+                        // Copy feedback indicator
+                        if showCopyFeedback {
+                            CopyFeedbackView()
+                                .offset(y: -50)
+                                .transition(.asymmetric(
+                                    insertion: .scale.combined(with: .opacity),
+                                    removal: .opacity
+                                ))
+                        }
                     }
                     
                     // Write It Out Button - prominent
@@ -192,6 +230,27 @@ struct PromptCardView: View {
                 .padding(.horizontal, Papper.spacing.md)
                 .padding(.vertical, Papper.spacing.md)
         )
+    }
+}
+
+// MARK: - Copy Feedback View
+
+struct CopyFeedbackView: View {
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "checkmark")
+                .font(.system(size: 12, weight: .semibold))
+            Text("Copied")
+                .font(.system(size: 13, weight: .medium))
+        }
+        .foregroundColor(.white)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(
+            Capsule()
+                .fill(PapperColors.neutral700)
+        )
+        .shadow(color: Color.black.opacity(0.15), radius: 8, x: 0, y: 4)
     }
 }
 

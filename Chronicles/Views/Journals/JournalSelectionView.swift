@@ -198,3 +198,4 @@ struct JournalSelectionView_Previews: PreviewProvider {
 }
 #endif
 
+
