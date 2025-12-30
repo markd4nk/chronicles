@@ -3,7 +3,7 @@
 //  Chronicles
 //
 //  Entry creation with unified interface - text editor always visible
-//  Scan and Speak are subtle action buttons that enhance the writing experience
+//  Keyboard toolbar provides quick access to scan and speak actions
 //
 
 import SwiftUI
@@ -34,29 +34,24 @@ struct CreateEntryView: View {
                 Color(hex: "#faf8f3")
                     .ignoresSafeArea()
                 
-                VStack(spacing: 0) {
-                    // Main content - text editor always visible
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: Papper.spacing.md) {
-                            // Text Editor
-                            TextEditor(text: $content)
-                                .font(.system(size: 16))
-                                .foregroundColor(PapperColors.neutral800)
-                                .scrollContentBackground(.hidden)
-                                .frame(minHeight: 350)
-                                .padding()
-                                .background(PapperColors.surfaceBackgroundPlain)
-                                .cornerRadius(16)
-                                .focused($isEditorFocused)
-                        }
-                        .padding(Papper.spacing.lg)
+                // Main content - text editor always visible
+                ScrollView {
+                    VStack(alignment: .leading, spacing: Papper.spacing.md) {
+                        // Text Editor
+                        TextEditor(text: $content)
+                            .font(.system(size: 16))
+                            .foregroundColor(PapperColors.neutral800)
+                            .scrollContentBackground(.hidden)
+                            .frame(minHeight: 350)
+                            .padding()
+                            .background(PapperColors.surfaceBackgroundPlain)
+                            .cornerRadius(16)
+                            .focused($isEditorFocused)
                     }
-                    .onTapGesture {
-                        isEditorFocused = true
-                    }
-                    
-                    // Bottom bar with word count and action buttons
-                    bottomBar
+                    .padding(Papper.spacing.lg)
+                }
+                .onTapGesture {
+                    isEditorFocused = true
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -95,10 +90,54 @@ struct CreateEntryView: View {
                     .foregroundColor(content.isEmpty || isSaving ? PapperColors.neutral400 : PapperColors.neutral700)
                     .disabled(content.isEmpty || isSaving)
                 }
+                
+                // Keyboard toolbar with dismiss and action buttons
+                ToolbarItemGroup(placement: .keyboard) {
+                    // Left: Dismiss keyboard button
+                    Button(action: {
+                        isEditorFocused = false
+                    }) {
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(PapperColors.neutral700)
+                            .frame(width: 32, height: 32)
+                            .background(PapperColors.neutral200)
+                            .clipShape(Circle())
+                    }
+                    
+                    Spacer()
+                    
+                    // Right: Scan button
+                    Button(action: {
+                        showScanActionSheet = true
+                    }) {
+                        Image(systemName: "doc.text.viewfinder")
+                            .font(.system(size: 16))
+                            .foregroundColor(PapperColors.neutral700)
+                            .frame(width: 32, height: 32)
+                            .background(PapperColors.neutral200)
+                            .clipShape(Circle())
+                    }
+                    
+                    // Right: Speak button
+                    Button(action: {
+                        showListeningView = true
+                    }) {
+                        Image(systemName: "mic.fill")
+                            .font(.system(size: 16))
+                            .foregroundColor(PapperColors.neutral700)
+                            .frame(width: 32, height: 32)
+                            .background(PapperColors.neutral200)
+                            .clipShape(Circle())
+                    }
+                }
             }
             .onAppear {
                 setupFromTemplate()
-                isEditorFocused = true
+                // Small delay to ensure view is laid out before focusing
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    isEditorFocused = true
+                }
             }
             .confirmationDialog("Add from Photo", isPresented: $showScanActionSheet, titleVisibility: .visible) {
                 Button("Take Photo") {
@@ -137,52 +176,6 @@ struct CreateEntryView: View {
         }
     }
     
-    // MARK: - Bottom Bar
-    
-    private var bottomBar: some View {
-        HStack(spacing: Papper.spacing.md) {
-            // Word count
-            Text("\(wordCount) words")
-                .font(.system(size: 12))
-                .foregroundColor(PapperColors.neutral500)
-            
-            Spacer()
-            
-            // Compact action buttons
-            HStack(spacing: Papper.spacing.sm) {
-                // Scan button
-                Button(action: {
-                    showScanActionSheet = true
-                }) {
-                    Image(systemName: "doc.text.viewfinder")
-                        .font(.system(size: 16))
-                        .foregroundColor(PapperColors.neutral600)
-                        .frame(width: 36, height: 36)
-                        .background(PapperColors.neutral100)
-                        .clipShape(Circle())
-                }
-                
-                // Speak button
-                Button(action: {
-                    showListeningView = true
-                }) {
-                    Image(systemName: "mic.fill")
-                        .font(.system(size: 16))
-                        .foregroundColor(PapperColors.neutral600)
-                        .frame(width: 36, height: 36)
-                        .background(PapperColors.neutral100)
-                        .clipShape(Circle())
-                }
-            }
-        }
-        .padding(.horizontal, Papper.spacing.xl)
-        .padding(.vertical, Papper.spacing.md)
-        .background(
-            Color(hex: "#faf8f3")
-                .shadow(color: Color.black.opacity(0.04), radius: 4, x: 0, y: -2)
-        )
-    }
-    
     // MARK: - Loading Overlay
     
     private var loadingOverlay: some View {
@@ -206,10 +199,6 @@ struct CreateEntryView: View {
     }
     
     // MARK: - Helpers
-    
-    private var wordCount: Int {
-        content.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.count
-    }
     
     private func setupFromTemplate() {
         if let template = template {

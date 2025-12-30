@@ -2,10 +2,11 @@
 //  PromptsFeedView.swift
 //  Chronicles
 //
-//  TikTok-style swipeable prompts feed
+//  TikTok-style vertical scrolling prompts feed
 //
 
 import SwiftUI
+import AVFoundation
 
 struct PromptsFeedView: View {
     @StateObject private var viewModel = PromptsViewModel()
@@ -13,42 +14,42 @@ struct PromptsFeedView: View {
     @State private var selectedPrompt: JournalPrompt?
     
     var body: some View {
-        ZStack {
-            // Background
-            Color(hex: "#faf8f3")
-                .ignoresSafeArea()
-            
-            VStack(spacing: 0) {
-                // Top Bar
-                topBar
+        GeometryReader { geometry in
+            ZStack {
+                // Background
+                Color(hex: "#faf8f3")
+                    .ignoresSafeArea()
                 
-                // Prompts Feed
+                // Prompts Feed - Vertical scrolling
                 if viewModel.prompts.isEmpty {
                     emptyState
                 } else {
-                    TabView(selection: $viewModel.currentIndex) {
-                        ForEach(Array(viewModel.prompts.enumerated()), id: \.element.id) { index, prompt in
-                            PromptCardView(
-                                prompt: prompt,
-                                onLike: {
-                                    Task {
-                                        await viewModel.likePrompt(prompt)
+                    ScrollView(.vertical, showsIndicators: false) {
+                        LazyVStack(spacing: 0) {
+                            ForEach(viewModel.prompts) { prompt in
+                                PromptCardView(
+                                    prompt: prompt,
+                                    onLike: {
+                                        Task {
+                                            await viewModel.likePrompt(prompt)
+                                        }
+                                    },
+                                    onShare: {
+                                        Task {
+                                            await viewModel.sharePrompt(prompt)
+                                        }
+                                    },
+                                    onWriteItOut: {
+                                        selectedPrompt = prompt
+                                        showCreateEntry = true
                                     }
-                                },
-                                onShare: {
-                                    Task {
-                                        await viewModel.sharePrompt(prompt)
-                                    }
-                                },
-                                onWriteItOut: {
-                                    selectedPrompt = prompt
-                                    showCreateEntry = true
-                                }
-                            )
-                            .tag(index)
+                                )
+                                .frame(height: geometry.size.height)
+                                .id(prompt.id)
+                            }
                         }
                     }
-                    .tabViewStyle(.page(indexDisplayMode: .never))
+                    .scrollTargetBehavior(.paging)
                 }
             }
         }
@@ -57,25 +58,6 @@ struct PromptsFeedView: View {
                 CreateEntryFromPromptView(prompt: prompt)
             }
         }
-    }
-    
-    // MARK: - Top Bar
-    
-    private var topBar: some View {
-        HStack {
-            Spacer()
-            
-            // For You Button
-            Button(action: { viewModel.toggleForYou() }) {
-                Text("For You")
-                    .font(.system(size: 16, weight: viewModel.showForYou ? .bold : .medium))
-                    .foregroundColor(viewModel.showForYou ? PapperColors.neutral800 : PapperColors.neutral500)
-            }
-            
-            Spacer()
-        }
-        .padding(.vertical, Papper.spacing.md)
-        .background(Color(hex: "#faf8f3"))
     }
     
     private var emptyState: some View {
@@ -103,22 +85,23 @@ struct PromptCardView: View {
     var body: some View {
         ZStack {
             // Background Card
-            VStack(spacing: Papper.spacing.xxl) {
+            VStack(spacing: Papper.spacing.xl) {
                 Spacer()
+                    .frame(height: 40)
                 
                 // Category Icon
                 ZStack {
                     Circle()
                         .fill(PapperColors.neutral100)
-                        .frame(width: 80, height: 80)
+                        .frame(width: 70, height: 70)
                     
                     Image(systemName: prompt.category.icon)
-                        .font(.system(size: 36))
+                        .font(.system(size: 32))
                         .foregroundColor(PapperColors.neutral700)
                 }
                 
                 // Prompt Content
-                VStack(spacing: Papper.spacing.lg) {
+                VStack(spacing: Papper.spacing.md) {
                     Text(prompt.question)
                         .font(.system(size: 24, weight: .bold, design: .serif))
                         .foregroundColor(PapperColors.neutral800)
@@ -135,7 +118,7 @@ struct PromptCardView: View {
                 
                 Spacer()
                 
-                // Action Bar
+                // Action Bar - pushed up for better visibility
                 HStack(spacing: Papper.spacing.xxl) {
                     // Share Button
                     Button(action: onShare) {
@@ -148,7 +131,7 @@ struct PromptCardView: View {
                         .foregroundColor(PapperColors.neutral600)
                     }
                     
-                    // Write It Out Button
+                    // Write It Out Button - prominent
                     Button(action: onWriteItOut) {
                         HStack(spacing: Papper.spacing.xs) {
                             Image(systemName: "pencil")
@@ -158,7 +141,7 @@ struct PromptCardView: View {
                         }
                         .foregroundColor(.white)
                         .padding(.horizontal, Papper.spacing.xl)
-                        .padding(.vertical, Papper.spacing.sm)
+                        .padding(.vertical, Papper.spacing.md)
                         .background(PapperColors.neutral700)
                         .cornerRadius(25)
                     }
@@ -175,7 +158,7 @@ struct PromptCardView: View {
                         }
                     }
                 }
-                .padding(.bottom, Papper.spacing.xxxl)
+                .padding(.bottom, 120) // Space for tab bar
             }
             .padding(.horizontal, Papper.spacing.lg)
         }
@@ -199,6 +182,14 @@ struct CreateEntryFromPromptView: View {
     @State private var selectedJournal: Journal?
     @State private var content = ""
     @State private var isSaving = false
+    @State private var showScanActionSheet = false
+    @State private var showImagePicker = false
+    @State private var showCamera = false
+    @State private var showListeningView = false
+    @State private var selectedImage: UIImage?
+    @State private var isProcessingOCR = false
+    
+    @FocusState private var isEditorFocused: Bool
     
     var body: some View {
         NavigationView {
@@ -264,7 +255,7 @@ struct CreateEntryFromPromptView: View {
                             }
                         }
                         
-                        // Content
+                        // Content - Text Editor with focus
                         VStack(alignment: .leading, spacing: Papper.spacing.xs) {
                             Text("Your response")
                                 .font(Papper.typography.bodySmall)
@@ -272,13 +263,23 @@ struct CreateEntryFromPromptView: View {
                             
                             TextEditor(text: $content)
                                 .font(.system(size: 16))
+                                .scrollContentBackground(.hidden)
                                 .frame(minHeight: 200)
                                 .padding()
                                 .background(PapperColors.surfaceBackgroundPlain)
                                 .cornerRadius(12)
+                                .focused($isEditorFocused)
                         }
                     }
                     .padding(Papper.spacing.lg)
+                }
+                .onTapGesture {
+                    isEditorFocused = true
+                }
+                
+                // Loading overlay
+                if isProcessingOCR {
+                    loadingOverlay
                 }
             }
             .navigationTitle("Write Entry")
@@ -296,12 +297,129 @@ struct CreateEntryFromPromptView: View {
                         saveEntry()
                     }
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(PapperColors.neutral700)
+                    .foregroundColor(selectedJournal == nil || content.isEmpty || isSaving ? PapperColors.neutral400 : PapperColors.neutral700)
                     .disabled(selectedJournal == nil || content.isEmpty || isSaving)
+                }
+                
+                // Keyboard toolbar with dismiss and action buttons
+                ToolbarItemGroup(placement: .keyboard) {
+                    // Left: Dismiss keyboard button
+                    Button(action: {
+                        isEditorFocused = false
+                    }) {
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(PapperColors.neutral700)
+                            .frame(width: 32, height: 32)
+                            .background(PapperColors.neutral200)
+                            .clipShape(Circle())
+                    }
+                    
+                    Spacer()
+                    
+                    // Right: Scan button
+                    Button(action: {
+                        showScanActionSheet = true
+                    }) {
+                        Image(systemName: "doc.text.viewfinder")
+                            .font(.system(size: 16))
+                            .foregroundColor(PapperColors.neutral700)
+                            .frame(width: 32, height: 32)
+                            .background(PapperColors.neutral200)
+                            .clipShape(Circle())
+                    }
+                    
+                    // Right: Speak button
+                    Button(action: {
+                        showListeningView = true
+                    }) {
+                        Image(systemName: "mic.fill")
+                            .font(.system(size: 16))
+                            .foregroundColor(PapperColors.neutral700)
+                            .frame(width: 32, height: 32)
+                            .background(PapperColors.neutral200)
+                            .clipShape(Circle())
+                    }
                 }
             }
             .onAppear {
                 selectedJournal = viewModel.journals.first
+                // Small delay to ensure view is laid out before focusing
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    isEditorFocused = true
+                }
+            }
+            .confirmationDialog("Add from Photo", isPresented: $showScanActionSheet, titleVisibility: .visible) {
+                Button("Take Photo") {
+                    showCamera = true
+                }
+                Button("Choose from Library") {
+                    showImagePicker = true
+                }
+                Button("Cancel", role: .cancel) { }
+            }
+            .sheet(isPresented: $showImagePicker) {
+                ImagePicker(image: $selectedImage, sourceType: .photoLibrary)
+            }
+            .sheet(isPresented: $showCamera) {
+                ImagePicker(image: $selectedImage, sourceType: .camera)
+            }
+            .fullScreenCover(isPresented: $showListeningView) {
+                SpeakListeningView(onComplete: { transcribedText in
+                    if !content.isEmpty && !content.hasSuffix("\n") {
+                        content += "\n\n"
+                    }
+                    content += transcribedText
+                })
+            }
+            .onChange(of: selectedImage) { _, newImage in
+                if let image = newImage {
+                    processOCR(image: image)
+                }
+            }
+        }
+    }
+    
+    private var loadingOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.3)
+                .ignoresSafeArea()
+            
+            VStack(spacing: Papper.spacing.md) {
+                ProgressView()
+                    .scaleEffect(1.2)
+                    .tint(PapperColors.neutral700)
+                
+                Text("Processing image...")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(PapperColors.neutral700)
+            }
+            .padding(Papper.spacing.xl)
+            .background(PapperColors.surfaceBackgroundPlain)
+            .cornerRadius(16)
+        }
+    }
+    
+    private func processOCR(image: UIImage) {
+        isProcessingOCR = true
+        
+        Task {
+            do {
+                let extractedText = try await AIService.shared.extractTextFromImage(image)
+                
+                await MainActor.run {
+                    if !content.isEmpty && !content.hasSuffix("\n") {
+                        content += "\n\n"
+                    }
+                    content += extractedText
+                    selectedImage = nil
+                    isProcessingOCR = false
+                }
+            } catch {
+                await MainActor.run {
+                    selectedImage = nil
+                    isProcessingOCR = false
+                }
             }
         }
     }
@@ -332,4 +450,3 @@ struct PromptsFeedView_Previews: PreviewProvider {
     }
 }
 #endif
-
