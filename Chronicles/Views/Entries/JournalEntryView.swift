@@ -97,19 +97,23 @@ struct JournalEntryView: View {
     private var entryHeader: some View {
         VStack(alignment: .leading, spacing: Papper.spacing.md) {
             // Journal badge
-            HStack(spacing: Papper.spacing.xs) {
-                Circle()
-                    .fill(Color(hex: viewModel.getJournalColor(for: entry)))
-                    .frame(width: 8, height: 8)
+            HStack(spacing: Papper.spacing.md) {
+                HStack(spacing: Papper.spacing.xs) {
+                    Circle()
+                        .fill(Color(hex: viewModel.getJournalColor(for: entry)))
+                        .frame(width: 8, height: 8)
+                    
+                    Text(viewModel.getJournalName(for: entry))
+                        .font(.system(size: 13))
+                        .foregroundColor(PapperColors.neutral600)
+                }
+                .padding(.horizontal, Papper.spacing.sm)
+                .padding(.vertical, 6)
+                .background(Color(hex: viewModel.getJournalColor(for: entry)).opacity(0.1))
+                .cornerRadius(20)
                 
-                Text(viewModel.getJournalName(for: entry))
-                    .font(.system(size: 13))
-                    .foregroundColor(PapperColors.neutral600)
+                Spacer()
             }
-            .padding(.horizontal, Papper.spacing.sm)
-            .padding(.vertical, 6)
-            .background(Color(hex: viewModel.getJournalColor(for: entry)).opacity(0.1))
-            .cornerRadius(20)
             
             // Date
             Text(entry.createdAt.fullDateString)
