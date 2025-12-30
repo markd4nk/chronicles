@@ -105,20 +105,10 @@ class AuthService: NSObject, ObservableObject {
         isLoading = true
         error = nil
         
-        defer {
-            Task { @MainActor in
-                isLoading = false
-            }
-        }
-        
-        // Get the client ID from Firebase config
-        guard let clientID = FirebaseApp.app()?.options.clientID else {
-            throw AuthError.signInFailed
-        }
-        
-        // Get the root view controller
+        // Get the root view controller for presenting
         guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
               let rootViewController = windowScene.windows.first?.rootViewController else {
+            isLoading = false
             throw AuthError.signInFailed
         }
         
@@ -128,10 +118,6 @@ class AuthService: NSObject, ObservableObject {
             topController = presented
         }
         
-        // Create Google Sign-In configuration and perform sign-in
-        // Note: GoogleSignIn SDK needs to be added separately
-        // For now, we'll use a web-based OAuth flow via Firebase
-        
         // Create Google OAuth provider
         let provider = OAuthProvider(providerID: "google.com")
         provider.customParameters = [
@@ -140,10 +126,26 @@ class AuthService: NSObject, ObservableObject {
         provider.scopes = ["email", "profile"]
         
         do {
-            let result = try await provider.credential(with: topController)
-            let authResult = try await Auth.auth().signIn(with: result)
+            // Use completion handler based API wrapped in continuation
+            let credential = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<AuthCredential, Error>) in
+                provider.getCredentialWith(nil) { credential, error in
+                    if let error = error {
+                        continuation.resume(throwing: error)
+                        return
+                    }
+                    guard let credential = credential else {
+                        continuation.resume(throwing: AuthError.signInFailed)
+                        return
+                    }
+                    continuation.resume(returning: credential)
+                }
+            }
+            
+            let authResult = try await Auth.auth().signIn(with: credential)
             await loadOrCreateUser(from: authResult.user)
+            isLoading = false
         } catch {
+            isLoading = false
             self.error = .signInFailed
             throw AuthError.signInFailed
         }
