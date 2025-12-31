@@ -587,27 +587,47 @@ export const seedPrompts = onRequest(
     memory: "1GiB",
   },
   async (req, res) => {
-    logger.info("Starting prompt seeding process with 80/20 balance");
+    logger.info("Starting prompt seeding process");
 
     try {
-      // Check if prompts already exist
-      const existingPrompts = await db.collection("prompts").limit(1).get();
-      if (!existingPrompts.empty && req.query.force !== "true") {
-        logger.info("Prompts already exist. Use ?force=true to reseed");
-        res.status(200).json({
-          status: "skipped",
-          message: "Prompts already exist. Use ?force=true to reseed",
-        });
-        return;
-      }
+      // Check if we should only seed quotes (preserve existing questions)
+      const quotesOnly = req.query.quotesOnly === "true";
+      const seenPrompts = new Set<string>();
+      let existingQuestions: PromptData[] = [];
 
-      if (req.query.force === "true") {
-        logger.info("Force reseed requested, clearing existing prompts");
-        // Delete ALL existing prompts in batches
-        let deletedCount = 0;
+      if (quotesOnly) {
+        // Preserve existing questions - only replace quotes
+        logger.info("Quotes-only mode: preserving existing questions");
+
+        // Get all existing questions
+        const questionsSnapshot = await db.collection("prompts")
+          .where("category", "!=", "quote")
+          .get();
+
+        existingQuestions = questionsSnapshot.docs.map((doc) => {
+          const data = doc.data();
+          seenPrompts.add(normalizeText(data.question as string));
+          return {
+            id: doc.id,
+            question: data.question as string,
+            hint: data.hint as string,
+            category: data.category as string,
+            createdAt: data.createdAt,
+            likes: data.likes as number,
+            shares: data.shares as number,
+            isLiked: data.isLiked as boolean,
+          };
+        });
+        logger.info(`Preserved ${existingQuestions.length} existing questions`);
+
+        // Delete only quotes
+        let deletedQuotes = 0;
         let hasMore = true;
         while (hasMore) {
-          const snapshot = await db.collection("prompts").limit(500).get();
+          const snapshot = await db.collection("prompts")
+            .where("category", "==", "quote")
+            .limit(500)
+            .get();
           if (snapshot.empty) {
             hasMore = false;
           } else {
@@ -616,26 +636,61 @@ export const seedPrompts = onRequest(
               batch.delete(doc.ref);
             });
             await batch.commit();
-            deletedCount += snapshot.size;
-            logger.info(`Deleted ${deletedCount} prompts so far...`);
+            deletedQuotes += snapshot.size;
+            logger.info(`Deleted ${deletedQuotes} quotes so far...`);
           }
         }
-        logger.info(`Total deleted: ${deletedCount} prompts`);
+        logger.info(`Total deleted quotes: ${deletedQuotes}`);
+      } else {
+        // Check if prompts already exist
+        const existingPrompts = await db.collection("prompts").limit(1).get();
+        if (!existingPrompts.empty && req.query.force !== "true") {
+          logger.info("Prompts already exist. Use ?force=true to reseed or ?quotesOnly=true to only replace quotes");
+          res.status(200).json({
+            status: "skipped",
+            message: "Prompts already exist. Use ?force=true to reseed or ?quotesOnly=true to only replace quotes",
+          });
+          return;
+        }
+
+        if (req.query.force === "true") {
+          logger.info("Force reseed requested, clearing existing prompts");
+          // Delete ALL existing prompts in batches
+          let deletedCount = 0;
+          let hasMore = true;
+          while (hasMore) {
+            const snapshot = await db.collection("prompts").limit(500).get();
+            if (snapshot.empty) {
+              hasMore = false;
+            } else {
+              const batch = db.batch();
+              snapshot.docs.forEach((doc) => {
+                batch.delete(doc.ref);
+              });
+              await batch.commit();
+              deletedCount += snapshot.size;
+              logger.info(`Deleted ${deletedCount} prompts so far...`);
+            }
+          }
+          logger.info(`Total deleted: ${deletedCount} prompts`);
+        }
       }
 
       // Reset the ID counter for fresh seeding
       promptIdCounter = 0;
 
       // Target: ~80% questions, ~20% statements (flexible, keep all quality content)
-      const allPrompts: PromptData[] = [];
-      const seenPrompts = new Set<string>();
+      const allPrompts: PromptData[] = [...existingQuestions];
 
-      // STEP 1: Scrape ALL quality STATEMENTS/QUOTES first (no limit)
-      logger.info("Scraping all quality statements/quotes...");
+      // STEP 1: Scrape ALL quality STATEMENTS/QUOTES from curated list
+      logger.info("Scraping quality statements/quotes from curated philosophers list...");
 
       // Scrape Wikiquote for statements - keep ALL quality quotes
       const wikiquotePrompts = await scrapeWikiquote();
       logger.info(`Scraped ${wikiquotePrompts.length} quotes from Wikiquote`);
+
+      // Collect all new statements for response
+      const newStatements: Array<{id: string; quote: string; author: string}> = [];
 
       // Add ALL scraped quotes (no artificial limit)
       wikiquotePrompts.forEach((p) => {
@@ -643,65 +698,76 @@ export const seedPrompts = onRequest(
         if (!seenPrompts.has(normalized)) {
           seenPrompts.add(normalized);
           allPrompts.push(p);
+          // Extract author from hint (format: "- Author Name")
+          const author = p.hint.replace(/^-\s*/, "").trim();
+          newStatements.push({id: p.id, quote: p.question, author});
         }
       });
 
       // Add curated quotes if we got very few from scraping
-      if (allPrompts.length < 50) {
-        const curatedQuotes = generateCuratedQuotes(50 - allPrompts.length, seenPrompts);
-        allPrompts.push(...curatedQuotes);
+      if (newStatements.length < 20) {
+        const curatedQuotes = generateCuratedQuotes(50 - newStatements.length, seenPrompts);
+        curatedQuotes.forEach((p) => {
+          allPrompts.push(p);
+          const author = p.hint.replace(/^-\s*/, "").trim();
+          newStatements.push({id: p.id, quote: p.question, author});
+        });
       }
 
-      const totalStatements = allPrompts.length;
-      logger.info(`Total statements: ${totalStatements}`);
+      const totalStatements = newStatements.length;
+      logger.info(`Total new statements: ${totalStatements}`);
 
-      // STEP 2: Generate QUESTIONS to achieve ~80/20 ratio
-      // For 80/20 ratio: questions = statements * 4
-      const targetQuestions = Math.max(Math.ceil(totalStatements * 4), 200); // At least 200 questions
-      logger.info(`Generating ~${targetQuestions} questions to achieve 80/20 ratio...`);
+      // STEP 2: If not quotesOnly mode, generate questions too
+      let totalQuestions = existingQuestions.length;
 
-      // Scrape JournalBuddies for questions first
-      const journalBuddiesPrompts = await scrapeJournalBuddies();
-      const scrapedQuestions = journalBuddiesPrompts.filter((p) =>
-        p.question.endsWith("?") ||
-        /^(What|How|Why|When|Where|Who|Which|Describe|Write|Think|Reflect|List|Name|Share|Explain|Imagine|Create|Consider)/i.test(p.question)
-      );
-      logger.info(`Scraped ${scrapedQuestions.length} questions from JournalBuddies`);
+      if (!quotesOnly) {
+        // For 80/20 ratio: questions = statements * 4
+        const targetQuestions = Math.max(Math.ceil(totalStatements * 4), 200); // At least 200 questions
+        logger.info(`Generating ~${targetQuestions} questions to achieve 80/20 ratio...`);
 
-      // Add scraped questions
-      let questionsAdded = 0;
-      scrapedQuestions.forEach((p) => {
-        const normalized = normalizeText(p.question);
-        if (!seenPrompts.has(normalized)) {
-          seenPrompts.add(normalized);
-          allPrompts.push(p);
-          questionsAdded++;
-        }
-      });
+        // Scrape JournalBuddies for questions first
+        const journalBuddiesPrompts = await scrapeJournalBuddies();
+        const scrapedQuestions = journalBuddiesPrompts.filter((p) =>
+          p.question.endsWith("?") ||
+          /^(What|How|Why|When|Where|Who|Which|Describe|Write|Think|Reflect|List|Name|Share|Explain|Imagine|Create|Consider)/i.test(p.question)
+        );
+        logger.info(`Scraped ${scrapedQuestions.length} questions from JournalBuddies`);
 
-      // Generate additional questions to reach target
-      const questionCategories = ["question", "reflection", "gratitude", "creative", "growth"];
-      const questionsNeeded = targetQuestions - questionsAdded;
-      const questionsPerCategory = Math.ceil(questionsNeeded / questionCategories.length);
-
-      for (const category of questionCategories) {
-        const generated = generateHighQualityPrompts(category, questionsPerCategory, seenPrompts);
-        generated.forEach((p) => {
-          if (questionsAdded < targetQuestions) {
+        // Add scraped questions
+        let questionsAdded = 0;
+        scrapedQuestions.forEach((p) => {
+          const normalized = normalizeText(p.question);
+          if (!seenPrompts.has(normalized)) {
+            seenPrompts.add(normalized);
             allPrompts.push(p);
             questionsAdded++;
           }
         });
-      }
 
-      const totalQuestions = questionsAdded;
-      logger.info(`Total questions: ${totalQuestions}`);
+        // Generate additional questions to reach target
+        const questionCategories = ["question", "reflection", "gratitude", "creative", "growth"];
+        const questionsNeeded = targetQuestions - questionsAdded;
+        const questionsPerCategory = Math.ceil(questionsNeeded / questionCategories.length);
+
+        for (const category of questionCategories) {
+          const generated = generateHighQualityPrompts(category, questionsPerCategory, seenPrompts);
+          generated.forEach((p) => {
+            if (questionsAdded < targetQuestions) {
+              allPrompts.push(p);
+              questionsAdded++;
+            }
+          });
+        }
+
+        totalQuestions = questionsAdded;
+        logger.info(`Total questions: ${totalQuestions}`);
+      }
 
       // Shuffle all prompts
       const shuffledPrompts = allPrompts.sort(() => Math.random() - 0.5);
 
       logger.info(`Total prompts to seed: ${shuffledPrompts.length}`);
-      logger.info(`Ratio: ${((totalQuestions / shuffledPrompts.length) * 100).toFixed(1)}% questions, ${((totalStatements / shuffledPrompts.length) * 100).toFixed(1)}% statements`);
+      logger.info(`Questions: ${totalQuestions}, Statements: ${totalStatements}`);
 
       // Store in Firestore in batches of 500
       const batchSize = 500;
@@ -723,6 +789,15 @@ export const seedPrompts = onRequest(
 
       logger.info(`Successfully seeded ${totalStored} prompts`);
 
+      // Group statements by author for the response
+      const statementsByAuthor: Record<string, string[]> = {};
+      newStatements.forEach(({quote, author}) => {
+        if (!statementsByAuthor[author]) {
+          statementsByAuthor[author] = [];
+        }
+        statementsByAuthor[author].push(quote);
+      });
+
       res.status(200).json({
         status: "success",
         totalPrompts: totalStored,
@@ -730,6 +805,8 @@ export const seedPrompts = onRequest(
         statements: totalStatements,
         questionPercentage: `${((totalQuestions / totalStored) * 100).toFixed(1)}%`,
         statementPercentage: `${((totalStatements / totalStored) * 100).toFixed(1)}%`,
+        allStatements: newStatements,
+        statementsByAuthor: statementsByAuthor,
       });
     } catch (error) {
       logger.error("Error seeding prompts", error);
@@ -1031,6 +1108,144 @@ export const analyzePromptsRatio = onRequest(
   }
 );
 
+/**
+ * Cleanup all statements/quotes from Firestore
+ * Keeps all questions intact, only removes quotes
+ */
+export const cleanupAllStatements = onRequest(
+  {
+    cors: true,
+    timeoutSeconds: 300,
+    memory: "512MiB",
+  },
+  async (req, res) => {
+    logger.info("Starting cleanup of all statements/quotes");
+
+    try {
+      // Query all prompts with category "quote"
+      const quotesSnapshot = await db.collection("prompts")
+        .where("category", "==", "quote")
+        .get();
+
+      logger.info(`Found ${quotesSnapshot.size} quotes to delete`);
+
+      if (quotesSnapshot.empty) {
+        res.status(200).json({
+          status: "success",
+          message: "No quotes found to delete",
+          deleted: 0,
+        });
+        return;
+      }
+
+      // Delete in batches of 500
+      const batchSize = 500;
+      let totalDeleted = 0;
+      const docs = quotesSnapshot.docs;
+
+      for (let i = 0; i < docs.length; i += batchSize) {
+        const batch = db.batch();
+        const chunk = docs.slice(i, i + batchSize);
+
+        chunk.forEach((doc) => {
+          batch.delete(doc.ref);
+        });
+
+        await batch.commit();
+        totalDeleted += chunk.length;
+        logger.info(`Deleted batch: ${totalDeleted}/${docs.length}`);
+      }
+
+      // Get remaining prompts count
+      const remainingSnapshot = await db.collection("prompts").get();
+
+      res.status(200).json({
+        status: "success",
+        message: `Deleted ${totalDeleted} quotes/statements`,
+        deleted: totalDeleted,
+        remainingPrompts: remainingSnapshot.size,
+      });
+    } catch (error) {
+      logger.error("Error cleaning up statements", error);
+      res.status(500).json({
+        status: "error",
+        message: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
+);
+
+/**
+ * List all statements/quotes from Firestore
+ * Returns array of all quotes with their text, author, and ID
+ */
+export const listAllStatements = onRequest(
+  {
+    cors: true,
+    timeoutSeconds: 120,
+    memory: "256MiB",
+  },
+  async (req, res) => {
+    logger.info("Fetching all statements/quotes");
+
+    try {
+      // Query all prompts with category "quote"
+      const quotesSnapshot = await db.collection("prompts")
+        .where("category", "==", "quote")
+        .get();
+
+      logger.info(`Found ${quotesSnapshot.size} quotes`);
+
+      // Group by author (extracted from hint field)
+      const byAuthor: Record<string, Array<{id: string; quote: string}>> = {};
+      const allStatements: Array<{id: string; quote: string; author: string}> = [];
+
+      quotesSnapshot.docs.forEach((doc) => {
+        const data = doc.data();
+        const quote = data.question as string;
+        const hint = data.hint as string || "";
+        // Extract author from hint (format: "- Author Name")
+        const author = hint.replace(/^-\s*/, "").trim() || "Unknown";
+
+        allStatements.push({
+          id: doc.id,
+          quote: quote,
+          author: author,
+        });
+
+        if (!byAuthor[author]) {
+          byAuthor[author] = [];
+        }
+        byAuthor[author].push({
+          id: doc.id,
+          quote: quote,
+        });
+      });
+
+      // Sort by author name
+      const sortedAuthors = Object.keys(byAuthor).sort();
+      const sortedByAuthor: Record<string, Array<{id: string; quote: string}>> = {};
+      sortedAuthors.forEach((author) => {
+        sortedByAuthor[author] = byAuthor[author];
+      });
+
+      res.status(200).json({
+        status: "success",
+        totalStatements: allStatements.length,
+        authorCount: sortedAuthors.length,
+        byAuthor: sortedByAuthor,
+        allStatements: allStatements,
+      });
+    } catch (error) {
+      logger.error("Error listing statements", error);
+      res.status(500).json({
+        status: "error",
+        message: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
+);
+
 // Type for prompt data
 type PromptData = {
   id: string;
@@ -1163,6 +1378,15 @@ function isValidQuote(text: string): boolean {
     /\b(in|on|at) (19|20)\d{2}\b/, // Years
     /\b(bomb|weapon|war|battle|election|president|government)\b/i,
     /\b(percent|%|dollars?|\$|miles?|km|kilometers?)\b/i,
+    // Historical atrocities and specific historical events
+    /\b(hitler|nazi|holocaust|genocide|concentration camp|wwii|ww2|world war)\b/i,
+    /\b(devastated|destroyed|killed|murdered|executed|slaughtered)\b/i,
+    // Military/battle-specific content
+    /\b(army|armies|troops|soldiers|cavalry|infantry|artillery|regiment)\b/i,
+    /\b(conquer|conquered|invasion|invaded|siege|defeated|victory over)\b/i,
+    /\b(empire|emperor|kingdom|throne|reign|dynasty)\b/i,
+    // Specific historical conflicts and events
+    /\b(revolution|civil war|campaign|expedition|march on)\b/i,
   ];
   for (const pattern of factualPatterns) {
     if (pattern.test(text)) return false;
@@ -1325,21 +1549,22 @@ async function scrapeWikiquote(): Promise<PromptData[]> {
   const seenQuotes = new Set<string>(); // For deduplication
   const quotes: PromptData[] = [];
 
-  // Expanded list of people for more variety
+  // Curated list of philosophers, thinkers, and historical figures
   const people = [
-    // Philosophers
-    "Albert_Einstein", "Plato", "Aristotle", "Socrates", "Marcus_Aurelius",
-    "Epictetus", "Seneca", "Confucius", "Lao_Tzu", "Friedrich_Nietzsche",
-    // Writers & Poets
-    "Oscar_Wilde", "Mark_Twain", "Ralph_Waldo_Emerson", "Henry_David_Thoreau",
-    "Rumi", "Maya_Angelou", "Ernest_Hemingway", "Virginia_Woolf",
-    // Leaders & Activists
-    "Nelson_Mandela", "Winston_Churchill", "Mahatma_Gandhi", "Martin_Luther_King_Jr.",
-    "Eleanor_Roosevelt", "Abraham_Lincoln", "Theodore_Roosevelt",
+    // Stoics
+    "Epicurus", "Seneca", "Marcus_Aurelius", "Epictetus",
+    // Eastern Philosophy
+    "Buddha", "Lao_Tzu", "Confucius", "Rumi",
     // Modern Thinkers
-    "Steve_Jobs", "Oprah_Winfrey", "Dalai_Lama", "Mother_Teresa",
-    // Additional wisdom figures
-    "Buddha", "Helen_Keller", "Anne_Frank", "Carl_Jung",
+    "Carl_Jung", "Viktor_Frankl", "Alan_Watts",
+    // Writers/Poets
+    "Maya_Angelou", "Rainer_Maria_Rilke",
+    // Scientists/Philosophers
+    "Albert_Einstein", "Carl_Sagan",
+    // Historical Leaders (focus on wisdom/leadership quotes, not battle-specific)
+    "Napoleon", "Alexander_the_Great", "Julius_Caesar",
+    // Renaissance/Classical
+    "Leonardo_da_Vinci", "Michelangelo", "Plato", "Aristotle", "Socrates",
   ];
 
   for (const person of people) {
