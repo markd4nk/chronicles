@@ -13,6 +13,7 @@ struct AIReflectView: View {
     @State private var showJournalSelection = false
     @State private var showHistory = false
     @State private var showNewConversationAlert = false
+    @FocusState private var isInputFocused: Bool
     
     var body: some View {
         NavigationView {
@@ -145,6 +146,11 @@ struct AIReflectView: View {
                     }
                     .padding(.vertical, Papper.spacing.md)
                 }
+                .scrollDismissesKeyboard(.interactively)
+                .onTapGesture {
+                    // Dismiss keyboard when tapping on messages area (iMessage-like behavior)
+                    isInputFocused = false
+                }
                 .onChange(of: viewModel.messages.count) {
                     if let lastMessage = viewModel.messages.last {
                         withAnimation {
@@ -171,6 +177,7 @@ struct AIReflectView: View {
                 HStack {
                     TextField("Share your thoughts...", text: $viewModel.inputText)
                         .font(.system(size: 16))
+                        .focused($isInputFocused)
                 }
                 .padding(.horizontal, Papper.spacing.md)
                 .padding(.vertical, 12)
@@ -203,7 +210,8 @@ struct AIReflectView: View {
                 .disabled(viewModel.inputText.isEmpty || viewModel.isGenerating)
             }
             .padding(.horizontal, Papper.spacing.lg)
-            .padding(.vertical, Papper.spacing.md)
+            .padding(.top, Papper.spacing.md)
+            .padding(.bottom, Papper.spacing.lg + 20) // Extra padding for tab bar visibility
         }
         .background(Color(hex: "#faf8f3"))
     }
