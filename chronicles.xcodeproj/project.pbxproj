@@ -17,6 +17,8 @@
 /* Begin PBXFileReference section */
 		1C8AE9BA2F00BC3C00FE69BC /* chronicles.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = chronicles.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1C8AEACD2F00BD4700FE69BC /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
+		1C8AEAD12F00BF0000FE69BC /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		1C8AEAD22F00BF0000FE69BC /* Chronicles.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Chronicles.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -48,6 +50,8 @@
 				1C8AEA912F00BC7E00FE69BC /* Chronicles */,
 				1C8AE9BB2F00BC3C00FE69BC /* Products */,
 				1C8AEACD2F00BD4700FE69BC /* GoogleService-Info.plist */,
+				1C8AEAD12F00BF0000FE69BC /* Info.plist */,
+				1C8AEAD22F00BF0000FE69BC /* Chronicles.entitlements */,
 			);
 			sourceTree = "<group>";
 		};
@@ -273,13 +277,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = Chronicles/Chronicles.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Chronicles.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = C84QWQXHA8;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = Chronicles/Info.plist;
+				INFOPLIST_FILE = Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -302,13 +306,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = Chronicles/Chronicles.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Chronicles.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = C84QWQXHA8;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = Chronicles/Info.plist;
+				INFOPLIST_FILE = Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
