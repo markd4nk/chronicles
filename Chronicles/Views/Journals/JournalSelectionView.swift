@@ -106,6 +106,13 @@ struct JournalSelectionView: View {
                     CreateEntryView(journal: journal)
                 }
             }
+            .task {
+                // Ensure journals are loaded when view appears
+                // This handles cases where the binding hasn't fired yet
+                if viewModel.journals.isEmpty {
+                    await viewModel.loadJournals()
+                }
+            }
         }
     }
     

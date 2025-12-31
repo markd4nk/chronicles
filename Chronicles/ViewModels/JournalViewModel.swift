@@ -34,9 +34,16 @@ class JournalViewModel: ObservableObject {
     }
     
     private func setupBindings() {
+        // Get current value immediately, then subscribe to updates
+        journals = firebaseService.journals
+        
         firebaseService.$journals
             .receive(on: DispatchQueue.main)
             .assign(to: &$journals)
+        
+        // Get current values immediately
+        entries = firebaseService.entries
+        templates = firebaseService.templates
         
         firebaseService.$entries
             .receive(on: DispatchQueue.main)
