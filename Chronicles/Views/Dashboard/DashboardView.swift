@@ -661,8 +661,8 @@ struct SkeletonWidgetCard: View {
     private var shimmerGradient: some ShapeStyle {
         LinearGradient(
             colors: [
-                PapperColors.neutral200.opacity(isAnimating ? 0.3 : 0.6),
-                PapperColors.neutral200.opacity(isAnimating ? 0.6 : 0.3)
+                PapperColors.neutral300.opacity(isAnimating ? 0.3 : 0.6),
+                PapperColors.neutral300.opacity(isAnimating ? 0.6 : 0.3)
             ],
             startPoint: .leading,
             endPoint: .trailing
