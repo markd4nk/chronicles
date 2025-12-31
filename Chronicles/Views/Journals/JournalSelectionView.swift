@@ -8,7 +8,6 @@
 import SwiftUI
 
 struct JournalSelectionView: View {
-    @StateObject private var viewModel = JournalViewModel()
     @ObservedObject private var firebaseService = FirebaseService.shared
     @Environment(\.dismiss) private var dismiss
     
@@ -16,18 +15,40 @@ struct JournalSelectionView: View {
     @State private var selectedJournal: Journal?
     @State private var showCreateEntry = false
     
-    // Use FirebaseService directly for immediate access to journals
-    private var journals: [Journal] {
-        firebaseService.journals
-    }
-    
     var body: some View {
-        NavigationStack {
-            ZStack {
-                Color(hex: "#faf8f3")
-                    .ignoresSafeArea()
+        // No NavigationStack - use custom header to avoid sheet layout issues
+        ZStack {
+            Color(hex: "#faf8f3")
+                .ignoresSafeArea()
+            
+            VStack(spacing: 0) {
+                // Custom navigation header
+                HStack {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                    .font(.system(size: 17))
+                    .foregroundColor(PapperColors.neutral600)
+                    
+                    Spacer()
+                    
+                    Text("New Entry")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(PapperColors.neutral800)
+                    
+                    Spacer()
+                    
+                    // Invisible spacer to center title
+                    Text("Cancel")
+                        .font(.system(size: 17))
+                        .opacity(0)
+                }
+                .padding(.horizontal, Papper.spacing.lg)
+                .padding(.vertical, Papper.spacing.md)
+                .background(Color(hex: "#faf8f3"))
                 
-                if journals.isEmpty {
+                // Content
+                if firebaseService.journals.isEmpty {
                     emptyState
                 } else {
                     ScrollView(showsIndicators: false) {
@@ -42,10 +63,10 @@ struct JournalSelectionView: View {
                                     .font(Papper.typography.body)
                                     .foregroundColor(PapperColors.neutral600)
                             }
-                            .padding(.top, Papper.spacing.md)
+                            .padding(.top, Papper.spacing.sm)
                             
                             // Journal Cards
-                            ForEach(journals) { journal in
+                            ForEach(firebaseService.journals) { journal in
                                 JournalSelectionCard(
                                     journal: journal,
                                     onTap: {
@@ -94,23 +115,13 @@ struct JournalSelectionView: View {
                     }
                 }
             }
-            .navigationTitle("New Entry")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                    .foregroundColor(PapperColors.neutral600)
-                }
-            }
-            .sheet(isPresented: $showCreateJournal) {
-                CreateJournalView()
-            }
-            .fullScreenCover(isPresented: $showCreateEntry) {
-                if let journal = selectedJournal {
-                    CreateEntryView(journal: journal)
-                }
+        }
+        .sheet(isPresented: $showCreateJournal) {
+            CreateJournalView()
+        }
+        .fullScreenCover(isPresented: $showCreateEntry) {
+            if let journal = selectedJournal {
+                CreateEntryView(journal: journal)
             }
         }
     }
