@@ -30,18 +30,8 @@ class FirebaseService: ObservableObject {
     private let promptsBatchSize = 50
     
     private init() {
-        // Load sample data for demo (non-prompts)
-        loadSampleData()
         // Set up prompts listener
         setupPromptsListener()
-    }
-    
-    private func loadSampleData() {
-        journals = Journal.samples
-        entries = JournalEntry.samples
-        templates = JournalTemplate.samples
-        // Don't load prompts from samples - fetch from Firestore
-        conversations = AIConversation.samples
     }
     
     // MARK: - Prompts Listener
@@ -56,17 +46,88 @@ class FirebaseService: ObservableObject {
     // MARK: - Journal Operations
     
     func fetchJournals(userId: String) async throws -> [Journal] {
-        // In production, fetch from Firestore
-        return Journal.samples
+        let snapshot = try await db.collection("journals")
+            .whereField("userId", isEqualTo: userId)
+            .order(by: "order")
+            .getDocuments()
+        
+        let fetchedJournals = snapshot.documents.compactMap { doc -> Journal? in
+            let data = doc.data()
+            
+            let createdAt: Date
+            if let timestamp = data["createdAt"] as? Timestamp {
+                createdAt = timestamp.dateValue()
+            } else {
+                createdAt = Date()
+            }
+            
+            let updatedAt: Date
+            if let timestamp = data["updatedAt"] as? Timestamp {
+                updatedAt = timestamp.dateValue()
+            } else {
+                updatedAt = Date()
+            }
+            
+            let lastEntryDate: Date?
+            if let timestamp = data["lastEntryDate"] as? Timestamp {
+                lastEntryDate = timestamp.dateValue()
+            } else {
+                lastEntryDate = nil
+            }
+            
+            return Journal(
+                id: doc.documentID,
+                userId: data["userId"] as? String ?? userId,
+                name: data["name"] as? String ?? "Untitled",
+                color: data["color"] as? String ?? "#414141",
+                order: data["order"] as? Int ?? 0,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                entryCount: data["entryCount"] as? Int ?? 0,
+                lastEntryDate: lastEntryDate
+            )
+        }
+        
+        await MainActor.run {
+            self.journals = fetchedJournals
+        }
+        
+        return fetchedJournals
     }
     
     func createJournal(_ journal: Journal) async throws {
+        let data: [String: Any] = [
+            "userId": journal.userId,
+            "name": journal.name,
+            "color": journal.color,
+            "order": journal.order,
+            "createdAt": Timestamp(date: journal.createdAt),
+            "updatedAt": Timestamp(date: journal.updatedAt),
+            "entryCount": journal.entryCount
+        ]
+        
+        try await db.collection("journals").document(journal.id).setData(data)
+        
         await MainActor.run {
             journals.append(journal)
         }
     }
     
     func updateJournal(_ journal: Journal) async throws {
+        var data: [String: Any] = [
+            "name": journal.name,
+            "color": journal.color,
+            "order": journal.order,
+            "updatedAt": Timestamp(date: Date()),
+            "entryCount": journal.entryCount
+        ]
+        
+        if let lastEntryDate = journal.lastEntryDate {
+            data["lastEntryDate"] = Timestamp(date: lastEntryDate)
+        }
+        
+        try await db.collection("journals").document(journal.id).updateData(data)
+        
         await MainActor.run {
             if let index = journals.firstIndex(where: { $0.id == journal.id }) {
                 journals[index] = journal
@@ -75,14 +136,33 @@ class FirebaseService: ObservableObject {
     }
     
     func deleteJournal(_ journalId: String) async throws {
+        // Delete journal from Firestore
+        try await db.collection("journals").document(journalId).delete()
+        
+        // Delete all entries for this journal
+        let entriesSnapshot = try await db.collection("entries")
+            .whereField("journalId", isEqualTo: journalId)
+            .getDocuments()
+        
+        for doc in entriesSnapshot.documents {
+            try await doc.reference.delete()
+        }
+        
         await MainActor.run {
             journals.removeAll { $0.id == journalId }
-            // Also remove entries for this journal
             entries.removeAll { $0.journalId == journalId }
         }
     }
     
     func reorderJournals(_ journals: [Journal]) async throws {
+        // Update order for each journal in Firestore
+        for (index, journal) in journals.enumerated() {
+            try await db.collection("journals").document(journal.id).updateData([
+                "order": index,
+                "updatedAt": Timestamp(date: Date())
+            ])
+        }
+        
         await MainActor.run {
             self.journals = journals
         }
@@ -91,22 +171,115 @@ class FirebaseService: ObservableObject {
     // MARK: - Entry Operations
     
     func fetchEntries(userId: String, journalId: String? = nil) async throws -> [JournalEntry] {
+        var query: Query = db.collection("entries")
+            .whereField("userId", isEqualTo: userId)
+            .order(by: "createdAt", descending: true)
+        
         if let journalId = journalId {
-            return entries.filter { $0.journalId == journalId }
+            query = query.whereField("journalId", isEqualTo: journalId)
         }
-        return entries
+        
+        let snapshot = try await query.getDocuments()
+        
+        let fetchedEntries = snapshot.documents.compactMap { doc -> JournalEntry? in
+            return parseEntryFromDocument(doc)
+        }
+        
+        await MainActor.run {
+            if journalId == nil {
+                self.entries = fetchedEntries
+            }
+        }
+        
+        return fetchedEntries
     }
     
     func fetchEntriesForDate(userId: String, date: Date) async throws -> [JournalEntry] {
         let calendar = Calendar.current
-        return entries.filter { calendar.isDate($0.createdAt, inSameDayAs: date) }
+        let startOfDay = calendar.startOfDay(for: date)
+        let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
+        
+        let snapshot = try await db.collection("entries")
+            .whereField("userId", isEqualTo: userId)
+            .whereField("createdAt", isGreaterThanOrEqualTo: Timestamp(date: startOfDay))
+            .whereField("createdAt", isLessThan: Timestamp(date: endOfDay))
+            .order(by: "createdAt", descending: true)
+            .getDocuments()
+        
+        return snapshot.documents.compactMap { doc -> JournalEntry? in
+            return parseEntryFromDocument(doc)
+        }
+    }
+    
+    private func parseEntryFromDocument(_ doc: DocumentSnapshot) -> JournalEntry? {
+        guard let data = doc.data() else { return nil }
+        
+        let createdAt: Date
+        if let timestamp = data["createdAt"] as? Timestamp {
+            createdAt = timestamp.dateValue()
+        } else {
+            createdAt = Date()
+        }
+        
+        let updatedAt: Date
+        if let timestamp = data["updatedAt"] as? Timestamp {
+            updatedAt = timestamp.dateValue()
+        } else {
+            updatedAt = Date()
+        }
+        
+        let inputMethodString = data["inputMethod"] as? String ?? "write"
+        let inputMethod = JournalEntry.InputMethod(rawValue: inputMethodString) ?? .write
+        
+        return JournalEntry(
+            id: doc.documentID,
+            userId: data["userId"] as? String ?? "",
+            journalId: data["journalId"] as? String ?? "",
+            templateId: data["templateId"] as? String,
+            promptId: data["promptId"] as? String,
+            title: data["title"] as? String ?? "Untitled",
+            content: data["content"] as? String ?? "",
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            inputMethod: inputMethod,
+            mood: data["mood"] as? String,
+            wordCount: data["wordCount"] as? Int ?? 0
+        )
     }
     
     func createEntry(_ entry: JournalEntry) async throws {
+        var data: [String: Any] = [
+            "userId": entry.userId,
+            "journalId": entry.journalId,
+            "title": entry.title,
+            "content": entry.content,
+            "createdAt": Timestamp(date: entry.createdAt),
+            "updatedAt": Timestamp(date: entry.updatedAt),
+            "inputMethod": entry.inputMethod.rawValue,
+            "wordCount": entry.wordCount
+        ]
+        
+        if let templateId = entry.templateId {
+            data["templateId"] = templateId
+        }
+        if let promptId = entry.promptId {
+            data["promptId"] = promptId
+        }
+        if let mood = entry.mood {
+            data["mood"] = mood
+        }
+        
+        try await db.collection("entries").document(entry.id).setData(data)
+        
+        // Update journal entry count in Firestore
+        try await db.collection("journals").document(entry.journalId).updateData([
+            "entryCount": FieldValue.increment(Int64(1)),
+            "lastEntryDate": Timestamp(date: entry.createdAt)
+        ])
+        
         await MainActor.run {
             entries.insert(entry, at: 0)
             
-            // Update journal entry count
             if let index = journals.firstIndex(where: { $0.id == entry.journalId }) {
                 journals[index].entryCount += 1
                 journals[index].lastEntryDate = entry.createdAt
@@ -115,6 +288,19 @@ class FirebaseService: ObservableObject {
     }
     
     func updateEntry(_ entry: JournalEntry) async throws {
+        var data: [String: Any] = [
+            "title": entry.title,
+            "content": entry.content,
+            "updatedAt": Timestamp(date: Date()),
+            "wordCount": entry.wordCount
+        ]
+        
+        if let mood = entry.mood {
+            data["mood"] = mood
+        }
+        
+        try await db.collection("entries").document(entry.id).updateData(data)
+        
         await MainActor.run {
             if let index = entries.firstIndex(where: { $0.id == entry.id }) {
                 entries[index] = entry
@@ -123,9 +309,21 @@ class FirebaseService: ObservableObject {
     }
     
     func deleteEntry(_ entryId: String) async throws {
+        // Get the entry first to update journal count
+        let entry = entries.first(where: { $0.id == entryId })
+        
+        // Delete from Firestore
+        try await db.collection("entries").document(entryId).delete()
+        
+        // Update journal entry count in Firestore
+        if let entry = entry {
+            try await db.collection("journals").document(entry.journalId).updateData([
+                "entryCount": FieldValue.increment(Int64(-1))
+            ])
+        }
+        
         await MainActor.run {
             if let entry = entries.first(where: { $0.id == entryId }) {
-                // Update journal entry count
                 if let index = journals.firstIndex(where: { $0.id == entry.journalId }) {
                     journals[index].entryCount = max(0, journals[index].entryCount - 1)
                 }
@@ -481,9 +679,76 @@ class FirebaseService: ObservableObject {
     // MARK: - Streak Operations
     
     func updateStreak(userId: String) async throws -> (current: Int, longest: Int) {
-        // In production, calculate from actual entry dates
-        // For demo, return sample values
-        return (7, 14)
+        // Fetch entries to calculate streak
+        let snapshot = try await db.collection("entries")
+            .whereField("userId", isEqualTo: userId)
+            .order(by: "createdAt", descending: true)
+            .getDocuments()
+        
+        let entryDates = snapshot.documents.compactMap { doc -> Date? in
+            if let timestamp = doc.data()["createdAt"] as? Timestamp {
+                return timestamp.dateValue()
+            }
+            return nil
+        }
+        
+        let currentStreak = calculateCurrentStreak(from: entryDates)
+        let longestStreak = calculateLongestStreak(from: entryDates)
+        
+        // Save streak to user document
+        try await db.collection("users").document(userId).setData([
+            "currentStreak": currentStreak,
+            "longestStreak": longestStreak
+        ], merge: true)
+        
+        return (currentStreak, longestStreak)
+    }
+    
+    private func calculateCurrentStreak(from dates: [Date]) -> Int {
+        guard !dates.isEmpty else { return 0 }
+        
+        let calendar = Calendar.current
+        var streak = 0
+        var currentDate = calendar.startOfDay(for: Date())
+        
+        // Get unique days
+        let uniqueDays = Set(dates.map { calendar.startOfDay(for: $0) }).sorted(by: >)
+        
+        for day in uniqueDays {
+            if day == currentDate || day == calendar.date(byAdding: .day, value: -1, to: currentDate)! {
+                streak += 1
+                currentDate = day
+            } else if day < calendar.date(byAdding: .day, value: -1, to: currentDate)! {
+                break
+            }
+        }
+        
+        return streak
+    }
+    
+    private func calculateLongestStreak(from dates: [Date]) -> Int {
+        guard !dates.isEmpty else { return 0 }
+        
+        let calendar = Calendar.current
+        let uniqueDays = Set(dates.map { calendar.startOfDay(for: $0) }).sorted()
+        
+        var longestStreak = 1
+        var currentStreak = 1
+        
+        for i in 1..<uniqueDays.count {
+            let previousDay = uniqueDays[i - 1]
+            let currentDay = uniqueDays[i]
+            
+            if let nextDay = calendar.date(byAdding: .day, value: 1, to: previousDay),
+               currentDay == nextDay {
+                currentStreak += 1
+                longestStreak = max(longestStreak, currentStreak)
+            } else {
+                currentStreak = 1
+            }
+        }
+        
+        return longestStreak
     }
     
     func calculateStreak(entries: [JournalEntry]) -> Int {

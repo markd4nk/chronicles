@@ -69,7 +69,7 @@ class AuthService: NSObject, ObservableObject {
     // MARK: - Load or Create User
     
     @MainActor
-    private func loadOrCreateUser(from firebaseUser: FirebaseAuth.User) async {
+    private func loadOrCreateUser(from firebaseUser: FirebaseAuth.User, appleFullName: PersonNameComponents? = nil) async {
         // Load saved user data
         let savedOnboardingCompleted = UserDefaults.standard.bool(forKey: "onboarding_\(firebaseUser.uid)")
         let savedOnboardingData = loadOnboardingData(for: firebaseUser.uid)
@@ -77,12 +77,48 @@ class AuthService: NSObject, ObservableObject {
         let savedLongestStreak = UserDefaults.standard.integer(forKey: "longestStreak_\(firebaseUser.uid)")
         let savedTotalEntries = UserDefaults.standard.integer(forKey: "totalEntries_\(firebaseUser.uid)")
         
+        // Extract display name and preferred name from Google/Apple account
+        let displayName: String
+        let preferredName: String
+        
+        // First check if we have a saved preferred name (user may have set it manually)
+        let savedPreferredName = UserDefaults.standard.string(forKey: "preferredName_\(firebaseUser.uid)")
+        let savedDisplayName = UserDefaults.standard.string(forKey: "displayName_\(firebaseUser.uid)")
+        
+        if let savedDisplay = savedDisplayName, let savedPreferred = savedPreferredName {
+            // Use saved names
+            displayName = savedDisplay
+            preferredName = savedPreferred
+        } else if let appleName = appleFullName {
+            // Apple Sign-In - extract name from PersonNameComponents
+            let formatter = PersonNameComponentsFormatter()
+            formatter.style = .default
+            displayName = formatter.string(from: appleName)
+            preferredName = appleName.givenName ?? appleName.familyName ?? "User"
+            
+            // Save the names for future sessions (Apple only provides name on first sign-in)
+            UserDefaults.standard.set(displayName, forKey: "displayName_\(firebaseUser.uid)")
+            UserDefaults.standard.set(preferredName, forKey: "preferredName_\(firebaseUser.uid)")
+        } else if let firebaseDisplayName = firebaseUser.displayName, !firebaseDisplayName.isEmpty {
+            // Google Sign-In or other - use Firebase's displayName
+            displayName = firebaseDisplayName
+            preferredName = firebaseDisplayName.components(separatedBy: " ").first ?? "User"
+            
+            // Save for consistency
+            UserDefaults.standard.set(displayName, forKey: "displayName_\(firebaseUser.uid)")
+            UserDefaults.standard.set(preferredName, forKey: "preferredName_\(firebaseUser.uid)")
+        } else {
+            // Fallback
+            displayName = "User"
+            preferredName = "User"
+        }
+        
         // Create app user from Firebase user
         let user = User(
             id: firebaseUser.uid,
             email: firebaseUser.email ?? "",
-            displayName: firebaseUser.displayName ?? "User",
-            preferredName: firebaseUser.displayName?.components(separatedBy: " ").first ?? "User",
+            displayName: displayName,
+            preferredName: preferredName,
             createdAt: firebaseUser.metadata.creationDate ?? Date(),
             onboardingCompleted: savedOnboardingCompleted,
             onboardingData: savedOnboardingData,
@@ -206,7 +242,9 @@ class AuthService: NSObject, ObservableObject {
             
             // Sign in to Firebase
             let authResult = try await Auth.auth().signIn(with: firebaseCredential)
-            await loadOrCreateUser(from: authResult.user)
+            
+            // Pass Apple's fullName to loadOrCreateUser (only available on first sign-in)
+            await loadOrCreateUser(from: authResult.user, appleFullName: credential.fullName)
             
         } catch {
             appleSignInContinuation = nil

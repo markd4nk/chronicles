@@ -9,10 +9,12 @@ import SwiftUI
 
 struct DashboardView: View {
     @StateObject private var viewModel = DashboardViewModel()
-    @ObservedObject private var firebaseService = FirebaseService.shared
     @State private var showSettings = false
     @State private var showCreateEntry = false
     @State private var selectedWidget: DashboardWidget?
+    @State private var showCreateCustomWidget = false
+    @State private var widgetToRemove: DashboardWidget?
+    @State private var showRemoveConfirmation = false
     
     var body: some View {
         NavigationView {
@@ -30,16 +32,31 @@ struct DashboardView: View {
                         welcomeCard
                         
                         // Quick Entry Widgets (2x2 Grid)
-                        widgetsGrid
-                        
-                        // Recent Entries
-                        if !viewModel.recentEntries.isEmpty {
-                            recentEntriesSection
+                        if viewModel.isLoading && viewModel.activeWidgets.isEmpty {
+                            widgetsSkeletonLoader
+                        } else if viewModel.activeWidgets.isEmpty {
+                            emptyWidgetsState
+                        } else {
+                            widgetsGrid
                         }
                     }
                     .padding(.horizontal, Papper.spacing.lg)
                     .padding(.top, Papper.spacing.md)
                     .padding(.bottom, 100)
+                }
+                .refreshable {
+                    await viewModel.refresh()
+                }
+                
+                // Error Toast
+                if let errorMessage = viewModel.errorMessage {
+                    VStack {
+                        Spacer()
+                        errorToast(message: errorMessage)
+                            .padding(.bottom, 120)
+                    }
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .animation(.spring(), value: viewModel.errorMessage)
                 }
             }
             .navigationBarHidden(true)
@@ -49,7 +66,125 @@ struct DashboardView: View {
                 }
             }
             .sheet(item: $selectedWidget) { widget in
-                CreateEntryFromWidgetView(widget: widget)
+                CreateEntryFromWidgetView(widget: widget, viewModel: viewModel)
+            }
+            .sheet(isPresented: $showCreateCustomWidget) {
+                CreateCustomWidgetView(viewModel: viewModel)
+            }
+            .alert("Remove Widget", isPresented: $showRemoveConfirmation) {
+                Button("Cancel", role: .cancel) {
+                    widgetToRemove = nil
+                }
+                Button("Remove", role: .destructive) {
+                    if let widget = widgetToRemove {
+                        withAnimation(.spring(response: 0.3)) {
+                            viewModel.removeWidget(widget)
+                        }
+                    }
+                    widgetToRemove = nil
+                }
+            } message: {
+                Text("Are you sure you want to remove this widget from your dashboard?")
+            }
+        }
+    }
+    
+    // MARK: - Error Toast
+    
+    private func errorToast(message: String) -> some View {
+        HStack(spacing: Papper.spacing.sm) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundColor(.orange)
+            
+            Text(message)
+                .font(.system(size: 14))
+                .foregroundColor(PapperColors.neutral800)
+            
+            Spacer()
+            
+            Button {
+                viewModel.clearError()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(PapperColors.neutral500)
+            }
+        }
+        .padding(Papper.spacing.md)
+        .background(PapperColors.surfaceBackgroundPlain)
+        .cornerRadius(12)
+        .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 4)
+        .padding(.horizontal, Papper.spacing.lg)
+    }
+    
+    // MARK: - Skeleton Loader
+    
+    private var widgetsSkeletonLoader: some View {
+        VStack(spacing: Papper.spacing.md) {
+            HStack {
+                Text("Today's Focus")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(PapperColors.neutral800)
+                
+                Spacer()
+            }
+            
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: Papper.spacing.md) {
+                ForEach(0..<4, id: \.self) { _ in
+                    SkeletonWidgetCard()
+                }
+            }
+        }
+    }
+    
+    // MARK: - Empty State
+    
+    private var emptyWidgetsState: some View {
+        VStack(spacing: Papper.spacing.lg) {
+            VStack(spacing: Papper.spacing.md) {
+                HStack {
+                    Text("Today's Focus")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(PapperColors.neutral800)
+                    
+                    Spacer()
+                }
+                
+                VStack(spacing: Papper.spacing.md) {
+                    Image(systemName: "rectangle.grid.2x2")
+                        .font(.system(size: 48))
+                        .foregroundColor(PapperColors.neutral300)
+                    
+                    Text("No widgets yet")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(PapperColors.neutral600)
+                    
+                    Text("Create custom widgets to track your daily journaling habits")
+                        .font(.system(size: 14))
+                        .foregroundColor(PapperColors.neutral500)
+                        .multilineTextAlignment(.center)
+                    
+                    Button {
+                        showCreateCustomWidget = true
+                    } label: {
+                        HStack(spacing: Papper.spacing.xs) {
+                            Image(systemName: "plus.circle.fill")
+                            Text("Add Widget")
+                        }
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, Papper.spacing.lg)
+                        .padding(.vertical, Papper.spacing.sm)
+                        .background(PapperColors.neutral700)
+                        .cornerRadius(20)
+                    }
+                    .padding(.top, Papper.spacing.sm)
+                }
+                .padding(Papper.spacing.xl)
+                .frame(maxWidth: .infinity)
+                .background(PapperColors.surfaceBackgroundPlain)
+                .cornerRadius(16)
+                .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 2)
             }
         }
     }
@@ -135,39 +270,21 @@ struct DashboardView: View {
                     QuickEntryWidgetCard(
                         widget: widget,
                         isCompleted: viewModel.isWidgetCompleted(widget),
-                        onTap: { selectedWidget = widget }
+                        canRemove: viewModel.canRemoveWidget,
+                        onTap: { selectedWidget = widget },
+                        onRemove: {
+                            widgetToRemove = widget
+                            showRemoveConfirmation = true
+                        },
+                        onAddMore: {
+                            showCreateCustomWidget = true
+                        }
                     )
                 }
             }
         }
     }
     
-    // MARK: - Recent Entries
-    
-    private var recentEntriesSection: some View {
-        VStack(spacing: Papper.spacing.md) {
-            HStack {
-                Text("Recent Entries")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(PapperColors.neutral800)
-                
-                Spacer()
-                
-                NavigationLink(destination: EntriesListView(selectedJournalId: .constant(nil))) {
-                    Text("See All")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(PapperColors.neutral600)
-                }
-            }
-            
-            ForEach(viewModel.recentEntries.prefix(3)) { entry in
-                RecentEntryCard(
-                    entry: entry,
-                    journalColor: firebaseService.journals.first { $0.id == entry.journalId }?.color ?? "#414141"
-                )
-            }
-        }
-    }
 }
 
 // MARK: - Quick Entry Widget Card
@@ -175,10 +292,20 @@ struct DashboardView: View {
 struct QuickEntryWidgetCard: View {
     let widget: DashboardWidget
     let isCompleted: Bool
+    let canRemove: Bool
     let onTap: () -> Void
+    let onRemove: () -> Void
+    let onAddMore: () -> Void
+    
+    @State private var isPressed = false
     
     var body: some View {
-        Button(action: onTap) {
+        Button {
+            // Light haptic feedback on tap
+            let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+            impactFeedback.impactOccurred()
+            onTap()
+        } label: {
             VStack(alignment: .leading, spacing: Papper.spacing.sm) {
                 // Icon & Status
                 HStack {
@@ -194,10 +321,18 @@ struct QuickEntryWidgetCard: View {
                     
                     Spacer()
                     
+                    // Custom widget indicator
+                    if widget.isCustom {
+                        Image(systemName: "star.fill")
+                            .font(.system(size: 12))
+                            .foregroundColor(Color(hex: widget.color).opacity(0.6))
+                    }
+                    
                     if isCompleted {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: 20))
                             .foregroundColor(PapperColors.green400)
+                            .transition(.scale.combined(with: .opacity))
                     }
                 }
                 
@@ -221,52 +356,47 @@ struct QuickEntryWidgetCard: View {
             .frame(height: 120)
             .background(PapperColors.surfaceBackgroundPlain)
             .cornerRadius(16)
-            .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 2)
+            .shadow(color: Color.black.opacity(isPressed ? 0.08 : 0.04), radius: isPressed ? 4 : 8, x: 0, y: isPressed ? 1 : 2)
+            .scaleEffect(isPressed ? 0.97 : 1.0)
         }
         .buttonStyle(PlainButtonStyle())
-    }
-}
-
-// MARK: - Recent Entry Card
-
-struct RecentEntryCard: View {
-    let entry: JournalEntry
-    let journalColor: String
-    
-    var body: some View {
-        NavigationLink(destination: JournalEntryView(entry: entry)) {
-            HStack(spacing: Papper.spacing.md) {
-                // Color indicator
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(Color(hex: journalColor))
-                    .frame(width: 4, height: 50)
-                
-                // Content
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(entry.title)
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundColor(PapperColors.neutral800)
-                        .lineLimit(1)
-                    
-                    Text(entry.shortPreview)
-                        .font(.system(size: 13))
-                        .foregroundColor(PapperColors.neutral600)
-                        .lineLimit(1)
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in
+                    withAnimation(.easeInOut(duration: 0.1)) {
+                        isPressed = true
+                    }
                 }
-                
-                Spacer()
-                
-                // Time
-                Text(entry.createdAt.timeString)
-                    .font(.system(size: 12))
-                    .foregroundColor(PapperColors.neutral500)
+                .onEnded { _ in
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                        isPressed = false
+                    }
+                }
+        )
+        .contextMenu {
+            // Remove option (only if more than 1 widget)
+            if canRemove {
+                Button(role: .destructive) {
+                    // Medium haptic for destructive action
+                    let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+                    impactFeedback.impactOccurred()
+                    onRemove()
+                } label: {
+                    Label("Remove Widget", systemImage: "minus.circle")
+                }
             }
-            .padding(Papper.spacing.md)
-            .background(PapperColors.surfaceBackgroundPlain)
-            .cornerRadius(12)
-            .shadow(color: Color.black.opacity(0.03), radius: 4, x: 0, y: 1)
+            
+            // Add More option
+            Button {
+                // Light haptic for action
+                let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+                impactFeedback.impactOccurred()
+                onAddMore()
+            } label: {
+                Label("Add New Widget", systemImage: "plus.circle")
+            }
         }
-        .buttonStyle(PlainButtonStyle())
+        .animation(.spring(response: 0.3), value: isCompleted)
     }
 }
 
@@ -274,7 +404,8 @@ struct RecentEntryCard: View {
 
 struct CreateEntryFromWidgetView: View {
     let widget: DashboardWidget
-    @StateObject private var viewModel = JournalViewModel()
+    @ObservedObject var viewModel: DashboardViewModel
+    @StateObject private var journalViewModel = JournalViewModel()
     @ObservedObject private var firebaseService = FirebaseService.shared
     @Environment(\.dismiss) private var dismiss
     
@@ -308,7 +439,7 @@ struct CreateEntryFromWidgetView: View {
                                     .font(.system(size: 16, weight: .semibold))
                                     .foregroundColor(PapperColors.neutral800)
                                 
-                                Text("Quick entry template")
+                                Text(widget.isCustom ? "Custom widget" : "Quick entry template")
                                     .font(Papper.typography.bodySmall)
                                     .foregroundColor(PapperColors.neutral500)
                             }
@@ -318,24 +449,31 @@ struct CreateEntryFromWidgetView: View {
                         .background(Color(hex: widget.color).opacity(0.1))
                         .cornerRadius(12)
                         
-                        // Journal Selection
+                        // Question/Prompt (for custom widgets)
+                        if widget.isCustom, let question = widget.question, !question.isEmpty {
+                            VStack(alignment: .leading, spacing: Papper.spacing.xs) {
+                                Text("Prompt")
+                                    .font(Papper.typography.bodySmall)
+                                    .foregroundColor(PapperColors.neutral500)
+                                
+                                Text(question)
+                                    .font(.system(size: 15))
+                                    .foregroundColor(PapperColors.neutral700)
+                                    .padding()
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .background(Color(hex: widget.color).opacity(0.05))
+                                    .cornerRadius(12)
+                            }
+                        }
+                        
+                        // Journal Selection (disabled for custom widgets with pre-set journal)
                         VStack(alignment: .leading, spacing: Papper.spacing.xs) {
                             Text("Journal")
                                 .font(Papper.typography.bodySmall)
                                 .foregroundColor(PapperColors.neutral500)
                             
-                            Menu {
-                                ForEach(viewModel.journals) { journal in
-                                    Button(action: { selectedJournal = journal }) {
-                                        HStack {
-                                            Circle()
-                                                .fill(journal.displayColor)
-                                                .frame(width: 8, height: 8)
-                                            Text(journal.name)
-                                        }
-                                    }
-                                }
-                            } label: {
+                            if widget.isCustom && widget.journalId != nil {
+                                // Show pre-selected journal for custom widget
                                 HStack {
                                     if let journal = selectedJournal {
                                         Circle()
@@ -343,19 +481,51 @@ struct CreateEntryFromWidgetView: View {
                                             .frame(width: 8, height: 8)
                                         Text(journal.name)
                                             .foregroundColor(PapperColors.neutral800)
-                                    } else {
-                                        Text("Select a journal")
-                                            .foregroundColor(PapperColors.neutral500)
                                     }
                                     
                                     Spacer()
                                     
-                                    Image(systemName: "chevron.down")
+                                    Image(systemName: "lock.fill")
+                                        .font(.system(size: 12))
                                         .foregroundColor(PapperColors.neutral400)
                                 }
                                 .padding()
                                 .background(PapperColors.surfaceBackgroundPlain)
                                 .cornerRadius(12)
+                            } else {
+                                Menu {
+                                    ForEach(journalViewModel.journals) { journal in
+                                        Button(action: { selectedJournal = journal }) {
+                                            HStack {
+                                                Circle()
+                                                    .fill(journal.displayColor)
+                                                    .frame(width: 8, height: 8)
+                                                Text(journal.name)
+                                            }
+                                        }
+                                    }
+                                } label: {
+                                    HStack {
+                                        if let journal = selectedJournal {
+                                            Circle()
+                                                .fill(journal.displayColor)
+                                                .frame(width: 8, height: 8)
+                                            Text(journal.name)
+                                                .foregroundColor(PapperColors.neutral800)
+                                        } else {
+                                            Text("Select a journal")
+                                                .foregroundColor(PapperColors.neutral500)
+                                        }
+                                        
+                                        Spacer()
+                                        
+                                        Image(systemName: "chevron.down")
+                                            .foregroundColor(PapperColors.neutral400)
+                                    }
+                                    .padding()
+                                    .background(PapperColors.surfaceBackgroundPlain)
+                                    .cornerRadius(12)
+                                }
                             }
                         }
                         
@@ -409,9 +579,20 @@ struct CreateEntryFromWidgetView: View {
                 }
             }
             .task {
-                // Non-blocking setup
+                // Setup based on widget type
                 title = widget.title
-                selectedJournal = viewModel.journals.first
+                
+                // For custom widgets with pre-set journal
+                if widget.isCustom, let journalId = widget.journalId {
+                    selectedJournal = journalViewModel.journals.first { $0.id == journalId }
+                    
+                    // Pre-fill template text if available
+                    if let templateText = widget.templateText, !templateText.isEmpty {
+                        content = templateText
+                    }
+                } else {
+                    selectedJournal = journalViewModel.journals.first
+                }
             }
         }
     }
@@ -421,15 +602,71 @@ struct CreateEntryFromWidgetView: View {
         isSaving = true
         
         Task {
-            await viewModel.createEntry(
+            await journalViewModel.createEntry(
                 journalId: journal.id,
                 title: title,
                 content: content,
                 inputMethod: .write,
                 templateId: widget.templateId
             )
+            
+            // Refresh today's entries to update widget completion status
+            await viewModel.loadTodaysEntries()
+            
             dismiss()
         }
+    }
+}
+
+// MARK: - Skeleton Widget Card
+
+struct SkeletonWidgetCard: View {
+    @State private var isAnimating = false
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: Papper.spacing.sm) {
+            HStack {
+                Circle()
+                    .fill(shimmerGradient)
+                    .frame(width: 40, height: 40)
+                
+                Spacer()
+            }
+            
+            Spacer()
+            
+            VStack(alignment: .leading, spacing: 6) {
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(shimmerGradient)
+                    .frame(width: 80, height: 14)
+                
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(shimmerGradient)
+                    .frame(width: 60, height: 10)
+            }
+        }
+        .padding(Papper.spacing.md)
+        .frame(maxWidth: .infinity)
+        .frame(height: 120)
+        .background(PapperColors.surfaceBackgroundPlain)
+        .cornerRadius(16)
+        .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 2)
+        .onAppear {
+            withAnimation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true)) {
+                isAnimating = true
+            }
+        }
+    }
+    
+    private var shimmerGradient: some ShapeStyle {
+        LinearGradient(
+            colors: [
+                PapperColors.neutral200.opacity(isAnimating ? 0.3 : 0.6),
+                PapperColors.neutral200.opacity(isAnimating ? 0.6 : 0.3)
+            ],
+            startPoint: .leading,
+            endPoint: .trailing
+        )
     }
 }
 
