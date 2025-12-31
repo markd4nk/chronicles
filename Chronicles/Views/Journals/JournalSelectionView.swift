@@ -23,25 +23,22 @@ struct JournalSelectionView: View {
             
             VStack(spacing: 0) {
                 // Custom navigation header
-                HStack {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                    .font(.system(size: 17))
-                    .foregroundColor(PapperColors.neutral600)
-                    
-                    Spacer()
-                    
+                ZStack {
+                    // Centered title
                     Text("New Entry")
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundColor(PapperColors.neutral800)
                     
-                    Spacer()
-                    
-                    // Invisible spacer to center title
-                    Text("Cancel")
+                    // Cancel button on left
+                    HStack {
+                        Button("Cancel") {
+                            dismiss()
+                        }
                         .font(.system(size: 17))
-                        .opacity(0)
+                        .foregroundColor(PapperColors.neutral600)
+                        
+                        Spacer()
+                    }
                 }
                 .padding(.horizontal, Papper.spacing.lg)
                 .padding(.vertical, Papper.spacing.md)

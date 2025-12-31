@@ -15,11 +15,16 @@ struct CreateJournalView: View {
     @State private var selectedColor = Journal.availableColors[0]
     @State private var isSaving = false
     
+    @FocusState private var isTextFieldFocused: Bool
+    
     var body: some View {
         NavigationView {
             ZStack {
                 Color(hex: "#faf8f3")
                     .ignoresSafeArea()
+                    .onTapGesture {
+                        isTextFieldFocused = false
+                    }
                 
                 ScrollView {
                     VStack(spacing: Papper.spacing.xxl) {
@@ -37,6 +42,7 @@ struct CreateJournalView: View {
                                 .padding()
                                 .background(PapperColors.surfaceBackgroundPlain)
                                 .cornerRadius(12)
+                                .focused($isTextFieldFocused)
                         }
                         
                         // Color Selection

@@ -20,6 +20,8 @@ struct CreateCustomWidgetView: View {
     @State private var selectedColor = "#F7D794"
     @State private var isSaving = false
     
+    @FocusState private var isInputFocused: Bool
+    
     private var isValid: Bool {
         !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         !question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
@@ -31,6 +33,9 @@ struct CreateCustomWidgetView: View {
             ZStack {
                 Color(hex: "#faf8f3")
                     .ignoresSafeArea()
+                    .onTapGesture {
+                        isInputFocused = false
+                    }
                 
                 ScrollView {
                     VStack(alignment: .leading, spacing: Papper.spacing.xl) {
@@ -142,6 +147,7 @@ struct CreateCustomWidgetView: View {
                 .padding()
                 .background(PapperColors.surfaceBackgroundPlain)
                 .cornerRadius(12)
+                .focused($isInputFocused)
         }
     }
     
@@ -163,6 +169,7 @@ struct CreateCustomWidgetView: View {
                 .padding()
                 .background(PapperColors.surfaceBackgroundPlain)
                 .cornerRadius(12)
+                .focused($isInputFocused)
         }
     }
     
@@ -238,6 +245,7 @@ struct CreateCustomWidgetView: View {
                 .padding()
                 .background(PapperColors.surfaceBackgroundPlain)
                 .cornerRadius(12)
+                .focused($isInputFocused)
         }
     }
     
