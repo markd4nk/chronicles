@@ -164,11 +164,14 @@ struct PromptCardView: View {
                         .multilineTextAlignment(.center)
                         .lineSpacing(6)
                     
-                    Text(prompt.hint)
-                        .font(.system(size: 16))
-                        .foregroundColor(PapperColors.neutral600)
-                        .multilineTextAlignment(.center)
-                        .lineSpacing(4)
+                    // Only show hint for quotes (attribution like "- Steve Jobs")
+                    if prompt.category == .quote {
+                        Text(prompt.hint)
+                            .font(.system(size: 16))
+                            .foregroundColor(PapperColors.neutral600)
+                            .multilineTextAlignment(.center)
+                            .lineSpacing(4)
+                    }
                 }
                 .padding(.horizontal, Papper.spacing.xl)
                 
