@@ -94,7 +94,7 @@ class DashboardViewModel: ObservableObject {
             todaysEntries = entries
             updateWidgetCompletionCache()
         } catch {
-            errorMessage = "Failed to load today's entries"
+            // Silently handle - entries are only used for widget completion tracking
         }
     }
     
