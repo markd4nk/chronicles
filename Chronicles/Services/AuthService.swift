@@ -167,10 +167,13 @@ class AuthService: NSObject, ObservableObject {
             let credential = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<AuthCredential, Error>) in
                 provider.getCredentialWith(nil) { credential, error in
                     if let error = error {
+                        print("[AuthService] Google OAuth error: \(error.localizedDescription)")
+                        print("[AuthService] Google OAuth error details: \(error)")
                         continuation.resume(throwing: error)
                         return
                     }
                     guard let credential = credential else {
+                        print("[AuthService] Google OAuth: No credential returned")
                         continuation.resume(throwing: AuthError.signInFailed)
                         return
                     }
@@ -180,9 +183,14 @@ class AuthService: NSObject, ObservableObject {
             
             let authResult = try await Auth.auth().signIn(with: credential)
             await loadOrCreateUser(from: authResult.user)
+        } catch let authError as AuthError {
+            self.error = authError
+            throw authError
         } catch {
-            self.error = .signInFailed
-            throw AuthError.signInFailed
+            print("[AuthService] Google Sign-In failed: \(error.localizedDescription)")
+            print("[AuthService] Google Sign-In error details: \(error)")
+            self.error = .custom(error.localizedDescription)
+            throw AuthError.custom(error.localizedDescription)
         }
     }
     
@@ -230,6 +238,7 @@ class AuthService: NSObject, ObservableObject {
             guard let appleIDToken = credential.identityToken,
                   let idTokenString = String(data: appleIDToken, encoding: .utf8),
                   let storedNonce = currentNonce else {
+                print("[AuthService] Apple Sign-In: Missing identity token or nonce")
                 throw AuthError.signInFailed
             }
             
@@ -246,10 +255,29 @@ class AuthService: NSObject, ObservableObject {
             // Pass Apple's fullName to loadOrCreateUser (only available on first sign-in)
             await loadOrCreateUser(from: authResult.user, appleFullName: credential.fullName)
             
+        } catch let authError as AuthError {
+            appleSignInContinuation = nil
+            self.error = authError
+            throw authError
+        } catch let asError as ASAuthorizationError {
+            appleSignInContinuation = nil
+            print("[AuthService] Apple Sign-In ASAuthorizationError: \(asError.localizedDescription)")
+            print("[AuthService] Apple Sign-In error code: \(asError.code.rawValue)")
+            
+            // Handle user cancellation gracefully
+            if asError.code == .canceled {
+                self.error = .userCancelled
+                throw AuthError.userCancelled
+            }
+            
+            self.error = .custom(asError.localizedDescription)
+            throw AuthError.custom(asError.localizedDescription)
         } catch {
             appleSignInContinuation = nil
-            self.error = .signInFailed
-            throw AuthError.signInFailed
+            print("[AuthService] Apple Sign-In failed: \(error.localizedDescription)")
+            print("[AuthService] Apple Sign-In error details: \(error)")
+            self.error = .custom(error.localizedDescription)
+            throw AuthError.custom(error.localizedDescription)
         }
     }
     
@@ -380,6 +408,8 @@ enum AuthError: LocalizedError {
     case signInFailed
     case signOutFailed
     case networkError
+    case userCancelled
+    case custom(String)
     case unknown
     
     var errorDescription: String? {
@@ -392,6 +422,10 @@ enum AuthError: LocalizedError {
             return "Sign out failed. Please try again."
         case .networkError:
             return "Network error. Please check your connection."
+        case .userCancelled:
+            return "Sign in was cancelled."
+        case .custom(let message):
+            return message
         case .unknown:
             return "An unknown error occurred."
         }

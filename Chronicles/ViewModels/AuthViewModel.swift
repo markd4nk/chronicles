@@ -43,6 +43,13 @@ class AuthViewModel: ObservableObject {
         Task {
             do {
                 try await authService.signInWithGoogle()
+            } catch let authError as AuthError {
+                // Don't show error for user cancellation
+                if case .userCancelled = authError {
+                    return
+                }
+                self.error = authError.errorDescription ?? "Sign in failed"
+                self.showError = true
             } catch {
                 self.error = error.localizedDescription
                 self.showError = true
@@ -54,6 +61,13 @@ class AuthViewModel: ObservableObject {
         Task {
             do {
                 try await authService.signInWithApple()
+            } catch let authError as AuthError {
+                // Don't show error for user cancellation
+                if case .userCancelled = authError {
+                    return
+                }
+                self.error = authError.errorDescription ?? "Sign in failed"
+                self.showError = true
             } catch {
                 self.error = error.localizedDescription
                 self.showError = true

@@ -273,11 +273,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Chronicles/Chronicles.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = C84QWQXHA8;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Chronicles/Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Chronicles needs camera access to scan handwritten notes and documents.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Chronicles needs access to your microphone to record voice entries.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Chronicles needs access to your photos to scan text from images.";
@@ -308,11 +310,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Chronicles/Chronicles.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = C84QWQXHA8;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Chronicles/Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Chronicles needs camera access to scan handwritten notes and documents.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Chronicles needs access to your microphone to record voice entries.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Chronicles needs access to your photos to scan text from images.";
