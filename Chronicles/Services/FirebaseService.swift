@@ -175,8 +175,8 @@ class FirebaseService: ObservableObject {
     /// Load initial batch of prompts from Firestore
     private func loadInitialPrompts() async {
         do {
+            // Fetch ALL prompts and shuffle for true randomness
             let query = db.collection("prompts")
-                .limit(to: promptsBatchSize)
             
             let snapshot = try await query.getDocuments()
             var fetchedPrompts: [JournalPrompt] = []
@@ -187,9 +187,12 @@ class FirebaseService: ObservableObject {
                 }
             }
             
+            // Shuffle to mix questions and statements randomly
+            fetchedPrompts.shuffle()
+            
             await MainActor.run {
-                self.prompts = fetchedPrompts.shuffled()
-                self.lastPromptDocument = snapshot.documents.last
+                self.prompts = fetchedPrompts
+                self.lastPromptDocument = nil // No pagination needed if we fetch all
             }
         } catch {
             print("Error loading initial prompts: \(error.localizedDescription)")
