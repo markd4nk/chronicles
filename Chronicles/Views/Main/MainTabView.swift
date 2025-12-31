@@ -149,15 +149,15 @@ struct CenterCreateButton: View {
             ZStack {
                 Circle()
                     .fill(PapperColors.neutral700)
-                    .frame(width: 56, height: 56)
-                    .shadow(color: PapperColors.neutral700.opacity(0.3), radius: 8, x: 0, y: 4)
+                    .frame(width: 52, height: 52)
+                    .shadow(color: PapperColors.neutral700.opacity(0.3), radius: 6, x: 0, y: 2)
                 
                 Image(systemName: "plus")
-                    .font(.system(size: 24, weight: .semibold))
+                    .font(.system(size: 22, weight: .semibold))
                     .foregroundColor(.white)
             }
         }
-        .offset(y: -20)
+        // Removed offset - button now stays within tab bar boundaries
     }
 }
 

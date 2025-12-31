@@ -211,7 +211,7 @@ struct AIReflectView: View {
             }
             .padding(.horizontal, Papper.spacing.lg)
             .padding(.top, Papper.spacing.md)
-            .padding(.bottom, Papper.spacing.lg + 20) // Extra padding for tab bar visibility
+            .padding(.bottom, 70) // Extra padding to clear custom tab bar
         }
         .background(Color(hex: "#faf8f3"))
     }
