@@ -9,19 +9,25 @@ import SwiftUI
 
 struct JournalSelectionView: View {
     @StateObject private var viewModel = JournalViewModel()
+    @ObservedObject private var firebaseService = FirebaseService.shared
     @Environment(\.dismiss) private var dismiss
     
     @State private var showCreateJournal = false
     @State private var selectedJournal: Journal?
     @State private var showCreateEntry = false
     
+    // Use FirebaseService directly for immediate access to journals
+    private var journals: [Journal] {
+        firebaseService.journals
+    }
+    
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 Color(hex: "#faf8f3")
                     .ignoresSafeArea()
                 
-                if viewModel.journals.isEmpty {
+                if journals.isEmpty {
                     emptyState
                 } else {
                     ScrollView(showsIndicators: false) {
@@ -39,7 +45,7 @@ struct JournalSelectionView: View {
                             .padding(.top, Papper.spacing.md)
                             
                             // Journal Cards
-                            ForEach(viewModel.journals) { journal in
+                            ForEach(journals) { journal in
                                 JournalSelectionCard(
                                     journal: journal,
                                     onTap: {
@@ -104,13 +110,6 @@ struct JournalSelectionView: View {
             .fullScreenCover(isPresented: $showCreateEntry) {
                 if let journal = selectedJournal {
                     CreateEntryView(journal: journal)
-                }
-            }
-            .task {
-                // Ensure journals are loaded when view appears
-                // This handles cases where the binding hasn't fired yet
-                if viewModel.journals.isEmpty {
-                    await viewModel.loadJournals()
                 }
             }
         }
@@ -204,7 +203,3 @@ struct JournalSelectionView_Previews: PreviewProvider {
     }
 }
 #endif
-
-
-
-
