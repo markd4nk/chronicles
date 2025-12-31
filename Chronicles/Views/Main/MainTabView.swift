@@ -164,8 +164,19 @@ struct CenterCreateButton: View {
 // MARK: - All Entries Container
 
 struct AllEntriesContainerView: View {
+    @StateObject private var viewModel = JournalViewModel()
     @State private var selectedSubTab = 0
     @State private var showManageJournals = false
+    @State private var selectedJournalId: String? = nil
+    
+    // Display name for the dropdown button
+    private var displayName: String {
+        if let journalId = selectedJournalId,
+           let journal = viewModel.journals.first(where: { $0.id == journalId }) {
+            return journal.name
+        }
+        return "All Journals"
+    }
     
     var body: some View {
         NavigationView {
@@ -181,14 +192,60 @@ struct AllEntriesContainerView: View {
                 
                 // Content
                 if selectedSubTab == 0 {
-                    EntriesListView()
+                    EntriesListView(selectedJournalId: $selectedJournalId)
                 } else {
                     EntriesCalendarView()
                 }
             }
-            .navigationTitle("All Entries")
+            .navigationBarTitleDisplayMode(.inline)
             .background(PapperColors.surfaceBackgroundGray.ignoresSafeArea())
             .toolbar {
+                // Journal filter dropdown in place of title
+                ToolbarItem(placement: .principal) {
+                    Menu {
+                        // "All Journals" option
+                        Button {
+                            selectedJournalId = nil
+                        } label: {
+                            HStack {
+                                Text("All Journals")
+                                if selectedJournalId == nil {
+                                    Spacer()
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                        
+                        Divider()
+                        
+                        // Individual journals
+                        ForEach(viewModel.journals) { journal in
+                            Button {
+                                selectedJournalId = journal.id
+                            } label: {
+                                HStack {
+                                    Circle()
+                                        .fill(journal.displayColor)
+                                        .frame(width: 8, height: 8)
+                                    Text(journal.name)
+                                    if selectedJournalId == journal.id {
+                                        Spacer()
+                                        Image(systemName: "checkmark")
+                                    }
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text(displayName)
+                                .font(.system(size: 17, weight: .semibold))
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 12, weight: .medium))
+                        }
+                        .foregroundColor(PapperColors.neutral700)
+                    }
+                }
+                
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {
                         Button(action: { showManageJournals = true }) {

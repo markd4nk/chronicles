@@ -9,16 +9,38 @@ import SwiftUI
 
 struct EntriesListView: View {
     @StateObject private var viewModel = JournalViewModel()
+    @Binding var selectedJournalId: String?
     @State private var searchText = ""
     
     var filteredEntries: [JournalEntry] {
-        if searchText.isEmpty {
-            return viewModel.entries.sorted { $0.createdAt > $1.createdAt }
+        var entries = viewModel.entries
+        
+        // First filter by journal if a specific journal is selected
+        if let journalId = selectedJournalId {
+            entries = entries.filter { $0.journalId == journalId }
         }
-        return viewModel.entries.filter {
-            $0.title.localizedCaseInsensitiveContains(searchText) ||
-            $0.content.localizedCaseInsensitiveContains(searchText)
-        }.sorted { $0.createdAt > $1.createdAt }
+        
+        // Then filter by search text if not empty
+        if !searchText.isEmpty {
+            entries = entries.filter {
+                $0.title.localizedCaseInsensitiveContains(searchText) ||
+                $0.content.localizedCaseInsensitiveContains(searchText)
+            }
+        }
+        
+        // Sort by date (newest first)
+        return entries.sorted { $0.createdAt > $1.createdAt }
+    }
+    
+    // Check if journal filter is active
+    private var isJournalFilterActive: Bool {
+        selectedJournalId != nil
+    }
+    
+    // Get selected journal name for display
+    private var selectedJournalName: String? {
+        guard let journalId = selectedJournalId else { return nil }
+        return viewModel.journals.first(where: { $0.id == journalId })?.name
     }
     
     var groupedEntries: [(String, [JournalEntry])] {
@@ -28,13 +50,27 @@ struct EntriesListView: View {
         return grouped.sorted { $0.value.first!.createdAt > $1.value.first!.createdAt }
     }
     
+    // Check if there are any entries at all (ignoring filters)
+    private var hasAnyEntries: Bool {
+        !viewModel.entries.isEmpty
+    }
+    
+    // Check if there are entries for the selected journal (when filter is active)
+    private var hasEntriesInSelectedJournal: Bool {
+        guard let journalId = selectedJournalId else { return true }
+        return viewModel.entries.contains { $0.journalId == journalId }
+    }
+    
     var body: some View {
         ZStack {
             Color(hex: "#faf8f3")
                 .ignoresSafeArea()
             
-            if viewModel.entries.isEmpty {
+            if !hasAnyEntries {
                 emptyState
+            } else if isJournalFilterActive && !hasEntriesInSelectedJournal {
+                // Journal is selected but has no entries
+                noEntriesInJournalView
             } else {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: Papper.spacing.md) {
@@ -130,11 +166,41 @@ struct EntriesListView: View {
                 .font(.system(size: 16, weight: .medium))
                 .foregroundColor(PapperColors.neutral600)
             
-            Text("Try a different search term")
-                .font(Papper.typography.body)
-                .foregroundColor(PapperColors.neutral500)
+            if isJournalFilterActive {
+                Text("Try a different search term\nor select \"All Journals\"")
+                    .font(Papper.typography.body)
+                    .foregroundColor(PapperColors.neutral500)
+                    .multilineTextAlignment(.center)
+            } else {
+                Text("Try a different search term")
+                    .font(Papper.typography.body)
+                    .foregroundColor(PapperColors.neutral500)
+            }
         }
         .padding(Papper.spacing.xxl)
+    }
+    
+    // MARK: - No Entries in Selected Journal
+    
+    private var noEntriesInJournalView: some View {
+        VStack(spacing: Papper.spacing.lg) {
+            Image(systemName: "doc.text")
+                .font(.system(size: 60))
+                .foregroundColor(PapperColors.neutral400)
+            
+            VStack(spacing: Papper.spacing.xs) {
+                Text("No Entries in \(selectedJournalName ?? "this journal")")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(PapperColors.neutral800)
+                    .multilineTextAlignment(.center)
+                
+                Text("Tap the + button to create\nan entry in this journal")
+                    .font(Papper.typography.body)
+                    .foregroundColor(PapperColors.neutral600)
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .padding(Papper.spacing.xl)
     }
 }
 
@@ -189,7 +255,7 @@ struct EntryListCard: View {
 struct EntriesListView_Previews: PreviewProvider {
     static var previews: some View {
         NavigationView {
-            EntriesListView()
+            EntriesListView(selectedJournalId: .constant(nil))
         }
     }
 }
