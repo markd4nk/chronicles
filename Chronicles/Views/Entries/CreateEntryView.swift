@@ -136,10 +136,13 @@ struct CreateEntryView: View {
                     }
                 }
             }
-            .onAppear {
+            .task {
+                // Setup template content (non-blocking)
                 setupFromTemplate()
-                // Small delay to ensure view is laid out before focusing
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                
+                // Brief delay for view to fully render before keyboard
+                try? await Task.sleep(nanoseconds: 50_000_000) // 0.05s
+                await MainActor.run {
                     isEditorFocused = true
                 }
             }
@@ -173,7 +176,7 @@ struct CreateEntryView: View {
                 }
             }
             .overlay {
-                if isSaving || isProcessingOCR {
+                if isProcessingOCR {
                     loadingOverlay
                 }
             }
@@ -192,7 +195,7 @@ struct CreateEntryView: View {
                     .scaleEffect(1.2)
                     .tint(PapperColors.neutral700)
                 
-                Text(isSaving ? "Generating title..." : "Processing image...")
+                Text("Processing image...")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(PapperColors.neutral700)
             }
@@ -243,34 +246,49 @@ struct CreateEntryView: View {
     private func saveEntry() {
         isSaving = true
         
+        // Generate date-based temporary title immediately (no waiting)
+        let tempTitle = generateDateTitle()
+        let entryContent = content
+        
         Task {
-            // Generate title using AI
-            let title = await generateTitle()
-            
-            await viewModel.createEntry(
+            // STEP 1: Save entry immediately with date title
+            let entryId = await viewModel.createEntry(
                 journalId: journal.id,
-                title: title,
-                content: content,
+                title: tempTitle,
+                content: entryContent,
                 inputMethod: .write,
                 templateId: template?.id,
                 promptId: prompt?.id
             )
             
+            // STEP 2: Dismiss immediately - user sees instant feedback
             await MainActor.run {
                 dismiss()
+            }
+            
+            // STEP 3: Generate AI title in background and update quietly
+            if let entryId = entryId {
+                await generateAndUpdateTitle(entryId: entryId, content: entryContent)
             }
         }
     }
     
-    private func generateTitle() async -> String {
+    /// Generate a date-based title for instant save
+    private func generateDateTitle() -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d, yyyy"
+        return formatter.string(from: Date())
+    }
+    
+    /// Generate AI title in background and update the entry quietly
+    private func generateAndUpdateTitle(entryId: String, content: String) async {
         do {
-            let generatedTitle = try await AIService.shared.generateTitle(for: content)
-            return generatedTitle
+            let aiTitle = try await AIService.shared.generateTitle(for: content)
+            // Update the entry title quietly in background
+            await viewModel.updateEntryTitle(entryId: entryId, newTitle: aiTitle)
         } catch {
-            // Fallback to date/time
-            let formatter = DateFormatter()
-            formatter.dateFormat = "MMM d, yyyy 'at' h:mm a"
-            return formatter.string(from: Date())
+            // Silently fail - entry already saved with date title
+            print("Background title generation failed: \(error.localizedDescription)")
         }
     }
 }

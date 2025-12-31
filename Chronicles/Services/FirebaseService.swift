@@ -22,6 +22,7 @@ class FirebaseService: ObservableObject {
     @Published var prompts: [JournalPrompt] = []
     @Published var conversations: [AIConversation] = []
     @Published var isLoading = false
+    @Published var isLoadingPrompts = true
     
     private let db = Firestore.firestore()
     private var promptsListener: ListenerRegistration?
@@ -172,17 +173,47 @@ class FirebaseService: ObservableObject {
     
     // MARK: - Prompt Operations
     
+    /// Batch fetch all user likes in one query (instead of N+1 queries)
+    private func fetchUserLikedPromptIds() async -> Set<String> {
+        guard let userId = AuthService.shared.currentUser?.id else {
+            return []
+        }
+        
+        do {
+            let snapshot = try await db.collection("userLikes")
+                .whereField("userId", isEqualTo: userId)
+                .getDocuments()
+            
+            // Extract prompt IDs from the documents
+            let likedIds = snapshot.documents.compactMap { doc -> String? in
+                return doc.data()["promptId"] as? String
+            }
+            
+            return Set(likedIds)
+        } catch {
+            print("Error fetching user likes: \(error.localizedDescription)")
+            return []
+        }
+    }
+    
     /// Load initial batch of prompts from Firestore
     private func loadInitialPrompts() async {
+        await MainActor.run {
+            self.isLoadingPrompts = true
+        }
+        
         do {
-            // Fetch ALL prompts and shuffle for true randomness
+            // STEP 1: Batch fetch all user likes in ONE query
+            let likedPromptIds = await fetchUserLikedPromptIds()
+            
+            // STEP 2: Fetch ALL prompts in ONE query
             let query = db.collection("prompts")
-            
             let snapshot = try await query.getDocuments()
-            var fetchedPrompts: [JournalPrompt] = []
             
+            // STEP 3: Parse prompts using the Set for O(1) lookup (no more N+1!)
+            var fetchedPrompts: [JournalPrompt] = []
             for doc in snapshot.documents {
-                if let prompt = try? await parsePromptFromDocument(doc) {
+                if let prompt = parsePromptFromDocument(doc, likedPromptIds: likedPromptIds) {
                     fetchedPrompts.append(prompt)
                 }
             }
@@ -193,18 +224,23 @@ class FirebaseService: ObservableObject {
             await MainActor.run {
                 self.prompts = fetchedPrompts
                 self.lastPromptDocument = nil // No pagination needed if we fetch all
+                self.isLoadingPrompts = false
             }
         } catch {
             print("Error loading initial prompts: \(error.localizedDescription)")
             // Fallback to samples if Firestore fails
             await MainActor.run {
                 self.prompts = JournalPrompt.samples
+                self.isLoadingPrompts = false
             }
         }
     }
     
     /// Fetch prompts from Firestore with pagination support
     func fetchPrompts(category: JournalPrompt.PromptCategory? = nil, limit: Int = 50, startAfter: DocumentSnapshot? = nil) async throws -> ([JournalPrompt], DocumentSnapshot?) {
+        // Batch fetch user likes first (single query)
+        let likedPromptIds = await fetchUserLikedPromptIds()
+        
         var query: Query = db.collection("prompts")
         
         if let category = category {
@@ -220,7 +256,7 @@ class FirebaseService: ObservableObject {
         let snapshot = try await query.getDocuments()
         var fetchedPrompts: [JournalPrompt] = []
         for doc in snapshot.documents {
-            if let prompt = try? await parsePromptFromDocument(doc) {
+            if let prompt = parsePromptFromDocument(doc, likedPromptIds: likedPromptIds) {
                 fetchedPrompts.append(prompt)
             }
         }
@@ -364,10 +400,13 @@ class FirebaseService: ObservableObject {
     
     // MARK: - Helper Methods
     
-    /// Parse JournalPrompt from Firestore document
-    private func parsePromptFromDocument(_ doc: DocumentSnapshot) async throws -> JournalPrompt {
+    /// Parse JournalPrompt from Firestore document (optimized - no individual queries)
+    /// - Parameters:
+    ///   - doc: The Firestore document snapshot
+    ///   - likedPromptIds: Pre-fetched Set of prompt IDs the user has liked (O(1) lookup)
+    private func parsePromptFromDocument(_ doc: DocumentSnapshot, likedPromptIds: Set<String>) -> JournalPrompt? {
         guard let data = doc.data() else {
-            throw NSError(domain: "FirebaseService", code: 404, userInfo: [NSLocalizedDescriptionKey: "Document data not found"])
+            return nil
         }
         
         let id = doc.documentID
@@ -389,18 +428,8 @@ class FirebaseService: ObservableObject {
         let likes = data["likes"] as? Int ?? 0
         let shares = data["shares"] as? Int ?? 0
         
-        // Check if user has liked this prompt
-        var isLiked = false
-        if let userId = AuthService.shared.currentUser?.id {
-            let userLikesRef = db.collection("userLikes").document("\(userId)_\(id)")
-            do {
-                let likeDoc = try await userLikesRef.getDocument()
-                isLiked = likeDoc.exists
-            } catch {
-                // If check fails, default to false
-                isLiked = false
-            }
-        }
+        // O(1) lookup instead of separate Firestore query!
+        let isLiked = likedPromptIds.contains(id)
         
         return JournalPrompt(
             id: id,

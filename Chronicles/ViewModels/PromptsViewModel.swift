@@ -20,6 +20,7 @@ class PromptsViewModel: ObservableObject {
     @Published var showLikedOnly = false
     @Published var isLoadingMore = false
     @Published var hasMorePrompts = true
+    @Published var isLoadingPrompts = true  // Track initial prompts loading state
     
     // For infinite scroll - track if we've reached the end
     private var hasReachedEnd = false
@@ -53,6 +54,11 @@ class PromptsViewModel: ObservableObject {
     }
     
     private func setupBindings() {
+        // Bind to prompts loading state
+        firebaseService.$isLoadingPrompts
+            .receive(on: DispatchQueue.main)
+            .assign(to: &$isLoadingPrompts)
+        
         firebaseService.$prompts
             .receive(on: DispatchQueue.main)
             .sink { [weak self] updatedPrompts in

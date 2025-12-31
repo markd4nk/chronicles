@@ -408,7 +408,8 @@ struct CreateEntryFromWidgetView: View {
                     .disabled(selectedJournal == nil || content.isEmpty || isSaving)
                 }
             }
-            .onAppear {
+            .task {
+                // Non-blocking setup
                 title = widget.title
                 selectedJournal = viewModel.journals.first
             }

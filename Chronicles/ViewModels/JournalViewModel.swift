@@ -145,11 +145,14 @@ class JournalViewModel: ObservableObject {
         }
     }
     
-    func createEntry(journalId: String, title: String, content: String, inputMethod: JournalEntry.InputMethod, templateId: String? = nil, promptId: String? = nil) async {
+    /// Creates a new entry and returns the entry ID for potential background updates
+    @discardableResult
+    func createEntry(journalId: String, title: String, content: String, inputMethod: JournalEntry.InputMethod, templateId: String? = nil, promptId: String? = nil) async -> String? {
         let wordCount = content.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.count
+        let entryId = UUID().uuidString
         
         let entry = JournalEntry(
-            id: UUID().uuidString,
+            id: entryId,
             userId: AuthService.shared.currentUser?.id ?? "",
             journalId: journalId,
             templateId: templateId,
@@ -166,9 +169,27 @@ class JournalViewModel: ObservableObject {
         do {
             try await firebaseService.createEntry(entry)
             resetEntryForm()
+            return entryId
         } catch {
             self.error = error.localizedDescription
             showError = true
+            return nil
+        }
+    }
+    
+    /// Update just the title of an entry (for background AI title generation)
+    func updateEntryTitle(entryId: String, newTitle: String) async {
+        // Find the entry and update its title
+        if var entry = entries.first(where: { $0.id == entryId }) {
+            entry.title = newTitle
+            entry.updatedAt = Date()
+            
+            do {
+                try await firebaseService.updateEntry(entry)
+            } catch {
+                // Silently fail for background updates
+                print("Failed to update entry title: \(error.localizedDescription)")
+            }
         }
     }
     

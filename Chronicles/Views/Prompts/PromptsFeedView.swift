@@ -23,7 +23,10 @@ struct PromptsFeedView: View {
                     .ignoresSafeArea()
                 
                 // Prompts Feed - Vertical scrolling
-                if viewModel.filteredPrompts.isEmpty {
+                if viewModel.isLoadingPrompts && viewModel.filteredPrompts.isEmpty {
+                    // Show loading state while prompts are being fetched
+                    loadingState
+                } else if viewModel.filteredPrompts.isEmpty {
                     emptyState
                 } else {
                     ScrollViewReader { proxy in
@@ -107,6 +110,19 @@ struct PromptsFeedView: View {
         .background(
             Color(hex: "#faf8f3").opacity(0.95)
         )
+    }
+    
+    private var loadingState: some View {
+        VStack(spacing: Papper.spacing.lg) {
+            ProgressView()
+                .scaleEffect(1.5)
+                .tint(PapperColors.neutral600)
+            
+            Text("Loading prompts...")
+                .font(Papper.typography.body)
+                .foregroundColor(PapperColors.neutral600)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
     
     private var emptyState: some View {
@@ -282,9 +298,13 @@ struct CreateEntryFromPromptView: View {
                 .navigationTitle("Write Entry")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar { toolbarContent }
-                .onAppear {
+                .task {
+                    // Non-blocking setup
                     selectedJournal = viewModel.journals.first
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    
+                    // Brief delay for view to render before keyboard
+                    try? await Task.sleep(nanoseconds: 50_000_000) // 0.05s
+                    await MainActor.run {
                         isEditorFocused = true
                     }
                 }
