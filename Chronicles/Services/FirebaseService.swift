@@ -36,6 +36,44 @@ class FirebaseService: ObservableObject {
     private let defaultTimeout: TimeInterval = 5.0
     private let longTimeout: TimeInterval = 10.0
     private let maxRetries: Int = 3
+
+    // MARK: - Debug Instrumentation (agent)
+
+    /// Minimal debug logger for runtime evidence (prints JSON to Xcode console in DEBUG builds).
+    private func agentLog(
+        hypothesisId: String,
+        location: String,
+        message: String,
+        data: [String: Any] = [:],
+        runId: String = "run1"
+    ) {
+        #if DEBUG
+        var payload: [String: Any] = [
+            "sessionId": "debug-session",
+            "runId": runId,
+            "hypothesisId": hypothesisId,
+            "location": location,
+            "message": message,
+            "timestamp": Date().timeIntervalSince1970 * 1000
+        ]
+        payload["data"] = data
+        if let jsonData = try? JSONSerialization.data(withJSONObject: payload),
+           let jsonString = String(data: jsonData, encoding: .utf8) {
+            print(jsonString)
+        }
+        #endif
+    }
+
+    /// Firestore missing-index errors are typically FAILED_PRECONDITION (code 9).
+    private func isMissingIndexError(_ error: Error) -> Bool {
+        let nsError = error as NSError
+        let msg = nsError.localizedDescription.lowercased()
+        if msg.contains("requires an index") || msg.contains("create it here") {
+            return true
+        }
+        // Best-effort check for Firestore FAILED_PRECONDITION
+        return nsError.code == 9
+    }
     
     private init() {
         // Set up prompts listener
@@ -265,30 +303,111 @@ class FirebaseService: ObservableObject {
             }
             return entries
         }
+
+        // #region agent log
+        agentLog(
+            hypothesisId: "IDX1",
+            location: "FirebaseService.swift:fetchEntries",
+            message: "start",
+            data: [
+                "hasJournalId": journalId != nil,
+                "useOrderByCreatedAt": true
+            ]
+        )
+        // #endregion
         
-        var query: Query = db.collection("entries")
-            .whereField("userId", isEqualTo: userId)
-            .order(by: "createdAt", descending: true)
-        
-        if let journalId = journalId {
-            query = query.whereField("journalId", isEqualTo: journalId)
-        }
-        
-        let snapshot = try await withTimeoutAndRetry(timeout: defaultTimeout, maxRetries: maxRetries) {
-            try await query.getDocuments()
-        }
-        
-        let fetchedEntries = snapshot.documents.compactMap { doc -> JournalEntry? in
-            return parseEntryFromDocument(doc)
-        }
-        
-        await MainActor.run {
-            if journalId == nil {
-                self.entries = fetchedEntries
+        do {
+            var query: Query = db.collection("entries")
+                .whereField("userId", isEqualTo: userId)
+                .order(by: "createdAt", descending: true)
+            
+            if let journalId = journalId {
+                query = query.whereField("journalId", isEqualTo: journalId)
             }
+            
+            let snapshot = try await withTimeoutAndRetry(timeout: defaultTimeout, maxRetries: maxRetries) {
+                try await query.getDocuments()
+            }
+            
+            let fetchedEntries = snapshot.documents.compactMap { doc -> JournalEntry? in
+                return parseEntryFromDocument(doc)
+            }
+            
+            await MainActor.run {
+                if journalId == nil {
+                    self.entries = fetchedEntries
+                }
+            }
+            
+            // #region agent log
+            agentLog(
+                hypothesisId: "IDX1",
+                location: "FirebaseService.swift:fetchEntries",
+                message: "success",
+                data: [
+                    "returnedCount": fetchedEntries.count,
+                    "usedFallback": false
+                ]
+            )
+            // #endregion
+            
+            return fetchedEntries
+        } catch {
+            let nsError = error as NSError
+            let missingIndex = isMissingIndexError(error)
+            
+            // #region agent log
+            agentLog(
+                hypothesisId: "IDX1",
+                location: "FirebaseService.swift:fetchEntries",
+                message: "orderedQueryFailed",
+                data: [
+                    "domain": nsError.domain,
+                    "code": nsError.code,
+                    "missingIndex": missingIndex
+                ]
+            )
+            // #endregion
+            
+            // If the composite index isn't created yet, fallback to a query that doesn't require it.
+            if missingIndex {
+                // Fetch all user entries without orderBy (single-field index), then filter/sort in memory.
+                let fallbackSnapshot = try await withTimeoutAndRetry(timeout: defaultTimeout, maxRetries: maxRetries) {
+                    try await self.db.collection("entries")
+                        .whereField("userId", isEqualTo: userId)
+                        .getDocuments()
+                }
+                
+                let allFetched = fallbackSnapshot.documents.compactMap { doc -> JournalEntry? in
+                    return parseEntryFromDocument(doc)
+                }
+                
+                let filtered = journalId == nil ? allFetched : allFetched.filter { $0.journalId == journalId }
+                let sorted = filtered.sorted { $0.createdAt > $1.createdAt }
+                
+                await MainActor.run {
+                    if journalId == nil {
+                        self.entries = sorted
+                    }
+                }
+                
+                // #region agent log
+                agentLog(
+                    hypothesisId: "IDX1",
+                    location: "FirebaseService.swift:fetchEntries",
+                    message: "fallbackSuccess",
+                    data: [
+                        "fetchedCount": allFetched.count,
+                        "returnedCount": sorted.count
+                    ]
+                )
+                // #endregion
+                
+                return sorted
+            }
+            
+            throw error
         }
-        
-        return fetchedEntries
     }
     
     func fetchEntriesForDate(userId: String, date: Date) async throws -> [JournalEntry] {
@@ -916,13 +1035,64 @@ class FirebaseService: ObservableObject {
             let longestStreak = calculateLongestStreak(from: entries.map { $0.createdAt })
             return (currentStreak, longestStreak)
         }
-        
+        // #region agent log
+        agentLog(
+            hypothesisId: "IDX2",
+            location: "FirebaseService.swift:updateStreak",
+            message: "start",
+            data: [
+                "useOrderByCreatedAt": true
+            ]
+        )
+        // #endregion
+
         // Fetch entries to calculate streak with timeout
-        let snapshot = try await withTimeoutAndRetry(timeout: defaultTimeout, maxRetries: maxRetries) {
-            try await self.db.collection("entries")
-                .whereField("userId", isEqualTo: userId)
-                .order(by: "createdAt", descending: true)
-                .getDocuments()
+        let snapshot: QuerySnapshot
+        do {
+            snapshot = try await withTimeoutAndRetry(timeout: defaultTimeout, maxRetries: maxRetries) {
+                try await self.db.collection("entries")
+                    .whereField("userId", isEqualTo: userId)
+                    .order(by: "createdAt", descending: true)
+                    .getDocuments()
+            }
+        } catch {
+            let nsError = error as NSError
+            let missingIndex = isMissingIndexError(error)
+            
+            // #region agent log
+            agentLog(
+                hypothesisId: "IDX2",
+                location: "FirebaseService.swift:updateStreak",
+                message: "orderedQueryFailed",
+                data: [
+                    "domain": nsError.domain,
+                    "code": nsError.code,
+                    "missingIndex": missingIndex
+                ]
+            )
+            // #endregion
+            
+            if missingIndex {
+                // Fallback: query without orderBy, compute streak from dates.
+                snapshot = try await withTimeoutAndRetry(timeout: defaultTimeout, maxRetries: maxRetries) {
+                    try await self.db.collection("entries")
+                        .whereField("userId", isEqualTo: userId)
+                        .getDocuments()
+                }
+                
+                // #region agent log
+                agentLog(
+                    hypothesisId: "IDX2",
+                    location: "FirebaseService.swift:updateStreak",
+                    message: "fallbackUsed",
+                    data: [
+                        "docCount": snapshot.documents.count
+                    ]
+                )
+                // #endregion
+            } else {
+                throw error
+            }
         }
         
         let entryDates = snapshot.documents.compactMap { doc -> Date? in
