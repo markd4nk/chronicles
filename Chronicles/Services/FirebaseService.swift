@@ -8,6 +8,7 @@
 import Foundation
 import Combine
 import FirebaseFirestore
+import os
 
 // MARK: - Firebase Service
 
@@ -39,6 +40,8 @@ class FirebaseService: ObservableObject {
 
     // MARK: - Debug Instrumentation (agent)
 
+    private let agentLogger = Logger(subsystem: "chronicles.agent", category: "agentLog")
+
     /// Minimal debug logger for runtime evidence (prints JSON to Xcode console in DEBUG builds).
     private func agentLog(
         hypothesisId: String,
@@ -60,6 +63,7 @@ class FirebaseService: ObservableObject {
         if let jsonData = try? JSONSerialization.data(withJSONObject: payload),
            let jsonString = String(data: jsonData, encoding: .utf8) {
             print(jsonString)
+            agentLogger.info("\(jsonString, privacy: .public)")
         }
         #endif
     }
@@ -117,7 +121,8 @@ class FirebaseService: ObservableObject {
             location: "FirebaseService.swift:loadUserData",
             message: "start",
             data: [
-                "userIdLength": userId.count
+                "userIdLength": userId.count,
+                "networkConnected": NetworkMonitor.shared.isConnected
             ]
         )
         // #endregion
@@ -236,6 +241,16 @@ class FirebaseService: ObservableObject {
         // Check network availability
         guard NetworkMonitor.shared.isConnected else {
             print("[FirebaseService] Offline - using cached journals")
+            // #region agent log
+            agentLog(
+                hypothesisId: "J1",
+                location: "FirebaseService.swift:fetchJournals",
+                message: "offlineReturn",
+                data: [
+                    "cachedCount": journals.count
+                ]
+            )
+            // #endregion
             return journals
         }
 
