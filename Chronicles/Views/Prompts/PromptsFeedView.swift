@@ -387,11 +387,28 @@ struct CreateEntryFromPromptView: View {
             Color(hex: "#faf8f3")
                 .ignoresSafeArea()
             
-            ScrollView {
-                formContent
-            }
-            .onTapGesture {
-                isEditorFocused = true
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(spacing: 0) {
+                        formContent
+                        
+                        // Invisible anchor for scrolling
+                        Color.clear
+                            .frame(height: 1)
+                            .id("bottomAnchor")
+                    }
+                }
+                .onTapGesture {
+                    isEditorFocused = true
+                }
+                .onChange(of: content) { _, _ in
+                    // Auto-scroll to keep cursor visible when typing
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        withAnimation(.easeOut(duration: 0.2)) {
+                            proxy.scrollTo("bottomAnchor", anchor: .bottom)
+                        }
+                    }
+                }
             }
             
             if isProcessingOCR {

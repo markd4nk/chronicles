@@ -43,25 +43,40 @@ struct CreateEntryView: View {
                 
                 VStack(spacing: 0) {
                     // Main content - text editor always visible
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: Papper.spacing.md) {
-                            // Text Editor
-                            TextEditor(text: $content)
-                                .font(.system(size: 16))
-                                .foregroundColor(PapperColors.neutral800)
-                                .scrollContentBackground(.hidden)
-                                .frame(minHeight: 350)
-                                .padding()
-                                .background(PapperColors.surfaceBackgroundPlain)
-                                .cornerRadius(16)
-                                .focused($isEditorFocused)
+                    ScrollViewReader { proxy in
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: Papper.spacing.md) {
+                                // Text Editor
+                                TextEditor(text: $content)
+                                    .font(.system(size: 16))
+                                    .foregroundColor(PapperColors.neutral800)
+                                    .scrollContentBackground(.hidden)
+                                    .frame(minHeight: 350)
+                                    .padding()
+                                    .background(PapperColors.surfaceBackgroundPlain)
+                                    .cornerRadius(16)
+                                    .focused($isEditorFocused)
+                                
+                                // Invisible anchor for scrolling
+                                Color.clear
+                                    .frame(height: 1)
+                                    .id("bottomAnchor")
+                            }
+                            .padding(Papper.spacing.lg)
+                            .padding(.top, Papper.spacing.md) // Prevent text from going under navigation bar
+                            .padding(.bottom, 60) // Space for bottom toolbar
                         }
-                        .padding(Papper.spacing.lg)
-                        .padding(.top, Papper.spacing.md) // Prevent text from going under navigation bar
-                        .padding(.bottom, 60) // Space for bottom toolbar
-                    }
-                    .onTapGesture {
-                        isEditorFocused = true
+                        .onTapGesture {
+                            isEditorFocused = true
+                        }
+                        .onChange(of: content) { _, _ in
+                            // Auto-scroll to keep cursor visible when typing
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                withAnimation(.easeOut(duration: 0.2)) {
+                                    proxy.scrollTo("bottomAnchor", anchor: .bottom)
+                                }
+                            }
+                        }
                     }
                     
                     // Fixed bottom toolbar
