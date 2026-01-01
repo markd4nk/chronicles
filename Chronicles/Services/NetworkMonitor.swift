@@ -10,11 +10,10 @@ import Network
 import Combine
 
 /// Monitors network connectivity status
-@MainActor
 class NetworkMonitor: ObservableObject {
     static let shared = NetworkMonitor()
     
-    /// Whether the device is connected to the network
+    /// Whether the device is connected to the network (thread-safe)
     @Published private(set) var isConnected: Bool = true
     
     /// The current connection type
@@ -29,7 +28,7 @@ class NetworkMonitor: ObservableObject {
     private let monitor: NWPathMonitor
     private let queue = DispatchQueue(label: "com.chronicles.networkmonitor")
     
-    enum ConnectionType {
+    enum ConnectionType: Sendable {
         case wifi
         case cellular
         case ethernet
@@ -42,44 +41,44 @@ class NetworkMonitor: ObservableObject {
     }
     
     deinit {
-        stopMonitoring()
+        monitor.cancel()
     }
     
     /// Start monitoring network changes
     private func startMonitoring() {
         monitor.pathUpdateHandler = { [weak self] path in
-            Task { @MainActor in
-                self?.updateConnectionStatus(path)
-            }
+            self?.handlePathUpdate(path)
         }
         monitor.start(queue: queue)
     }
     
-    /// Stop monitoring network changes
-    func stopMonitoring() {
-        monitor.cancel()
-    }
-    
-    /// Update connection status from path
-    private func updateConnectionStatus(_ path: NWPath) {
-        isConnected = path.status == .satisfied
-        isExpensive = path.isExpensive
-        isConstrained = path.isConstrained
+    /// Handle path update on background queue, then dispatch to main
+    private func handlePathUpdate(_ path: NWPath) {
+        let connected = path.status == .satisfied
+        let expensive = path.isExpensive
+        let constrained = path.isConstrained
         
-        // Determine connection type
+        let type: ConnectionType
         if path.usesInterfaceType(.wifi) {
-            connectionType = .wifi
+            type = .wifi
         } else if path.usesInterfaceType(.cellular) {
-            connectionType = .cellular
+            type = .cellular
         } else if path.usesInterfaceType(.wiredEthernet) {
-            connectionType = .ethernet
+            type = .ethernet
         } else {
-            connectionType = .unknown
+            type = .unknown
         }
         
-        #if DEBUG
-        print("[NetworkMonitor] Status: \(isConnected ? "Connected" : "Disconnected"), Type: \(connectionType)")
-        #endif
+        DispatchQueue.main.async { [weak self] in
+            self?.isConnected = connected
+            self?.isExpensive = expensive
+            self?.isConstrained = constrained
+            self?.connectionType = type
+            
+            #if DEBUG
+            print("[NetworkMonitor] Status: \(connected ? "Connected" : "Disconnected"), Type: \(type)")
+            #endif
+        }
     }
     
     /// Check if we should attempt network operations
@@ -91,6 +90,7 @@ class NetworkMonitor: ObservableObject {
     /// Wait for network to become available (with timeout)
     /// - Parameter timeout: Maximum time to wait in seconds
     /// - Returns: True if network became available, false if timed out
+    @MainActor
     func waitForConnection(timeout: TimeInterval = 5.0) async -> Bool {
         if isConnected {
             return true
@@ -145,4 +145,3 @@ extension NetworkMonitor {
         return try await operation()
     }
 }
-

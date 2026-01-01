@@ -125,7 +125,7 @@ class FirebaseService: ObservableObject {
     
     func fetchJournals(userId: String) async throws -> [Journal] {
         // Check network availability
-        guard await NetworkMonitor.shared.isConnected else {
+        guard NetworkMonitor.shared.isConnected else {
             print("[FirebaseService] Offline - using cached journals")
             return journals
         }
@@ -258,7 +258,7 @@ class FirebaseService: ObservableObject {
     
     func fetchEntries(userId: String, journalId: String? = nil) async throws -> [JournalEntry] {
         // Check network availability
-        guard await NetworkMonitor.shared.isConnected else {
+        guard NetworkMonitor.shared.isConnected else {
             print("[FirebaseService] Offline - using cached entries")
             if let journalId = journalId {
                 return entries.filter { $0.journalId == journalId }
@@ -297,7 +297,7 @@ class FirebaseService: ObservableObject {
         let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
         
         // Check network availability - use cached entries if offline
-        guard await NetworkMonitor.shared.isConnected else {
+        guard NetworkMonitor.shared.isConnected else {
             print("[FirebaseService] Offline - filtering cached entries for date")
             return entries.filter { entry in
                 entry.createdAt >= startOfDay && entry.createdAt < endOfDay
@@ -511,7 +511,7 @@ class FirebaseService: ObservableObject {
         }
         
         // Check network availability
-        guard await NetworkMonitor.shared.isConnected else {
+        guard NetworkMonitor.shared.isConnected else {
             print("[FirebaseService] Offline - using sample prompts")
             await MainActor.run {
                 self.prompts = JournalPrompt.samples
@@ -803,7 +803,7 @@ class FirebaseService: ObservableObject {
     /// Fetch user document from Firestore with timeout
     func fetchUser(userId: String) async throws -> User? {
         // Check network availability
-        guard await NetworkMonitor.shared.isConnected else {
+        guard NetworkMonitor.shared.isConnected else {
             print("[FirebaseService] Offline - cannot fetch user from Firestore")
             return nil
         }
@@ -850,7 +850,7 @@ class FirebaseService: ObservableObject {
         }
         
         // Check network availability
-        guard await NetworkMonitor.shared.isConnected else {
+        guard NetworkMonitor.shared.isConnected else {
             print("[FirebaseService] Offline - user save queued for later")
             // TODO: Implement offline queue for user saves
             return
@@ -910,7 +910,7 @@ class FirebaseService: ObservableObject {
     
     func updateStreak(userId: String) async throws -> (current: Int, longest: Int) {
         // Check network availability
-        guard await NetworkMonitor.shared.isConnected else {
+        guard NetworkMonitor.shared.isConnected else {
             print("[FirebaseService] Offline - calculating streak from cached entries")
             let currentStreak = calculateCurrentStreak(from: entries.map { $0.createdAt })
             let longestStreak = calculateLongestStreak(from: entries.map { $0.createdAt })
