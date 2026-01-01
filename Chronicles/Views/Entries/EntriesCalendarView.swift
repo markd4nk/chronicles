@@ -69,7 +69,7 @@ struct EntriesCalendarView: View {
             
             // Day Headers
             LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: Papper.spacing.sm) {
-                ForEach(["S", "M", "T", "W", "T", "F", "S"], id: \.self) { day in
+                ForEach(Array(["S", "M", "T", "W", "T", "F", "S"].enumerated()), id: \.offset) { _, day in
                     Text(day)
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(PapperColors.neutral500)
@@ -79,7 +79,7 @@ struct EntriesCalendarView: View {
             
             // Days Grid
             LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: Papper.spacing.xs) {
-                ForEach(daysInMonth, id: \.self) { date in
+                ForEach(Array(daysInMonth.enumerated()), id: \.offset) { _, date in
                     if let date = date {
                         DayCell(
                             date: date,

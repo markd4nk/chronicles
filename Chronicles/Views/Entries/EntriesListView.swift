@@ -81,7 +81,8 @@ struct EntriesListView: View {
                         if filteredEntries.isEmpty {
                             noResultsView
                         } else {
-                            ForEach(groupedEntries, id: \.0) { dateGroup, entries in
+                            ForEach(Array(groupedEntries.enumerated()), id: \.offset) { _, group in
+                                let (dateGroup, entries) = group
                                 VStack(alignment: .leading, spacing: Papper.spacing.sm) {
                                     Text(dateGroup)
                                         .font(.system(size: 13, weight: .medium))
