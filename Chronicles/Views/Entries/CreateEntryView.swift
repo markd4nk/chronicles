@@ -28,32 +28,6 @@ struct CreateEntryView: View {
     
     @FocusState private var isEditorFocused: Bool
     
-    // #region agent log
-    private func agentLog(_ hypothesisId: String, _ location: String, _ message: String, _ data: [String: Any] = [:]) {
-        let logPath = URL(fileURLWithPath: "c:\\Users\\Mark\\Desktop\\chronicles\\.cursor\\debug.log")
-        let payload: [String: Any] = [
-            "sessionId": "debug-session",
-            "runId": "run1",
-            "hypothesisId": hypothesisId,
-            "location": location,
-            "message": message,
-            "data": data,
-            "timestamp": Date().timeIntervalSince1970 * 1000
-        ]
-        if let jsonData = try? JSONSerialization.data(withJSONObject: payload),
-           var jsonString = String(data: jsonData, encoding: .utf8) {
-            jsonString += "\n"
-            if let handle = try? FileHandle(forWritingTo: logPath) {
-                handle.seekToEndOfFile()
-                handle.write(jsonString.data(using: .utf8)!)
-                try? handle.close()
-            } else {
-                try? jsonString.write(to: logPath, atomically: true, encoding: .utf8)
-            }
-        }
-    }
-    // #endregion
-    
     var body: some View {
         NavigationView {
             ZStack {
@@ -124,13 +98,6 @@ struct CreateEntryView: View {
                 }
             }
             .task {
-                // #region agent log
-                agentLog("NAV2", "CreateEntryView:task", "viewTaskStarted", [
-                    "journalId": journal.id,
-                    "journalName": journal.name
-                ])
-                // #endregion
-                
                 // Setup template content (non-blocking)
                 setupFromTemplate()
                 

@@ -14,34 +14,6 @@ struct JournalSelectionView: View {
     @State private var showCreateJournal = false
     @State private var journalForNewEntry: Journal?
     
-    // #region agent log
-    private func agentLog(_ hypothesisId: String, _ location: String, _ message: String, _ data: [String: Any] = [:]) {
-        let ts = Date().timeIntervalSince1970 * 1000
-        var logPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-        logPath = URL(fileURLWithPath: "c:\\Users\\Mark\\Desktop\\chronicles\\.cursor\\debug.log")
-        let payload: [String: Any] = [
-            "sessionId": "debug-session",
-            "runId": "run1",
-            "hypothesisId": hypothesisId,
-            "location": location,
-            "message": message,
-            "data": data,
-            "timestamp": ts
-        ]
-        if let jsonData = try? JSONSerialization.data(withJSONObject: payload),
-           var jsonString = String(data: jsonData, encoding: .utf8) {
-            jsonString += "\n"
-            if let handle = try? FileHandle(forWritingTo: logPath) {
-                handle.seekToEndOfFile()
-                handle.write(jsonString.data(using: .utf8)!)
-                try? handle.close()
-            } else {
-                try? jsonString.write(to: logPath, atomically: true, encoding: .utf8)
-            }
-        }
-    }
-    // #endregion
-    
     var body: some View {
         // No NavigationStack - use custom header to avoid sheet layout issues
         ZStack {
@@ -94,13 +66,6 @@ struct JournalSelectionView: View {
                                 JournalSelectionCard(
                                     journal: journal,
                                     onTap: {
-                                        // #region agent log
-                                        agentLog("NAV1", "JournalSelectionView:onTap", "journalTapped", [
-                                            "journalId": journal.id,
-                                            "journalName": journal.name,
-                                            "currentJournalForNewEntry": journalForNewEntry?.id ?? "nil"
-                                        ])
-                                        // #endregion
                                         journalForNewEntry = journal
                                     }
                                 )
@@ -151,12 +116,6 @@ struct JournalSelectionView: View {
         }
         // Use item: binding - guarantees journal exists when cover presents
         .fullScreenCover(item: $journalForNewEntry) { journal in
-            // #region agent log
-            let _ = agentLog("NAV1", "JournalSelectionView:fullScreenCover", "coverPresenting", [
-                "journalId": journal.id,
-                "journalName": journal.name
-            ])
-            // #endregion
             CreateEntryView(journal: journal)
         }
     }
