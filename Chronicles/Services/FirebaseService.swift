@@ -110,24 +110,83 @@ class FirebaseService: ObservableObject {
         await MainActor.run {
             self.isLoading = true
         }
+
+        // #region agent log
+        agentLog(
+            hypothesisId: "LD1",
+            location: "FirebaseService.swift:loadUserData",
+            message: "start",
+            data: [
+                "userIdLength": userId.count
+            ]
+        )
+        // #endregion
         
         // Load journals and entries in parallel
         await withTaskGroup(of: Void.self) { group in
             group.addTask {
                 do {
-                    _ = try await self.fetchJournals(userId: userId)
+                    let journals = try await self.fetchJournals(userId: userId)
                     print("[FirebaseService] Loaded journals for user: \(userId)")
+                    // #region agent log
+                    self.agentLog(
+                        hypothesisId: "LD1",
+                        location: "FirebaseService.swift:loadUserData",
+                        message: "journalsLoaded",
+                        data: [
+                            "count": journals.count
+                        ]
+                    )
+                    // #endregion
                 } catch {
                     print("[FirebaseService] Failed to load journals: \(error.localizedDescription)")
+                    let nsError = error as NSError
+                    // #region agent log
+                    self.agentLog(
+                        hypothesisId: "LD1",
+                        location: "FirebaseService.swift:loadUserData",
+                        message: "journalsFailed",
+                        data: [
+                            "domain": nsError.domain,
+                            "code": nsError.code,
+                            "missingIndex": self.isMissingIndexError(error),
+                            "permissionDenied": nsError.localizedDescription.lowercased().contains("missing or insufficient permissions")
+                        ]
+                    )
+                    // #endregion
                 }
             }
             
             group.addTask {
                 do {
-                    _ = try await self.fetchEntries(userId: userId, journalId: nil)
+                    let entries = try await self.fetchEntries(userId: userId, journalId: nil)
                     print("[FirebaseService] Loaded entries for user: \(userId)")
+                    // #region agent log
+                    self.agentLog(
+                        hypothesisId: "LD1",
+                        location: "FirebaseService.swift:loadUserData",
+                        message: "entriesLoaded",
+                        data: [
+                            "count": entries.count
+                        ]
+                    )
+                    // #endregion
                 } catch {
                     print("[FirebaseService] Failed to load entries: \(error.localizedDescription)")
+                    let nsError = error as NSError
+                    // #region agent log
+                    self.agentLog(
+                        hypothesisId: "LD1",
+                        location: "FirebaseService.swift:loadUserData",
+                        message: "entriesFailed",
+                        data: [
+                            "domain": nsError.domain,
+                            "code": nsError.code,
+                            "missingIndex": self.isMissingIndexError(error),
+                            "permissionDenied": nsError.localizedDescription.lowercased().contains("missing or insufficient permissions")
+                        ]
+                    )
+                    // #endregion
                 }
             }
         }
@@ -138,6 +197,18 @@ class FirebaseService: ObservableObject {
         }
         
         print("[FirebaseService] User data loaded successfully")
+
+        // #region agent log
+        agentLog(
+            hypothesisId: "LD1",
+            location: "FirebaseService.swift:loadUserData",
+            message: "done",
+            data: [
+                "journalsCount": journals.count,
+                "entriesCount": entries.count
+            ]
+        )
+        // #endregion
     }
     
     /// Reset data when user logs out
