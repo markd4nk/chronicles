@@ -64,6 +64,8 @@ class FirebaseService: ObservableObject {
            let jsonString = String(data: jsonData, encoding: .utf8) {
             print(jsonString)
             agentLogger.info("\(jsonString, privacy: .public)")
+            agentLogger.notice("\(jsonString, privacy: .public)")
+            NSLog("%@", jsonString)
         }
         #endif
     }
