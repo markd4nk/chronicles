@@ -4,7 +4,63 @@ This document tracks all completed development plans and major features implemen
 
 ---
 
-## [Latest] Enhance Reflect with Conversational Analysis
+## [Latest] Fix Authentication Configuration and UI Warnings
+
+**Status:** ✅ Completed  
+**Date:** 2026-01-01
+
+### Overview
+Fixed critical authentication issues preventing Google and Apple Sign-In from working, and resolved SwiftUI ForEach duplicate ID warnings that were causing UI instability.
+
+### Key Fixes Completed
+
+- **Authentication Configuration**
+  - Created `Info.plist` with required Firebase OAuth URL schemes:
+    - `app-1-1021392640818-ios-0afa4051098a69163a152b` (Firebase callback)
+    - `com.googleusercontent.apps.1021392640818-enib26eqnhv0qned91fg3e12i8ppi495` (Google OAuth)
+  - Created `Chronicles.entitlements` file with Sign in with Apple capability
+  - Updated Xcode project to reference Info.plist and entitlements file
+  - Moved files to root level for proper Xcode integration
+  - Disabled auto-generated Info.plist to use custom file with URL schemes
+
+- **Error Handling Improvements**
+  - Enhanced `AuthService` to preserve actual error details instead of generic messages
+  - Added detailed console logging for debugging authentication failures
+  - Added `userCancelled` and `custom(String)` error cases to `AuthError` enum
+  - Updated `AuthViewModel` to handle user cancellation gracefully (no error popup)
+  - Better error messages displayed to users
+
+- **UI Fixes**
+  - Fixed ForEach duplicate ID warnings in calendar view:
+    - Day headers array (duplicate "S" and "T" values)
+    - Calendar days grid (multiple `nil` values for empty cells)
+  - Fixed ForEach duplicate ID warnings in entries list:
+    - Date grouping with potential duplicate date strings
+  - Used array enumeration with `.offset` as unique IDs instead of values
+
+- **Firestore Index**
+  - Identified missing composite index for `fetchEntriesForDate` query
+  - Index required: `entries` collection with `userId` (Ascending) and `createdAt` (Ascending)
+  - User must create index manually in Firebase Console (link provided in error message)
+
+### Files Modified
+- `Info.plist` - Created with Firebase URL schemes
+- `Chronicles.entitlements` - Created for Sign in with Apple
+- `chronicles.xcodeproj/project.pbxproj` - Updated build settings
+- `Chronicles/Services/AuthService.swift` - Improved error handling and logging
+- `Chronicles/ViewModels/AuthViewModel.swift` - Better error display
+- `Chronicles/Views/Entries/EntriesCalendarView.swift` - Fixed duplicate IDs
+- `Chronicles/Views/Entries/EntriesListView.swift` - Fixed duplicate IDs
+
+### Technical Details
+- Firebase OAuth requires custom URL schemes registered in Info.plist for callback handling
+- Sign in with Apple requires entitlements file with `com.apple.developer.applesignin` capability
+- SwiftUI ForEach requires unique IDs - using array indices prevents duplicate ID warnings
+- Firestore composite indexes are required for queries combining equality and range filters
+
+---
+
+## Enhance Reflect with Conversational Analysis
 
 **Status:** ✅ Completed  
 **Date:** 2024-12-30
