@@ -347,6 +347,73 @@ class FirebaseService: ObservableObject {
                 ]
             )
             // #endregion
+
+            // If the composite index isn't created yet, fallback to a query that doesn't require it.
+            if missingIndex {
+                let fallbackSnapshot = try await withTimeoutAndRetry(timeout: defaultTimeout, maxRetries: maxRetries) {
+                    try await self.db.collection("journals")
+                        .whereField("userId", isEqualTo: userId)
+                        .getDocuments()
+                }
+                
+                let fetchedJournals = fallbackSnapshot.documents.compactMap { doc -> Journal? in
+                    let data = doc.data()
+                    
+                    let createdAt: Date
+                    if let timestamp = data["createdAt"] as? Timestamp {
+                        createdAt = timestamp.dateValue()
+                    } else {
+                        createdAt = Date()
+                    }
+                    
+                    let updatedAt: Date
+                    if let timestamp = data["updatedAt"] as? Timestamp {
+                        updatedAt = timestamp.dateValue()
+                    } else {
+                        updatedAt = Date()
+                    }
+                    
+                    let lastEntryDate: Date?
+                    if let timestamp = data["lastEntryDate"] as? Timestamp {
+                        lastEntryDate = timestamp.dateValue()
+                    } else {
+                        lastEntryDate = nil
+                    }
+                    
+                    return Journal(
+                        id: doc.documentID,
+                        userId: data["userId"] as? String ?? userId,
+                        name: data["name"] as? String ?? "Untitled",
+                        color: data["color"] as? String ?? "#414141",
+                        order: data["order"] as? Int ?? 0,
+                        createdAt: createdAt,
+                        updatedAt: updatedAt,
+                        entryCount: data["entryCount"] as? Int ?? 0,
+                        lastEntryDate: lastEntryDate
+                    )
+                }
+                
+                // Sort in memory (stable fallback; best performance is still to create the index)
+                let sorted = fetchedJournals.sorted { $0.order < $1.order }
+                
+                await MainActor.run {
+                    self.journals = sorted
+                }
+                
+                // #region agent log
+                agentLog(
+                    hypothesisId: "J1",
+                    location: "FirebaseService.swift:fetchJournals",
+                    message: "fallbackSuccess",
+                    data: [
+                        "fetchedCount": fetchedJournals.count,
+                        "returnedCount": sorted.count
+                    ]
+                )
+                // #endregion
+                
+                return sorted
+            }
             
             throw error
         }
