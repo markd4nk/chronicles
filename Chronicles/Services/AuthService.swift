@@ -70,93 +70,106 @@ class AuthService: NSObject, ObservableObject {
     
     @MainActor
     private func loadOrCreateUser(from firebaseUser: FirebaseAuth.User, appleFullName: PersonNameComponents? = nil) async {
-        // Try to load from Firestore first (cloud sync)
-        var user: User?
-        do {
-            user = try await FirebaseService.shared.fetchUser(userId: firebaseUser.uid)
-        } catch {
-            print("[AuthService] Failed to load user from Firestore: \(error.localizedDescription)")
+        // STEP 1: Load from cache FIRST (instant, no network wait)
+        // This ensures the UI is shown immediately
+        let cachedUser = loadCachedUser(from: firebaseUser, appleFullName: appleFullName)
+        
+        self.currentUser = cachedUser
+        self.isAuthenticated = true
+        self.isLoading = false
+        
+        print("[AuthService] Loaded cached user immediately")
+        
+        // STEP 2: Sync from Firestore in the BACKGROUND (non-blocking)
+        Task {
+            await syncUserFromFirestore(firebaseUser: firebaseUser, cachedUser: cachedUser)
         }
+    }
+    
+    /// Load user from local cache (UserDefaults) - instant, no network
+    private func loadCachedUser(from firebaseUser: FirebaseAuth.User, appleFullName: PersonNameComponents? = nil) -> User {
+        let userId = firebaseUser.uid
         
-        // If user exists in Firestore, use it
-        if let existingUser = user {
-            self.currentUser = existingUser
-            self.isAuthenticated = true
-            self.isLoading = false
-            
-            // Also cache locally for offline access
-            cacheUserLocally(existingUser)
-            return
-        }
+        // Load cached data from UserDefaults
+        let savedOnboardingCompleted = UserDefaults.standard.bool(forKey: "onboarding_\(userId)")
+        let savedOnboardingData = loadOnboardingData(for: userId)
+        let savedCurrentStreak = UserDefaults.standard.integer(forKey: "currentStreak_\(userId)")
+        let savedLongestStreak = UserDefaults.standard.integer(forKey: "longestStreak_\(userId)")
+        let savedTotalEntries = UserDefaults.standard.integer(forKey: "totalEntries_\(userId)")
+        let savedPreferredName = UserDefaults.standard.string(forKey: "preferredName_\(userId)")
+        let savedDisplayName = UserDefaults.standard.string(forKey: "displayName_\(userId)")
+        let savedSecurityEnabled = UserDefaults.standard.bool(forKey: "securityEnabled_\(userId)")
         
-        // User not in Firestore - load from UserDefaults (migration path for existing users)
-        let savedOnboardingCompleted = UserDefaults.standard.bool(forKey: "onboarding_\(firebaseUser.uid)")
-        let savedOnboardingData = loadOnboardingData(for: firebaseUser.uid)
-        let savedCurrentStreak = UserDefaults.standard.integer(forKey: "currentStreak_\(firebaseUser.uid)")
-        let savedLongestStreak = UserDefaults.standard.integer(forKey: "longestStreak_\(firebaseUser.uid)")
-        let savedTotalEntries = UserDefaults.standard.integer(forKey: "totalEntries_\(firebaseUser.uid)")
+        // Load dashboard layout from cache
+        let savedDashboardLayout = UserDefaults.standard.stringArray(forKey: "dashboardLayout_\(userId)")
+            ?? ["morning_reflection", "gratitude", "evening_review", "goals"]
         
-        // Extract display name and preferred name from Google/Apple account
+        // Extract display name and preferred name
         let displayName: String
         let preferredName: String
         
-        // First check if we have a saved preferred name (user may have set it manually)
-        let savedPreferredName = UserDefaults.standard.string(forKey: "preferredName_\(firebaseUser.uid)")
-        let savedDisplayName = UserDefaults.standard.string(forKey: "displayName_\(firebaseUser.uid)")
-        
         if let savedDisplay = savedDisplayName, let savedPreferred = savedPreferredName {
-            // Use saved names
             displayName = savedDisplay
             preferredName = savedPreferred
         } else if let appleName = appleFullName {
-            // Apple Sign-In - extract name from PersonNameComponents
             let formatter = PersonNameComponentsFormatter()
             formatter.style = .default
             displayName = formatter.string(from: appleName)
             preferredName = appleName.givenName ?? appleName.familyName ?? "User"
         } else if let firebaseDisplayName = firebaseUser.displayName, !firebaseDisplayName.isEmpty {
-            // Google Sign-In or other - use Firebase's displayName
             displayName = firebaseDisplayName
             preferredName = firebaseDisplayName.components(separatedBy: " ").first ?? "User"
         } else {
-            // Fallback
             displayName = "User"
             preferredName = "User"
         }
         
-        // Create new user
-        let newUser = User(
-            id: firebaseUser.uid,
+        return User(
+            id: userId,
             email: firebaseUser.email ?? "",
             displayName: displayName,
             preferredName: preferredName,
             createdAt: firebaseUser.metadata.creationDate ?? Date(),
             onboardingCompleted: savedOnboardingCompleted,
             onboardingData: savedOnboardingData,
-            subscriptionStatus: .trial, // Default to trial for new users
-            securityEnabled: false,
-            dashboardLayout: ["morning_reflection", "gratitude", "evening_review", "goals"],
+            subscriptionStatus: .trial,
+            securityEnabled: savedSecurityEnabled,
+            dashboardLayout: savedDashboardLayout,
             currentStreak: savedCurrentStreak,
             longestStreak: savedLongestStreak,
             lastEntryDate: nil,
             totalEntries: savedTotalEntries
         )
-        
-        self.currentUser = newUser
-        self.isAuthenticated = true
-        self.isLoading = false
-        
-        // Save to Firestore (migrate from UserDefaults to cloud)
-        Task {
-            do {
-                try await FirebaseService.shared.saveUser(newUser)
-            } catch {
-                print("[AuthService] Failed to save user to Firestore: \(error.localizedDescription)")
-            }
+    }
+    
+    /// Sync user data from Firestore in the background (non-blocking)
+    private func syncUserFromFirestore(firebaseUser: FirebaseAuth.User, cachedUser: User) async {
+        // Check network availability first
+        guard await NetworkMonitor.shared.isConnected else {
+            print("[AuthService] Offline - skipping Firestore sync")
+            return
         }
         
-        // Cache locally
-        cacheUserLocally(newUser)
+        do {
+            // Try to fetch from Firestore
+            if let cloudUser = try await FirebaseService.shared.fetchUser(userId: firebaseUser.uid) {
+                // Cloud data exists - update local state with cloud data
+                await MainActor.run {
+                    self.currentUser = cloudUser
+                }
+                cacheUserLocally(cloudUser)
+                print("[AuthService] Synced user from Firestore")
+            } else {
+                // No cloud data - this is a new user or migration
+                // Save cached user to Firestore
+                try await FirebaseService.shared.saveUser(cachedUser)
+                cacheUserLocally(cachedUser)
+                print("[AuthService] Saved new user to Firestore")
+            }
+        } catch {
+            // Firestore sync failed - that's OK, we already have cached data
+            print("[AuthService] Firestore sync failed (using cached data): \(error.localizedDescription)")
+        }
     }
     
     /// Cache user data locally for offline access
@@ -167,6 +180,8 @@ class AuthService: NSObject, ObservableObject {
         UserDefaults.standard.set(user.currentStreak, forKey: "currentStreak_\(user.id)")
         UserDefaults.standard.set(user.longestStreak, forKey: "longestStreak_\(user.id)")
         UserDefaults.standard.set(user.totalEntries, forKey: "totalEntries_\(user.id)")
+        UserDefaults.standard.set(user.securityEnabled, forKey: "securityEnabled_\(user.id)")
+        UserDefaults.standard.set(user.dashboardLayout, forKey: "dashboardLayout_\(user.id)")
         
         if let onboardingData = user.onboardingData,
            let encoded = try? JSONEncoder().encode(onboardingData) {
@@ -326,6 +341,9 @@ class AuthService: NSObject, ObservableObject {
             try Auth.auth().signOut()
             currentUser = nil
             isAuthenticated = false
+            
+            // Clear FirebaseService data
+            FirebaseService.shared.clearUserData()
         } catch {
             self.error = .signOutFailed
         }

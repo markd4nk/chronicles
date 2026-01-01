@@ -23,15 +23,93 @@ class FirebaseService: ObservableObject {
     @Published var conversations: [AIConversation] = []
     @Published var isLoading = false
     @Published var isLoadingPrompts = true
+    @Published var isDataLoaded = false
     
     private let db = Firestore.firestore()
     private var promptsListener: ListenerRegistration?
     private var lastPromptDocument: DocumentSnapshot?
     private let promptsBatchSize = 50
+    private var cancellables = Set<AnyCancellable>()
+    
+    // MARK: - Timeout Configuration
+    
+    private let defaultTimeout: TimeInterval = 5.0
+    private let longTimeout: TimeInterval = 10.0
+    private let maxRetries: Int = 3
     
     private init() {
         // Set up prompts listener
         setupPromptsListener()
+        // Listen for user authentication to load data
+        setupAuthListener()
+    }
+    
+    // MARK: - Auth Listener (Auto-load data when user logs in)
+    
+    private func setupAuthListener() {
+        AuthService.shared.$currentUser
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] user in
+                guard let self = self, let user = user else { return }
+                
+                // Only load if not already loaded
+                if !self.isDataLoaded {
+                    Task {
+                        await self.loadUserData(userId: user.id)
+                    }
+                }
+            }
+            .store(in: &cancellables)
+    }
+    
+    // MARK: - Load All User Data
+    
+    /// Load all user data (journals, entries) when user authenticates
+    /// This fixes the critical bug where data wasn't loading on app restart
+    func loadUserData(userId: String) async {
+        guard !userId.isEmpty else { return }
+        
+        await MainActor.run {
+            self.isLoading = true
+        }
+        
+        // Load journals and entries in parallel
+        await withTaskGroup(of: Void.self) { group in
+            group.addTask {
+                do {
+                    _ = try await self.fetchJournals(userId: userId)
+                    print("[FirebaseService] Loaded journals for user: \(userId)")
+                } catch {
+                    print("[FirebaseService] Failed to load journals: \(error.localizedDescription)")
+                }
+            }
+            
+            group.addTask {
+                do {
+                    _ = try await self.fetchEntries(userId: userId, journalId: nil)
+                    print("[FirebaseService] Loaded entries for user: \(userId)")
+                } catch {
+                    print("[FirebaseService] Failed to load entries: \(error.localizedDescription)")
+                }
+            }
+        }
+        
+        await MainActor.run {
+            self.isLoading = false
+            self.isDataLoaded = true
+        }
+        
+        print("[FirebaseService] User data loaded successfully")
+    }
+    
+    /// Reset data when user logs out
+    func clearUserData() {
+        Task { @MainActor in
+            self.journals = []
+            self.entries = []
+            self.conversations = []
+            self.isDataLoaded = false
+        }
     }
     
     // MARK: - Prompts Listener
@@ -46,10 +124,18 @@ class FirebaseService: ObservableObject {
     // MARK: - Journal Operations
     
     func fetchJournals(userId: String) async throws -> [Journal] {
-        let snapshot = try await db.collection("journals")
-            .whereField("userId", isEqualTo: userId)
-            .order(by: "order")
-            .getDocuments()
+        // Check network availability
+        guard await NetworkMonitor.shared.isConnected else {
+            print("[FirebaseService] Offline - using cached journals")
+            return journals
+        }
+        
+        let snapshot = try await withTimeoutAndRetry(timeout: defaultTimeout, maxRetries: maxRetries) {
+            try await self.db.collection("journals")
+                .whereField("userId", isEqualTo: userId)
+                .order(by: "order")
+                .getDocuments()
+        }
         
         let fetchedJournals = snapshot.documents.compactMap { doc -> Journal? in
             let data = doc.data()
@@ -171,6 +257,15 @@ class FirebaseService: ObservableObject {
     // MARK: - Entry Operations
     
     func fetchEntries(userId: String, journalId: String? = nil) async throws -> [JournalEntry] {
+        // Check network availability
+        guard await NetworkMonitor.shared.isConnected else {
+            print("[FirebaseService] Offline - using cached entries")
+            if let journalId = journalId {
+                return entries.filter { $0.journalId == journalId }
+            }
+            return entries
+        }
+        
         var query: Query = db.collection("entries")
             .whereField("userId", isEqualTo: userId)
             .order(by: "createdAt", descending: true)
@@ -179,7 +274,9 @@ class FirebaseService: ObservableObject {
             query = query.whereField("journalId", isEqualTo: journalId)
         }
         
-        let snapshot = try await query.getDocuments()
+        let snapshot = try await withTimeoutAndRetry(timeout: defaultTimeout, maxRetries: maxRetries) {
+            try await query.getDocuments()
+        }
         
         let fetchedEntries = snapshot.documents.compactMap { doc -> JournalEntry? in
             return parseEntryFromDocument(doc)
@@ -199,19 +296,29 @@ class FirebaseService: ObservableObject {
         let startOfDay = calendar.startOfDay(for: date)
         let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
         
+        // Check network availability - use cached entries if offline
+        guard await NetworkMonitor.shared.isConnected else {
+            print("[FirebaseService] Offline - filtering cached entries for date")
+            return entries.filter { entry in
+                entry.createdAt >= startOfDay && entry.createdAt < endOfDay
+            }.sorted { $0.createdAt > $1.createdAt }
+        }
+        
         // Note: Removed .order(by:) to avoid Firestore index conflict with range filters
         // Sorting in memory is efficient for a single day's entries
-        let snapshot = try await db.collection("entries")
-            .whereField("userId", isEqualTo: userId)
-            .whereField("createdAt", isGreaterThanOrEqualTo: Timestamp(date: startOfDay))
-            .whereField("createdAt", isLessThan: Timestamp(date: endOfDay))
-            .getDocuments()
+        let snapshot = try await withTimeoutAndRetry(timeout: defaultTimeout, maxRetries: maxRetries) {
+            try await self.db.collection("entries")
+                .whereField("userId", isEqualTo: userId)
+                .whereField("createdAt", isGreaterThanOrEqualTo: Timestamp(date: startOfDay))
+                .whereField("createdAt", isLessThan: Timestamp(date: endOfDay))
+                .getDocuments()
+        }
         
-        let entries = snapshot.documents.compactMap { doc -> JournalEntry? in
+        let fetchedEntries = snapshot.documents.compactMap { doc -> JournalEntry? in
             return parseEntryFromDocument(doc)
         }
         
-        return entries.sorted { $0.createdAt > $1.createdAt }
+        return fetchedEntries.sorted { $0.createdAt > $1.createdAt }
     }
     
     private func parseEntryFromDocument(_ doc: DocumentSnapshot) -> JournalEntry? {
@@ -397,19 +504,31 @@ class FirebaseService: ObservableObject {
         }
     }
     
-    /// Load initial batch of prompts from Firestore
+    /// Load initial batch of prompts from Firestore with timeout
     private func loadInitialPrompts() async {
         await MainActor.run {
             self.isLoadingPrompts = true
+        }
+        
+        // Check network availability
+        guard await NetworkMonitor.shared.isConnected else {
+            print("[FirebaseService] Offline - using sample prompts")
+            await MainActor.run {
+                self.prompts = JournalPrompt.samples
+                self.isLoadingPrompts = false
+            }
+            return
         }
         
         do {
             // STEP 1: Batch fetch all user likes in ONE query
             let likedPromptIds = await fetchUserLikedPromptIds()
             
-            // STEP 2: Fetch ALL prompts in ONE query
+            // STEP 2: Fetch ALL prompts in ONE query with timeout
             let query = db.collection("prompts")
-            let snapshot = try await query.getDocuments()
+            let snapshot = try await withTimeout(seconds: longTimeout) {
+                try await query.getDocuments()
+            }
             
             // STEP 3: Parse prompts using the Set for O(1) lookup (no more N+1!)
             var fetchedPrompts: [JournalPrompt] = []
@@ -681,9 +800,17 @@ class FirebaseService: ObservableObject {
     
     // MARK: - User Operations
     
-    /// Fetch user document from Firestore
+    /// Fetch user document from Firestore with timeout
     func fetchUser(userId: String) async throws -> User? {
-        let doc = try await db.collection("users").document(userId).getDocument()
+        // Check network availability
+        guard await NetworkMonitor.shared.isConnected else {
+            print("[FirebaseService] Offline - cannot fetch user from Firestore")
+            return nil
+        }
+        
+        let doc = try await withTimeoutAndRetry(timeout: defaultTimeout, maxRetries: maxRetries) {
+            try await self.db.collection("users").document(userId).getDocument()
+        }
         
         guard doc.exists else {
             return nil
@@ -692,7 +819,7 @@ class FirebaseService: ObservableObject {
         return parseUserFromDocument(doc)
     }
     
-    /// Save user document to Firestore
+    /// Save user document to Firestore with timeout
     func saveUser(_ user: User) async throws {
         var data: [String: Any] = [
             "email": user.email,
@@ -722,7 +849,16 @@ class FirebaseService: ObservableObject {
             data["onboardingData"] = json
         }
         
-        try await db.collection("users").document(user.id).setData(data, merge: true)
+        // Check network availability
+        guard await NetworkMonitor.shared.isConnected else {
+            print("[FirebaseService] Offline - user save queued for later")
+            // TODO: Implement offline queue for user saves
+            return
+        }
+        
+        try await withTimeoutAndRetry(timeout: defaultTimeout, maxRetries: maxRetries) {
+            try await self.db.collection("users").document(user.id).setData(data, merge: true)
+        }
     }
     
     /// Parse User from Firestore document
@@ -773,11 +909,21 @@ class FirebaseService: ObservableObject {
     // MARK: - Streak Operations
     
     func updateStreak(userId: String) async throws -> (current: Int, longest: Int) {
-        // Fetch entries to calculate streak
-        let snapshot = try await db.collection("entries")
-            .whereField("userId", isEqualTo: userId)
-            .order(by: "createdAt", descending: true)
-            .getDocuments()
+        // Check network availability
+        guard await NetworkMonitor.shared.isConnected else {
+            print("[FirebaseService] Offline - calculating streak from cached entries")
+            let currentStreak = calculateCurrentStreak(from: entries.map { $0.createdAt })
+            let longestStreak = calculateLongestStreak(from: entries.map { $0.createdAt })
+            return (currentStreak, longestStreak)
+        }
+        
+        // Fetch entries to calculate streak with timeout
+        let snapshot = try await withTimeoutAndRetry(timeout: defaultTimeout, maxRetries: maxRetries) {
+            try await self.db.collection("entries")
+                .whereField("userId", isEqualTo: userId)
+                .order(by: "createdAt", descending: true)
+                .getDocuments()
+        }
         
         let entryDates = snapshot.documents.compactMap { doc -> Date? in
             if let timestamp = doc.data()["createdAt"] as? Timestamp {

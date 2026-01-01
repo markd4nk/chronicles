@@ -36,7 +36,8 @@ class DashboardViewModel: ObservableObject {
     
     init() {
         setupBindings()
-        loadDashboard()
+        // Load widgets immediately with cached data (non-blocking)
+        loadWidgets()
     }
     
     private func setupBindings() {
@@ -51,11 +52,21 @@ class DashboardViewModel: ObservableObject {
             }
             .store(in: &cancellables)
         
+        // Listen for entries updates from FirebaseService (auto-updates when data loads)
         firebaseService.$entries
             .receive(on: DispatchQueue.main)
             .debounce(for: .milliseconds(300), scheduler: DispatchQueue.main)
             .sink { [weak self] entries in
                 self?.updateTodaysEntries(from: entries)
+            }
+            .store(in: &cancellables)
+        
+        // Listen for data loaded signal to refresh dashboard
+        firebaseService.$isDataLoaded
+            .receive(on: DispatchQueue.main)
+            .filter { $0 } // Only when data is loaded
+            .sink { [weak self] _ in
+                self?.loadDashboard()
             }
             .store(in: &cancellables)
     }
@@ -65,8 +76,26 @@ class DashboardViewModel: ObservableObject {
     func loadDashboard() {
         loadWidgets()
         
+        // Load today's entries in background (non-blocking)
         Task {
-            await loadTodaysEntries()
+            await loadTodaysEntriesInBackground()
+        }
+    }
+    
+    /// Load entries in background without blocking UI
+    private func loadTodaysEntriesInBackground() async {
+        guard let userId = authService.currentUser?.id, !userId.isEmpty else {
+            return
+        }
+        
+        // Don't block UI - just update when data arrives
+        do {
+            let entries = try await firebaseService.fetchEntriesForDate(userId: userId, date: Date())
+            todaysEntries = entries
+            updateWidgetCompletionCache()
+        } catch {
+            // Silently handle - entries are only used for widget completion tracking
+            print("[DashboardViewModel] Failed to load today's entries: \(error.localizedDescription)")
         }
     }
     
@@ -87,7 +116,9 @@ class DashboardViewModel: ObservableObject {
     }
     
     func loadTodaysEntries() async {
-        let userId = authService.currentUser?.id ?? ""
+        guard let userId = authService.currentUser?.id, !userId.isEmpty else {
+            return
+        }
         
         do {
             let entries = try await firebaseService.fetchEntriesForDate(userId: userId, date: Date())
@@ -95,6 +126,7 @@ class DashboardViewModel: ObservableObject {
             updateWidgetCompletionCache()
         } catch {
             // Silently handle - entries are only used for widget completion tracking
+            print("[DashboardViewModel] Failed to load today's entries: \(error.localizedDescription)")
         }
     }
     
