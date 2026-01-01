@@ -161,21 +161,27 @@ struct JournalSelectionView: View {
             CreateJournalView()
         }
         .fullScreenCover(isPresented: $showCreateEntry) {
-            // #region agent log
-            agentLog(
-                hypothesisId: "NAV1",
-                location: "JournalSelectionView.swift:fullScreenCover",
-                message: "coverEvaluated",
-                data: [
-                    "showCreateEntry": showCreateEntry,
-                    "selectedJournalIsNil": selectedJournal == nil,
-                    "selectedJournalIdLength": selectedJournal?.id.count ?? 0
-                ]
-            )
-            // #endregion
-            if let journal = selectedJournal {
-                CreateEntryView(journal: journal)
+            Group {
+                if let journal = selectedJournal {
+                    CreateEntryView(journal: journal)
+                } else {
+                    Text("No journal selected")
+                }
             }
+            // #region agent log
+            .onAppear {
+                agentLog(
+                    hypothesisId: "NAV1",
+                    location: "JournalSelectionView.swift:fullScreenCover.onAppear",
+                    message: "coverEvaluated",
+                    data: [
+                        "showCreateEntry": showCreateEntry,
+                        "selectedJournalIsNil": selectedJournal == nil,
+                        "selectedJournalIdLength": selectedJournal?.id.count ?? 0
+                    ]
+                )
+            }
+            // #endregion
         }
         // #region agent log
         .onChange(of: showCreateEntry) { _, newValue in
