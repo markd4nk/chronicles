@@ -167,59 +167,117 @@ class FirebaseService: ObservableObject {
             print("[FirebaseService] Offline - using cached journals")
             return journals
         }
+
+        // #region agent log
+        agentLog(
+            hypothesisId: "J1",
+            location: "FirebaseService.swift:fetchJournals",
+            message: "start",
+            data: [
+                "userIdLength": userId.count,
+                "useOrderByOrder": true
+            ]
+        )
+        // #endregion
         
-        let snapshot = try await withTimeoutAndRetry(timeout: defaultTimeout, maxRetries: maxRetries) {
-            try await self.db.collection("journals")
-                .whereField("userId", isEqualTo: userId)
-                .order(by: "order")
-                .getDocuments()
-        }
+        do {
+            let snapshot = try await withTimeoutAndRetry(timeout: defaultTimeout, maxRetries: maxRetries) {
+                try await self.db.collection("journals")
+                    .whereField("userId", isEqualTo: userId)
+                    .order(by: "order")
+                    .getDocuments()
+            }
         
-        let fetchedJournals = snapshot.documents.compactMap { doc -> Journal? in
-            let data = doc.data()
-            
-            let createdAt: Date
-            if let timestamp = data["createdAt"] as? Timestamp {
-                createdAt = timestamp.dateValue()
-            } else {
-                createdAt = Date()
+            let fetchedJournals = snapshot.documents.compactMap { doc -> Journal? in
+                let data = doc.data()
+                
+                let createdAt: Date
+                if let timestamp = data["createdAt"] as? Timestamp {
+                    createdAt = timestamp.dateValue()
+                } else {
+                    createdAt = Date()
+                }
+                
+                let updatedAt: Date
+                if let timestamp = data["updatedAt"] as? Timestamp {
+                    updatedAt = timestamp.dateValue()
+                } else {
+                    updatedAt = Date()
+                }
+                
+                let lastEntryDate: Date?
+                if let timestamp = data["lastEntryDate"] as? Timestamp {
+                    lastEntryDate = timestamp.dateValue()
+                } else {
+                    lastEntryDate = nil
+                }
+                
+                return Journal(
+                    id: doc.documentID,
+                    userId: data["userId"] as? String ?? userId,
+                    name: data["name"] as? String ?? "Untitled",
+                    color: data["color"] as? String ?? "#414141",
+                    order: data["order"] as? Int ?? 0,
+                    createdAt: createdAt,
+                    updatedAt: updatedAt,
+                    entryCount: data["entryCount"] as? Int ?? 0,
+                    lastEntryDate: lastEntryDate
+                )
             }
             
-            let updatedAt: Date
-            if let timestamp = data["updatedAt"] as? Timestamp {
-                updatedAt = timestamp.dateValue()
-            } else {
-                updatedAt = Date()
+            await MainActor.run {
+                self.journals = fetchedJournals
             }
             
-            let lastEntryDate: Date?
-            if let timestamp = data["lastEntryDate"] as? Timestamp {
-                lastEntryDate = timestamp.dateValue()
-            } else {
-                lastEntryDate = nil
-            }
-            
-            return Journal(
-                id: doc.documentID,
-                userId: data["userId"] as? String ?? userId,
-                name: data["name"] as? String ?? "Untitled",
-                color: data["color"] as? String ?? "#414141",
-                order: data["order"] as? Int ?? 0,
-                createdAt: createdAt,
-                updatedAt: updatedAt,
-                entryCount: data["entryCount"] as? Int ?? 0,
-                lastEntryDate: lastEntryDate
+            // #region agent log
+            agentLog(
+                hypothesisId: "J1",
+                location: "FirebaseService.swift:fetchJournals",
+                message: "success",
+                data: [
+                    "returnedCount": fetchedJournals.count
+                ]
             )
+            // #endregion
+            
+            return fetchedJournals
+        } catch {
+            let nsError = error as NSError
+            let missingIndex = isMissingIndexError(error)
+            let permissionDenied = nsError.localizedDescription.lowercased().contains("missing or insufficient permissions")
+            
+            // #region agent log
+            agentLog(
+                hypothesisId: "J1",
+                location: "FirebaseService.swift:fetchJournals",
+                message: "failed",
+                data: [
+                    "domain": nsError.domain,
+                    "code": nsError.code,
+                    "missingIndex": missingIndex,
+                    "permissionDenied": permissionDenied
+                ]
+            )
+            // #endregion
+            
+            throw error
         }
-        
-        await MainActor.run {
-            self.journals = fetchedJournals
-        }
-        
-        return fetchedJournals
     }
     
     func createJournal(_ journal: Journal) async throws {
+        // #region agent log
+        agentLog(
+            hypothesisId: "J2",
+            location: "FirebaseService.swift:createJournal",
+            message: "start",
+            data: [
+                "userIdIsEmpty": journal.userId.isEmpty,
+                "nameLength": journal.name.count,
+                "order": journal.order
+            ]
+        )
+        // #endregion
+        
         let data: [String: Any] = [
             "userId": journal.userId,
             "name": journal.name,
@@ -235,6 +293,17 @@ class FirebaseService: ObservableObject {
         await MainActor.run {
             journals.append(journal)
         }
+
+        // #region agent log
+        agentLog(
+            hypothesisId: "J2",
+            location: "FirebaseService.swift:createJournal",
+            message: "success",
+            data: [
+                "localJournalsCount": journals.count
+            ]
+        )
+        // #endregion
     }
     
     func updateJournal(_ journal: Journal) async throws {
