@@ -15,25 +15,6 @@ struct JournalSelectionView: View {
     @State private var selectedJournal: Journal?
     @State private var showCreateEntry = false
     
-    // #region agent log
-    private func agentLog(hypothesisId: String, location: String, message: String, data: [String: Any] = [:]) {
-        let ts = Date().timeIntervalSince1970 * 1000
-        let jsonData: [String: Any] = [
-            "sessionId": "debug-session",
-            "runId": "run1",
-            "hypothesisId": hypothesisId,
-            "location": location,
-            "message": message,
-            "data": data,
-            "timestamp": ts
-        ]
-        if let raw = try? JSONSerialization.data(withJSONObject: jsonData),
-           let s = String(data: raw, encoding: .utf8) {
-            NSLog("%@", s)
-        }
-    }
-    // #endregion
-    
     var body: some View {
         // No NavigationStack - use custom header to avoid sheet layout issues
         ZStack {
@@ -86,17 +67,6 @@ struct JournalSelectionView: View {
                                 JournalSelectionCard(
                                     journal: journal,
                                     onTap: {
-                                        // #region agent log
-                                        agentLog(
-                                            hypothesisId: "NAV1",
-                                            location: "JournalSelectionView.swift:onTap",
-                                            message: "journalTapped",
-                                            data: [
-                                                "journalIdLength": journal.id.count,
-                                                "selectedJournalWasNil": selectedJournal == nil
-                                            ]
-                                        )
-                                        // #endregion
                                         selectedJournal = journal
                                         showCreateEntry = true
                                     }
@@ -143,59 +113,14 @@ struct JournalSelectionView: View {
                 }
             }
         }
-        // #region agent log
-        .onAppear {
-            agentLog(
-                hypothesisId: "NAV0",
-                location: "JournalSelectionView.swift:onAppear",
-                message: "selectionViewAppeared",
-                data: [
-                    "journalsCount": firebaseService.journals.count,
-                    "selectedJournalIsNil": selectedJournal == nil,
-                    "showCreateEntry": showCreateEntry
-                ]
-            )
-        }
-        // #endregion
         .sheet(isPresented: $showCreateJournal) {
             CreateJournalView()
         }
         .fullScreenCover(isPresented: $showCreateEntry) {
-            Group {
-                if let journal = selectedJournal {
-                    CreateEntryView(journal: journal)
-                } else {
-                    Text("No journal selected")
-                }
+            if let journal = selectedJournal {
+                CreateEntryView(journal: journal)
             }
-            // #region agent log
-            .onAppear {
-                agentLog(
-                    hypothesisId: "NAV1",
-                    location: "JournalSelectionView.swift:fullScreenCover.onAppear",
-                    message: "coverEvaluated",
-                    data: [
-                        "showCreateEntry": showCreateEntry,
-                        "selectedJournalIsNil": selectedJournal == nil,
-                        "selectedJournalIdLength": selectedJournal?.id.count ?? 0
-                    ]
-                )
-            }
-            // #endregion
         }
-        // #region agent log
-        .onChange(of: showCreateEntry) { _, newValue in
-            agentLog(
-                hypothesisId: "NAV1",
-                location: "JournalSelectionView.swift:onChange(showCreateEntry)",
-                message: "showCreateEntryChanged",
-                data: [
-                    "value": newValue,
-                    "selectedJournalIsNil": selectedJournal == nil
-                ]
-            )
-        }
-        // #endregion
     }
     
     private var emptyState: some View {

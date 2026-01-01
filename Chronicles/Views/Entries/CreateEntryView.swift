@@ -34,24 +34,30 @@ struct CreateEntryView: View {
                 Color(hex: "#faf8f3")
                     .ignoresSafeArea()
                 
-                // Main content - text editor always visible
-                ScrollView {
-                    VStack(alignment: .leading, spacing: Papper.spacing.md) {
-                        // Text Editor
-                        TextEditor(text: $content)
-                            .font(.system(size: 16))
-                            .foregroundColor(PapperColors.neutral800)
-                            .scrollContentBackground(.hidden)
-                            .frame(minHeight: 350)
-                            .padding()
-                            .background(PapperColors.surfaceBackgroundPlain)
-                            .cornerRadius(16)
-                            .focused($isEditorFocused)
+                VStack(spacing: 0) {
+                    // Main content - text editor always visible
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: Papper.spacing.md) {
+                            // Text Editor
+                            TextEditor(text: $content)
+                                .font(.system(size: 16))
+                                .foregroundColor(PapperColors.neutral800)
+                                .scrollContentBackground(.hidden)
+                                .frame(minHeight: 350)
+                                .padding()
+                                .background(PapperColors.surfaceBackgroundPlain)
+                                .cornerRadius(16)
+                                .focused($isEditorFocused)
+                        }
+                        .padding(Papper.spacing.lg)
+                        .padding(.bottom, 60) // Space for bottom toolbar
                     }
-                    .padding(Papper.spacing.lg)
-                }
-                .onTapGesture {
-                    isEditorFocused = true
+                    .onTapGesture {
+                        isEditorFocused = true
+                    }
+                    
+                    // Fixed bottom toolbar
+                    bottomToolbar
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -90,71 +96,8 @@ struct CreateEntryView: View {
                     .foregroundColor(content.isEmpty || isSaving ? PapperColors.neutral400 : PapperColors.neutral700)
                     .disabled(content.isEmpty || isSaving)
                 }
-                
-                // Keyboard toolbar with dismiss and action buttons
-                ToolbarItemGroup(placement: .keyboard) {
-                    // Left: Dismiss keyboard button
-                    Button(action: {
-                        isEditorFocused = false
-                    }) {
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(PapperColors.neutral700)
-                            .frame(width: 32, height: 32)
-                            .background(PapperColors.neutral100)
-                            .clipShape(Circle())
-                    }
-                    
-                    Spacer()
-                    
-                    // Right: Scan button
-                    Button(action: {
-                        // Dismiss keyboard first, then show dialog after animation completes
-                        isEditorFocused = false
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                            showScanActionSheet = true
-                        }
-                    }) {
-                        Image(systemName: "doc.text.viewfinder")
-                            .font(.system(size: 16))
-                            .foregroundColor(PapperColors.neutral700)
-                            .frame(width: 32, height: 32)
-                            .background(PapperColors.neutral100)
-                            .clipShape(Circle())
-                    }
-                    
-                    // Right: Speak button
-                    Button(action: {
-                        showListeningView = true
-                    }) {
-                        Image(systemName: "mic.fill")
-                            .font(.system(size: 16))
-                            .foregroundColor(PapperColors.neutral700)
-                            .frame(width: 32, height: 32)
-                            .background(PapperColors.neutral100)
-                            .clipShape(Circle())
-                    }
-                }
             }
             .task {
-                // #region agent log
-                let ts = Date().timeIntervalSince1970 * 1000
-                let payload: [String: Any] = [
-                    "sessionId": "debug-session",
-                    "runId": "run1",
-                    "hypothesisId": "NAV2",
-                    "location": "CreateEntryView.swift:task",
-                    "message": "taskStarted",
-                    "data": [
-                        "journalIdLength": journal.id.count
-                    ],
-                    "timestamp": ts
-                ]
-                if let raw = try? JSONSerialization.data(withJSONObject: payload),
-                   let s = String(data: raw, encoding: .utf8) {
-                    NSLog("%@", s)
-                }
-                // #endregion
                 // Setup template content (non-blocking)
                 setupFromTemplate()
                 
@@ -199,6 +142,60 @@ struct CreateEntryView: View {
                 }
             }
         }
+    }
+    
+    // MARK: - Bottom Toolbar
+    
+    private var bottomToolbar: some View {
+        HStack(spacing: Papper.spacing.md) {
+            // Dismiss keyboard button
+            Button(action: {
+                isEditorFocused = false
+            }) {
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(isEditorFocused ? PapperColors.neutral700 : PapperColors.neutral400)
+                    .frame(width: 40, height: 40)
+                    .background(PapperColors.neutral100)
+                    .clipShape(Circle())
+            }
+            .disabled(!isEditorFocused)
+            
+            Spacer()
+            
+            // Scan button
+            Button(action: {
+                isEditorFocused = false
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                    showScanActionSheet = true
+                }
+            }) {
+                Image(systemName: "doc.text.viewfinder")
+                    .font(.system(size: 16))
+                    .foregroundColor(PapperColors.neutral700)
+                    .frame(width: 40, height: 40)
+                    .background(PapperColors.neutral100)
+                    .clipShape(Circle())
+            }
+            
+            // Mic button
+            Button(action: {
+                showListeningView = true
+            }) {
+                Image(systemName: "mic.fill")
+                    .font(.system(size: 16))
+                    .foregroundColor(PapperColors.neutral700)
+                    .frame(width: 40, height: 40)
+                    .background(PapperColors.neutral100)
+                    .clipShape(Circle())
+            }
+        }
+        .padding(.horizontal, Papper.spacing.lg)
+        .padding(.vertical, Papper.spacing.sm)
+        .background(
+            Color(hex: "#faf8f3")
+                .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: -4)
+        )
     }
     
     // MARK: - Loading Overlay
