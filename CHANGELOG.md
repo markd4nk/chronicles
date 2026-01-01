@@ -4,7 +4,57 @@ This document tracks all completed development plans and major features implemen
 
 ---
 
-## [Latest] Fix Authentication Configuration and UI Warnings
+## [Latest] Fix White Screen Bug and Entry Creation UX Improvements
+
+**Status:** ✅ Completed  
+**Date:** 2026-01-01
+
+### Overview
+Fixed critical white screen bug when creating new entries and improved entry creation UX with always-visible action buttons. Also resolved data persistence issues after app restarts.
+
+### Key Fixes Completed
+
+- **White Screen Bug Fix**
+  - Root cause: Race condition where `fullScreenCover(isPresented:)` could present before `selectedJournal` state was set
+  - Solution: Switched to `fullScreenCover(item: $journalForNewEntry)` which guarantees journal exists when presenting
+  - Eliminated unsafe `if let` check that could fail and render nothing
+  - Navigation now works reliably without white screen
+
+- **Entry Creation UX Improvements**
+  - Replaced keyboard toolbar (unreliable) with fixed bottom toolbar
+  - Always-visible action buttons: dismiss keyboard, scan, and mic
+  - Dismiss button grays out when keyboard isn't active
+  - Better discoverability and consistent access to input methods
+  - Improved visual hierarchy with shadow and proper spacing
+
+- **Data Persistence Fixes**
+  - Fixed journals and entries not loading after simulator restart
+  - Added fallback mechanisms for Firestore queries when indexes are missing
+  - Implemented in-memory sorting when `orderBy` fails due to missing indexes
+  - Enhanced `loadUserData` to reactively respond to `AuthService.$currentUser` changes
+  - Added comprehensive error handling for network and Firestore operations
+
+- **Firestore Index Handling**
+  - Added fallback for `fetchJournals` when `orderBy("order")` fails
+  - Added fallback for `fetchEntries` when `orderBy("createdAt")` fails
+  - Queries retry without `orderBy` and sort results in memory
+  - Prevents app crashes when Firestore indexes aren't ready
+
+### Files Modified
+- `Chronicles/Views/Journals/JournalSelectionView.swift` - Fixed navigation using `fullScreenCover(item:)`
+- `Chronicles/Views/Entries/CreateEntryView.swift` - Added fixed bottom toolbar, removed keyboard toolbar
+- `Chronicles/Services/FirebaseService.swift` - Added fallback mechanisms and reactive data loading
+- `Chronicles/Services/AuthService.swift` - Enhanced user data loading with local cache priority
+
+### Technical Details
+- `fullScreenCover(item:)` ensures the bound item is non-nil before presenting, eliminating race conditions
+- Fixed bottom toolbar provides better UX than keyboard toolbar which can be hidden or unreliable
+- Firestore fallback pattern: try query with `orderBy`, catch index errors, retry without `orderBy`, sort in memory
+- Reactive data loading using Combine publishers ensures data syncs when user state changes
+
+---
+
+## Fix Authentication Configuration and UI Warnings
 
 **Status:** ✅ Completed  
 **Date:** 2026-01-01
