@@ -7,6 +7,8 @@
 
 import SwiftUI
 import UIKit
+import AVFoundation
+import Photos
 
 struct PromptsFeedView: View {
     @StateObject private var viewModel = PromptsViewModel()
@@ -290,6 +292,12 @@ struct CreateEntryFromPromptView: View {
     @State private var selectedImage: UIImage?
     @State private var isProcessingOCR = false
     
+    // Permission states
+    @State private var showCameraPermissionAlert = false
+    @State private var showPhotoLibraryPermissionAlert = false
+    @State private var showCameraUnavailableAlert = false
+    @State private var cameraAvailable = UIImagePickerController.isSourceTypeAvailable(.camera)
+    
     @FocusState private var isEditorFocused: Bool
     
     var body: some View {
@@ -308,20 +316,56 @@ struct CreateEntryFromPromptView: View {
                         isEditorFocused = true
                     }
                 }
-                .confirmationDialog("Add from Photo", isPresented: $showScanActionSheet, titleVisibility: .visible) {
-                    Button("Take Photo") {
-                        showCamera = true
-                    }
-                    Button("Choose from Library") {
-                        showImagePicker = true
-                    }
-                    Button("Cancel", role: .cancel) { }
+                .sheet(isPresented: $showScanActionSheet) {
+                    ScanActionSheet(
+                        cameraAvailable: cameraAvailable,
+                        onTakePhoto: {
+                            showScanActionSheet = false
+                            requestCameraAccess()
+                        },
+                        onChooseFromLibrary: {
+                            showScanActionSheet = false
+                            requestPhotoLibraryAccess()
+                        },
+                        onCancel: {
+                            showScanActionSheet = false
+                        }
+                    )
+                    .presentationDetents([.height(cameraAvailable ? 220 : 160)])
+                    .presentationDragIndicator(.visible)
                 }
                 .sheet(isPresented: $showImagePicker) {
                     ImagePicker(image: $selectedImage, sourceType: .photoLibrary)
                 }
                 .sheet(isPresented: $showCamera) {
-                    ImagePicker(image: $selectedImage, sourceType: .camera)
+                    if cameraAvailable {
+                        ImagePicker(image: $selectedImage, sourceType: .camera)
+                    }
+                }
+                .alert("Camera Access Required", isPresented: $showCameraPermissionAlert) {
+                    Button("Open Settings") {
+                        if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
+                            UIApplication.shared.open(settingsURL)
+                        }
+                    }
+                    Button("Cancel", role: .cancel) { }
+                } message: {
+                    Text("Please allow camera access in Settings to take photos for scanning.")
+                }
+                .alert("Photo Library Access Required", isPresented: $showPhotoLibraryPermissionAlert) {
+                    Button("Open Settings") {
+                        if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
+                            UIApplication.shared.open(settingsURL)
+                        }
+                    }
+                    Button("Cancel", role: .cancel) { }
+                } message: {
+                    Text("Please allow photo library access in Settings to choose images for scanning.")
+                }
+                .alert("Camera Unavailable", isPresented: $showCameraUnavailableAlert) {
+                    Button("OK", role: .cancel) { }
+                } message: {
+                    Text("Camera is not available on this device. Please use 'Choose from Library' instead.")
                 }
                 .fullScreenCover(isPresented: $showListeningView) {
                     SpeakListeningView(onComplete: { transcribedText in
@@ -588,6 +632,62 @@ struct CreateEntryFromPromptView: View {
                 promptId: prompt.id
             )
             dismiss()
+        }
+    }
+    
+    // MARK: - Permission Handling
+    
+    private func requestCameraAccess() {
+        // First check if camera hardware is available
+        guard UIImagePickerController.isSourceTypeAvailable(.camera) else {
+            showCameraUnavailableAlert = true
+            return
+        }
+        
+        let status = AVCaptureDevice.authorizationStatus(for: .video)
+        
+        switch status {
+        case .notDetermined:
+            // Request permission
+            AVCaptureDevice.requestAccess(for: .video) { granted in
+                DispatchQueue.main.async {
+                    if granted {
+                        showCamera = true
+                    } else {
+                        showCameraPermissionAlert = true
+                    }
+                }
+            }
+        case .authorized:
+            showCamera = true
+        case .denied, .restricted:
+            showCameraPermissionAlert = true
+        @unknown default:
+            showCameraPermissionAlert = true
+        }
+    }
+    
+    private func requestPhotoLibraryAccess() {
+        let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        
+        switch status {
+        case .notDetermined:
+            // Request permission
+            PHPhotoLibrary.requestAuthorization(for: .readWrite) { newStatus in
+                DispatchQueue.main.async {
+                    if newStatus == .authorized || newStatus == .limited {
+                        showImagePicker = true
+                    } else {
+                        showPhotoLibraryPermissionAlert = true
+                    }
+                }
+            }
+        case .authorized, .limited:
+            showImagePicker = true
+        case .denied, .restricted:
+            showPhotoLibraryPermissionAlert = true
+        @unknown default:
+            showPhotoLibraryPermissionAlert = true
         }
     }
 }

@@ -8,6 +8,7 @@
 
 import SwiftUI
 import AVFoundation
+import Photos
 
 struct CreateEntryView: View {
     let journal: Journal
@@ -25,6 +26,12 @@ struct CreateEntryView: View {
     @State private var showListeningView = false
     @State private var selectedImage: UIImage?
     @State private var isProcessingOCR = false
+    
+    // Permission states
+    @State private var showCameraPermissionAlert = false
+    @State private var showPhotoLibraryPermissionAlert = false
+    @State private var showCameraUnavailableAlert = false
+    @State private var cameraAvailable = UIImagePickerController.isSourceTypeAvailable(.camera)
     
     @FocusState private var isEditorFocused: Bool
     
@@ -50,6 +57,7 @@ struct CreateEntryView: View {
                                 .focused($isEditorFocused)
                         }
                         .padding(Papper.spacing.lg)
+                        .padding(.top, Papper.spacing.md) // Prevent text from going under navigation bar
                         .padding(.bottom, 60) // Space for bottom toolbar
                     }
                     .onTapGesture {
@@ -107,20 +115,56 @@ struct CreateEntryView: View {
                     isEditorFocused = true
                 }
             }
-            .confirmationDialog("Add from Photo", isPresented: $showScanActionSheet, titleVisibility: .visible) {
-                Button("Take Photo") {
-                    showCamera = true
-                }
-                Button("Choose from Library") {
-                    showImagePicker = true
-                }
-                Button("Cancel", role: .cancel) { }
+            .sheet(isPresented: $showScanActionSheet) {
+                ScanActionSheet(
+                    cameraAvailable: cameraAvailable,
+                    onTakePhoto: {
+                        showScanActionSheet = false
+                        requestCameraAccess()
+                    },
+                    onChooseFromLibrary: {
+                        showScanActionSheet = false
+                        requestPhotoLibraryAccess()
+                    },
+                    onCancel: {
+                        showScanActionSheet = false
+                    }
+                )
+                .presentationDetents([.height(cameraAvailable ? 220 : 160)])
+                .presentationDragIndicator(.visible)
             }
             .sheet(isPresented: $showImagePicker) {
                 ImagePicker(image: $selectedImage, sourceType: .photoLibrary)
             }
             .sheet(isPresented: $showCamera) {
-                ImagePicker(image: $selectedImage, sourceType: .camera)
+                if cameraAvailable {
+                    ImagePicker(image: $selectedImage, sourceType: .camera)
+                }
+            }
+            .alert("Camera Access Required", isPresented: $showCameraPermissionAlert) {
+                Button("Open Settings") {
+                    if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(settingsURL)
+                    }
+                }
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text("Please allow camera access in Settings to take photos for scanning.")
+            }
+            .alert("Photo Library Access Required", isPresented: $showPhotoLibraryPermissionAlert) {
+                Button("Open Settings") {
+                    if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(settingsURL)
+                    }
+                }
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text("Please allow photo library access in Settings to choose images for scanning.")
+            }
+            .alert("Camera Unavailable", isPresented: $showCameraUnavailableAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text("Camera is not available on this device. Please use 'Choose from Library' instead.")
             }
             .fullScreenCover(isPresented: $showListeningView) {
                 SpeakListeningView(onComplete: { transcribedText in
@@ -306,6 +350,146 @@ struct CreateEntryView: View {
             print("Background title generation failed: \(error.localizedDescription)")
         }
     }
+    
+    // MARK: - Permission Handling
+    
+    private func requestCameraAccess() {
+        // First check if camera hardware is available
+        guard UIImagePickerController.isSourceTypeAvailable(.camera) else {
+            showCameraUnavailableAlert = true
+            return
+        }
+        
+        let status = AVCaptureDevice.authorizationStatus(for: .video)
+        
+        switch status {
+        case .notDetermined:
+            // Request permission
+            AVCaptureDevice.requestAccess(for: .video) { granted in
+                DispatchQueue.main.async {
+                    if granted {
+                        showCamera = true
+                    } else {
+                        showCameraPermissionAlert = true
+                    }
+                }
+            }
+        case .authorized:
+            showCamera = true
+        case .denied, .restricted:
+            showCameraPermissionAlert = true
+        @unknown default:
+            showCameraPermissionAlert = true
+        }
+    }
+    
+    private func requestPhotoLibraryAccess() {
+        let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        
+        switch status {
+        case .notDetermined:
+            // Request permission
+            PHPhotoLibrary.requestAuthorization(for: .readWrite) { newStatus in
+                DispatchQueue.main.async {
+                    if newStatus == .authorized || newStatus == .limited {
+                        showImagePicker = true
+                    } else {
+                        showPhotoLibraryPermissionAlert = true
+                    }
+                }
+            }
+        case .authorized, .limited:
+            showImagePicker = true
+        case .denied, .restricted:
+            showPhotoLibraryPermissionAlert = true
+        @unknown default:
+            showPhotoLibraryPermissionAlert = true
+        }
+    }
+}
+
+// MARK: - Scan Action Sheet
+
+struct ScanActionSheet: View {
+    let cameraAvailable: Bool
+    let onTakePhoto: () -> Void
+    let onChooseFromLibrary: () -> Void
+    let onCancel: () -> Void
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Drag indicator is handled by presentationDragIndicator
+            
+            VStack(spacing: Papper.spacing.sm) {
+                Text("Add from Photo")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(PapperColors.neutral500)
+                    .padding(.top, Papper.spacing.md)
+                
+                VStack(spacing: 0) {
+                    // Take Photo option - only show if camera is available
+                    if cameraAvailable {
+                        Button(action: onTakePhoto) {
+                            HStack(spacing: Papper.spacing.md) {
+                                Image(systemName: "camera.fill")
+                                    .font(.system(size: 18))
+                                    .foregroundColor(PapperColors.neutral700)
+                                    .frame(width: 24)
+                                
+                                Text("Take Photo")
+                                    .font(.system(size: 17))
+                                    .foregroundColor(PapperColors.neutral800)
+                                
+                                Spacer()
+                            }
+                            .padding(.horizontal, Papper.spacing.lg)
+                            .padding(.vertical, Papper.spacing.md)
+                            .background(PapperColors.surfaceBackgroundPlain)
+                        }
+                        
+                        Divider()
+                            .padding(.leading, 56)
+                    }
+                    
+                    // Choose from Library option
+                    Button(action: onChooseFromLibrary) {
+                        HStack(spacing: Papper.spacing.md) {
+                            Image(systemName: "photo.on.rectangle")
+                                .font(.system(size: 18))
+                                .foregroundColor(PapperColors.neutral700)
+                                .frame(width: 24)
+                            
+                            Text("Choose from Library")
+                                .font(.system(size: 17))
+                                .foregroundColor(PapperColors.neutral800)
+                            
+                            Spacer()
+                        }
+                        .padding(.horizontal, Papper.spacing.lg)
+                        .padding(.vertical, Papper.spacing.md)
+                        .background(PapperColors.surfaceBackgroundPlain)
+                    }
+                }
+                .background(PapperColors.surfaceBackgroundPlain)
+                .cornerRadius(12)
+                .padding(.horizontal, Papper.spacing.lg)
+                
+                // Cancel button
+                Button(action: onCancel) {
+                    Text("Cancel")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(PapperColors.neutral700)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, Papper.spacing.md)
+                        .background(PapperColors.surfaceBackgroundPlain)
+                        .cornerRadius(12)
+                }
+                .padding(.horizontal, Papper.spacing.lg)
+                .padding(.bottom, Papper.spacing.lg)
+            }
+        }
+        .background(Color(hex: "#faf8f3"))
+    }
 }
 
 // MARK: - Image Picker
@@ -317,7 +501,14 @@ struct ImagePicker: UIViewControllerRepresentable {
     
     func makeUIViewController(context: Context) -> UIImagePickerController {
         let picker = UIImagePickerController()
-        picker.sourceType = sourceType
+        
+        // Safely set source type - fallback to photo library if camera unavailable
+        if sourceType == .camera && !UIImagePickerController.isSourceTypeAvailable(.camera) {
+            picker.sourceType = .photoLibrary
+        } else {
+            picker.sourceType = sourceType
+        }
+        
         picker.delegate = context.coordinator
         return picker
     }
