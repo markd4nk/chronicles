@@ -124,10 +124,24 @@ class PromptsViewModel: ObservableObject {
     
     /// Reset pagination and shuffle (called when reaching end or on tab return)
     func resetAndShuffle() async {
+        // #region agent log
+        let startTime = Date()
+        // #endregion
         await firebaseService.resetPromptsPagination()
         prompts.shuffle()
         hasReachedEnd = false
         hasMorePrompts = true
+        // #region agent log
+        Task { @MainActor in
+            var request = URLRequest(url: URL(string: "http://127.0.0.1:7243/ingest/c77dc5f7-b92e-4545-af23-f0f74127ea45")!)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            let duration = Date().timeIntervalSince(startTime) * 1000
+            let payload: [String: Any] = ["location": "PromptsViewModel.swift:resetAndShuffle", "message": "Reset and shuffle completed", "data": ["durationMs": duration, "newPromptCount": self.prompts.count], "timestamp": Date().timeIntervalSince1970 * 1000, "sessionId": "debug-session", "hypothesisId": "B"]
+            request.httpBody = try? JSONSerialization.data(withJSONObject: payload)
+            _ = try? await URLSession.shared.data(for: request)
+        }
+        // #endregion
     }
     
     /// Check if we're near the end and should load more
@@ -201,6 +215,16 @@ class PromptsViewModel: ObservableObject {
     // MARK: - Tab Switching
     
     func onTabAppear() {
+        // #region agent log
+        Task { @MainActor in
+            var request = URLRequest(url: URL(string: "http://127.0.0.1:7243/ingest/c77dc5f7-b92e-4545-af23-f0f74127ea45")!)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            let payload: [String: Any] = ["location": "PromptsViewModel.swift:onTabAppear", "message": "Prompts tab appeared", "data": ["isInitialLoad": self.isInitialLoad, "willShuffle": !self.isInitialLoad, "promptCount": self.prompts.count], "timestamp": Date().timeIntervalSince1970 * 1000, "sessionId": "debug-session", "hypothesisId": "B"]
+            request.httpBody = try? JSONSerialization.data(withJSONObject: payload)
+            _ = try? await URLSession.shared.data(for: request)
+        }
+        // #endregion
         // Shuffle when returning to tab
         if !isInitialLoad {
             Task {

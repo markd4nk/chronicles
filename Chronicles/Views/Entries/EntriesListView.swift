@@ -11,8 +11,21 @@ struct EntriesListView: View {
     @StateObject private var viewModel = JournalViewModel()
     @Binding var selectedJournalId: String?
     @State private var searchText = ""
+    // #region agent log
+    @State private var filterCallCount = 0
+    // #endregion
     
     var filteredEntries: [JournalEntry] {
+        // #region agent log
+        Task { @MainActor in
+            var request = URLRequest(url: URL(string: "http://127.0.0.1:7243/ingest/c77dc5f7-b92e-4545-af23-f0f74127ea45")!)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            let payload: [String: Any] = ["location": "EntriesListView.swift:filteredEntries", "message": "filteredEntries computed", "data": ["entryCount": viewModel.entries.count, "hasJournalFilter": selectedJournalId != nil, "hasSearchText": !searchText.isEmpty], "timestamp": Date().timeIntervalSince1970 * 1000, "sessionId": "debug-session", "hypothesisId": "C"]
+            request.httpBody = try? JSONSerialization.data(withJSONObject: payload)
+            _ = try? await URLSession.shared.data(for: request)
+        }
+        // #endregion
         var entries = viewModel.entries
         
         // First filter by journal if a specific journal is selected

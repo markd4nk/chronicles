@@ -137,8 +137,23 @@ class DashboardViewModel: ObservableObject {
     // MARK: - Widgets
     
     private let customWidgetsKey = "customWidgets"
+    // #region agent log
+    private static var loadWidgetsCallCount = 0
+    // #endregion
     
     func loadWidgets() {
+        // #region agent log
+        DashboardViewModel.loadWidgetsCallCount += 1
+        let callCount = DashboardViewModel.loadWidgetsCallCount
+        Task { @MainActor in
+            var request = URLRequest(url: URL(string: "http://127.0.0.1:7243/ingest/c77dc5f7-b92e-4545-af23-f0f74127ea45")!)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            let payload: [String: Any] = ["location": "DashboardViewModel.swift:loadWidgets", "message": "loadWidgets called", "data": ["callCount": callCount, "hasUser": self.currentUser != nil], "timestamp": Date().timeIntervalSince1970 * 1000, "sessionId": "debug-session", "hypothesisId": "E"]
+            request.httpBody = try? JSONSerialization.data(withJSONObject: payload)
+            _ = try? await URLSession.shared.data(for: request)
+        }
+        // #endregion
         // Load custom widgets from UserDefaults
         let customWidgets = loadCustomWidgets()
         

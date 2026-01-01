@@ -10,6 +10,11 @@ import Combine
 
 @MainActor
 class JournalViewModel: ObservableObject {
+    // #region agent log
+    private static var instanceCount = 0
+    private let instanceId: Int
+    // #endregion
+    
     // MARK: - Published Properties
     
     @Published var journals: [Journal] = []
@@ -30,6 +35,18 @@ class JournalViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     
     init() {
+        // #region agent log
+        JournalViewModel.instanceCount += 1
+        self.instanceId = JournalViewModel.instanceCount
+        Task { @MainActor in
+            var request = URLRequest(url: URL(string: "http://127.0.0.1:7243/ingest/c77dc5f7-b92e-4545-af23-f0f74127ea45")!)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            let payload: [String: Any] = ["location": "JournalViewModel.swift:init", "message": "JournalViewModel created", "data": ["instanceId": self.instanceId, "totalInstances": JournalViewModel.instanceCount], "timestamp": Date().timeIntervalSince1970 * 1000, "sessionId": "debug-session", "hypothesisId": "A"]
+            request.httpBody = try? JSONSerialization.data(withJSONObject: payload)
+            _ = try? await URLSession.shared.data(for: request)
+        }
+        // #endregion
         setupBindings()
     }
     

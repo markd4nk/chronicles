@@ -11,6 +11,9 @@ struct MainTabView: View {
     @State private var selectedTab: Tab = .dashboard
     @State private var showCreateEntry = false
     @State private var showJournalSelection = false
+    // #region agent log
+    @State private var tabLoadTimes: [Tab: Date] = [:]
+    // #endregion
     
     enum Tab: Int {
         case dashboard = 0
@@ -20,6 +23,19 @@ struct MainTabView: View {
         case prompts = 4
     }
     
+    // #region agent log
+    private func logTabLoad(_ tab: Tab) {
+        Task { @MainActor in
+            var request = URLRequest(url: URL(string: "http://127.0.0.1:7243/ingest/c77dc5f7-b92e-4545-af23-f0f74127ea45")!)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            let payload: [String: Any] = ["location": "MainTabView.swift:tabLoad", "message": "Tab view loaded", "data": ["tab": String(describing: tab), "tabIndex": tab.rawValue], "timestamp": Date().timeIntervalSince1970 * 1000, "sessionId": "debug-session", "hypothesisId": "D"]
+            request.httpBody = try? JSONSerialization.data(withJSONObject: payload)
+            _ = try? await URLSession.shared.data(for: request)
+        }
+    }
+    // #endregion
+    
     var body: some View {
         ZStack(alignment: .bottom) {
             // Tab Content
@@ -27,10 +43,12 @@ struct MainTabView: View {
                 // Dashboard
                 DashboardView()
                     .tag(Tab.dashboard)
+                    .onAppear { logTabLoad(.dashboard) }
                 
                 // AI Reflect
                 AIReflectView()
                     .tag(Tab.reflect)
+                    .onAppear { logTabLoad(.reflect) }
                 
                 // Placeholder for center button (never shown)
                 Color.clear
@@ -39,10 +57,12 @@ struct MainTabView: View {
                 // All Entries
                 AllEntriesContainerView()
                     .tag(Tab.entries)
+                    .onAppear { logTabLoad(.entries) }
                 
                 // Prompts Feed
                 PromptsFeedView()
                     .tag(Tab.prompts)
+                    .onAppear { logTabLoad(.prompts) }
             }
             
             // Custom Tab Bar
