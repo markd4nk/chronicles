@@ -679,6 +679,97 @@ class FirebaseService: ObservableObject {
         }
     }
     
+    // MARK: - User Operations
+    
+    /// Fetch user document from Firestore
+    func fetchUser(userId: String) async throws -> User? {
+        let doc = try await db.collection("users").document(userId).getDocument()
+        
+        guard doc.exists else {
+            return nil
+        }
+        
+        return parseUserFromDocument(doc)
+    }
+    
+    /// Save user document to Firestore
+    func saveUser(_ user: User) async throws {
+        var data: [String: Any] = [
+            "email": user.email,
+            "createdAt": Timestamp(date: user.createdAt),
+            "onboardingCompleted": user.onboardingCompleted,
+            "subscriptionStatus": user.subscriptionStatus.rawValue,
+            "securityEnabled": user.securityEnabled,
+            "dashboardLayout": user.dashboardLayout,
+            "currentStreak": user.currentStreak,
+            "longestStreak": user.longestStreak,
+            "totalEntries": user.totalEntries,
+            "updatedAt": Timestamp(date: Date())
+        ]
+        
+        if let displayName = user.displayName {
+            data["displayName"] = displayName
+        }
+        if let preferredName = user.preferredName {
+            data["preferredName"] = preferredName
+        }
+        if let lastEntryDate = user.lastEntryDate {
+            data["lastEntryDate"] = Timestamp(date: lastEntryDate)
+        }
+        if let onboardingData = user.onboardingData,
+           let encoded = try? JSONEncoder().encode(onboardingData),
+           let json = try? JSONSerialization.jsonObject(with: encoded) as? [String: Any] {
+            data["onboardingData"] = json
+        }
+        
+        try await db.collection("users").document(user.id).setData(data, merge: true)
+    }
+    
+    /// Parse User from Firestore document
+    private func parseUserFromDocument(_ doc: DocumentSnapshot) -> User? {
+        guard let data = doc.data() else { return nil }
+        
+        let createdAt: Date
+        if let timestamp = data["createdAt"] as? Timestamp {
+            createdAt = timestamp.dateValue()
+        } else {
+            createdAt = Date()
+        }
+        
+        let lastEntryDate: Date?
+        if let timestamp = data["lastEntryDate"] as? Timestamp {
+            lastEntryDate = timestamp.dateValue()
+        } else {
+            lastEntryDate = nil
+        }
+        
+        var onboardingData: User.OnboardingData?
+        if let onboardingJson = data["onboardingData"] as? [String: Any],
+           let jsonData = try? JSONSerialization.data(withJSONObject: onboardingJson),
+           let decoded = try? JSONDecoder().decode(User.OnboardingData.self, from: jsonData) {
+            onboardingData = decoded
+        }
+        
+        let subscriptionStatus = User.SubscriptionStatus(rawValue: data["subscriptionStatus"] as? String ?? "trial") ?? .trial
+        
+        return User(
+            id: doc.documentID,
+            email: data["email"] as? String ?? "",
+            displayName: data["displayName"] as? String,
+            preferredName: data["preferredName"] as? String,
+            createdAt: createdAt,
+            onboardingCompleted: data["onboardingCompleted"] as? Bool ?? false,
+            onboardingData: onboardingData,
+            subscriptionStatus: subscriptionStatus,
+            securityEnabled: data["securityEnabled"] as? Bool ?? false,
+            dashboardLayout: data["dashboardLayout"] as? [String] ?? ["morning_reflection", "gratitude", "evening_review", "goals"],
+            currentStreak: data["currentStreak"] as? Int ?? 0,
+            longestStreak: data["longestStreak"] as? Int ?? 0,
+            lastEntryDate: lastEntryDate,
+            totalEntries: data["totalEntries"] as? Int ?? 0
+        )
+    }
+    
     // MARK: - Streak Operations
     
     func updateStreak(userId: String) async throws -> (current: Int, longest: Int) {
