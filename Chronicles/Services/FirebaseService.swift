@@ -199,16 +199,19 @@ class FirebaseService: ObservableObject {
         let startOfDay = calendar.startOfDay(for: date)
         let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
         
+        // Note: Removed .order(by:) to avoid Firestore index conflict with range filters
+        // Sorting in memory is efficient for a single day's entries
         let snapshot = try await db.collection("entries")
             .whereField("userId", isEqualTo: userId)
             .whereField("createdAt", isGreaterThanOrEqualTo: Timestamp(date: startOfDay))
             .whereField("createdAt", isLessThan: Timestamp(date: endOfDay))
-            .order(by: "createdAt", descending: true)
             .getDocuments()
         
-        return snapshot.documents.compactMap { doc -> JournalEntry? in
+        let entries = snapshot.documents.compactMap { doc -> JournalEntry? in
             return parseEntryFromDocument(doc)
         }
+        
+        return entries.sorted { $0.createdAt > $1.createdAt }
     }
     
     private func parseEntryFromDocument(_ doc: DocumentSnapshot) -> JournalEntry? {
