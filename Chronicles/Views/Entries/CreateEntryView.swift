@@ -137,6 +137,24 @@ struct CreateEntryView: View {
                 }
             }
             .task {
+                // #region agent log
+                let ts = Date().timeIntervalSince1970 * 1000
+                let payload: [String: Any] = [
+                    "sessionId": "debug-session",
+                    "runId": "run1",
+                    "hypothesisId": "NAV2",
+                    "location": "CreateEntryView.swift:task",
+                    "message": "taskStarted",
+                    "data": [
+                        "journalIdLength": journal.id.count
+                    ],
+                    "timestamp": ts
+                ]
+                if let raw = try? JSONSerialization.data(withJSONObject: payload),
+                   let s = String(data: raw, encoding: .utf8) {
+                    NSLog("%@", s)
+                }
+                // #endregion
                 // Setup template content (non-blocking)
                 setupFromTemplate()
                 

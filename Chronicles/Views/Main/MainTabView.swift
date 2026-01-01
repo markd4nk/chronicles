@@ -15,6 +15,25 @@ struct MainTabView: View {
     @State private var tabLoadTimes: [Tab: Date] = [:]
     // #endregion
     
+    // #region agent log
+    private func agentLog(hypothesisId: String, location: String, message: String, data: [String: Any] = [:]) {
+        let ts = Date().timeIntervalSince1970 * 1000
+        let jsonData: [String: Any] = [
+            "sessionId": "debug-session",
+            "runId": "run1",
+            "hypothesisId": hypothesisId,
+            "location": location,
+            "message": message,
+            "data": data,
+            "timestamp": ts
+        ]
+        if let raw = try? JSONSerialization.data(withJSONObject: jsonData),
+           let s = String(data: raw, encoding: .utf8) {
+            NSLog("%@", s)
+        }
+    }
+    // #endregion
+    
     enum Tab: Int {
         case dashboard = 0
         case reflect = 1
@@ -69,6 +88,17 @@ struct MainTabView: View {
             CustomTabBar(
                 selectedTab: $selectedTab,
                 onCreateTapped: {
+                    // #region agent log
+                    agentLog(
+                        hypothesisId: "NAV0",
+                        location: "MainTabView.swift:onCreateTapped",
+                        message: "createTapped",
+                        data: [
+                            "selectedTab": selectedTab.rawValue,
+                            "showJournalSelectionWas": showJournalSelection
+                        ]
+                    )
+                    // #endregion
                     showJournalSelection = true
                 }
             )
@@ -77,6 +107,18 @@ struct MainTabView: View {
         .sheet(isPresented: $showJournalSelection) {
             JournalSelectionView()
         }
+        // #region agent log
+        .onChange(of: showJournalSelection) { _, newValue in
+            agentLog(
+                hypothesisId: "NAV0",
+                location: "MainTabView.swift:onChange(showJournalSelection)",
+                message: "showJournalSelectionChanged",
+                data: [
+                    "value": newValue
+                ]
+            )
+        }
+        // #endregion
     }
 }
 
