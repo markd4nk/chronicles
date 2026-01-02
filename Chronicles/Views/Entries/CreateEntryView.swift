@@ -57,7 +57,7 @@ struct CreateEntryView: View {
                                 .focused($isEditorFocused)
                         }
                         .padding(Papper.spacing.lg)
-                        .padding(.top, Papper.spacing.md) // Prevent text from going under navigation bar
+                        .padding(.top, 20) // Extra clearance below navigation bar
                         .padding(.bottom, 60) // Space for bottom toolbar
                     }
                     .scrollDismissesKeyboard(.interactively)
