@@ -57,12 +57,12 @@ struct CreateEntryView: View {
                                 .cornerRadius(16)
                         }
                         .padding(Papper.spacing.lg)
-                        .padding(.top, 40) // Extra clearance below navigation bar
+                        .padding(.top, Papper.spacing.md) // Minimal spacing below navigation bar
                         .padding(.bottom, 60) // Space for bottom toolbar
                     }
                     .scrollDismissesKeyboard(.interactively)
                     .onTapGesture {
-                        // Focus editor when tapping scroll area
+                        isEditorFocused = true
                     }
                     
                     // Fixed bottom toolbar
@@ -109,6 +109,12 @@ struct CreateEntryView: View {
             .task {
                 // Setup template content
                 setupFromTemplate()
+                
+                // Brief delay for view to render before keyboard
+                try? await Task.sleep(nanoseconds: 50_000_000) // 0.05s
+                await MainActor.run {
+                    isEditorFocused = true
+                }
             }
             .sheet(isPresented: $showScanActionSheet) {
                 ScanActionSheet(
