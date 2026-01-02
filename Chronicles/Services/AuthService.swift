@@ -344,6 +344,10 @@ class AuthService: NSObject, ObservableObject {
             
             // Clear FirebaseService data
             FirebaseService.shared.clearUserData()
+            
+            // Reset onboarding flags for testing (allows re-testing onboarding flow)
+            UserDefaults.standard.removeObject(forKey: "hasSeenWelcome")
+            UserDefaults.standard.removeObject(forKey: "hasCompletedOnboarding")
         } catch {
             self.error = .signOutFailed
         }
