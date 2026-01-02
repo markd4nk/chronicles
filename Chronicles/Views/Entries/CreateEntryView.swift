@@ -33,10 +33,7 @@ struct CreateEntryView: View {
     @State private var showCameraUnavailableAlert = false
     @State private var cameraAvailable = UIImagePickerController.isSourceTypeAvailable(.camera)
     
-    @State private var isEditorFocused = false
-    @State private var scrollProxy: ScrollViewProxy?
-    @State private var isInitialSetup = true
-    @State private var hasUserTyped = false
+    @FocusState private var isEditorFocused: Bool
     
     var body: some View {
         NavigationView {
@@ -46,72 +43,26 @@ struct CreateEntryView: View {
                 
                 VStack(spacing: 0) {
                     // Main content - text editor always visible
-                    ScrollViewReader { proxy in
-                        ScrollView {
-                            VStack(alignment: .leading, spacing: Papper.spacing.md) {
-                                // Cursor-tracking Text Editor
-                                CursorTrackingTextEditor(
-                                    text: $content,
-                                    isFocused: $isEditorFocused,
-                                    font: .systemFont(ofSize: 16),
-                                    textColor: UIColor(PapperColors.neutral800),
-                                    onUserTyped: {
-                                        hasUserTyped = true
-                                    },
-                                    onCursorChange: {
-                                        // #region agent log
-                                        let workspacePath = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Desktop/chronicles/.cursor/debug.log")
-                                        if FileManager.default.fileExists(atPath: workspacePath.deletingLastPathComponent().path) || (try? FileManager.default.createDirectory(at: workspacePath.deletingLastPathComponent(), withIntermediateDirectories: true)) != nil {
-                                            let logData = try? JSONSerialization.data(withJSONObject: [
-                                                "sessionId": "debug-session",
-                                                "runId": "run1",
-                                                "hypothesisId": hasUserTyped ? "E" : "A",
-                                                "location": "CreateEntryView.swift:56",
-                                                "message": "onCursorChange called",
-                                                "data": [
-                                                    "hasUserTyped": hasUserTyped,
-                                                    "isInitialSetup": isInitialSetup,
-                                                    "contentLength": content.count
-                                                ],
-                                                "timestamp": Int64(Date().timeIntervalSince1970 * 1000)
-                                            ])
-                                            if let logData = logData, let logString = String(data: logData, encoding: .utf8) {
-                                                try? (logString + "\n").write(to: workspacePath, atomically: true, encoding: .utf8)
-                                            }
-                                        }
-                                        // #endregion
-                                        
-                                        // Only scroll if user has typed (not during initial setup)
-                                        if hasUserTyped {
-                                            // Scroll to bottom anchor when cursor changes
-                                            withAnimation(.easeOut(duration: 0.15)) {
-                                                proxy.scrollTo("cursorAnchor", anchor: .bottom)
-                                            }
-                                        }
-                                    }
-                                )
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: Papper.spacing.md) {
+                            // Text Editor
+                            TextEditor(text: $content)
+                                .font(.system(size: 16))
+                                .foregroundColor(PapperColors.neutral800)
+                                .scrollContentBackground(.hidden)
+                                .focused($isEditorFocused)
                                 .frame(minHeight: 350)
                                 .padding()
                                 .background(PapperColors.surfaceBackgroundPlain)
                                 .cornerRadius(16)
-                                .contentShape(Rectangle())
-                                .onTapGesture {
-                                    isEditorFocused = true
-                                }
-                                
-                                // Invisible anchor for scroll tracking
-                                Color.clear
-                                    .frame(height: 1)
-                                    .id("cursorAnchor")
-                            }
-                            .padding(Papper.spacing.lg)
-                            .padding(.top, 40) // Extra clearance below navigation bar
-                            .padding(.bottom, 60) // Space for bottom toolbar
                         }
-                        .scrollDismissesKeyboard(.interactively)
-                        .onAppear {
-                            scrollProxy = proxy
-                        }
+                        .padding(Papper.spacing.lg)
+                        .padding(.top, 40) // Extra clearance below navigation bar
+                        .padding(.bottom, 60) // Space for bottom toolbar
+                    }
+                    .scrollDismissesKeyboard(.interactively)
+                    .onTapGesture {
+                        // Focus editor when tapping scroll area
                     }
                     
                     // Fixed bottom toolbar
@@ -156,34 +107,8 @@ struct CreateEntryView: View {
                 }
             }
             .task {
-                // Setup template content (non-blocking)
+                // Setup template content
                 setupFromTemplate()
-                
-                // Brief delay for view to fully render before keyboard
-                try? await Task.sleep(nanoseconds: 50_000_000) // 0.05s
-                await MainActor.run {
-                    // #region agent log
-                    if let workspacePath = FileManager.default.urls(for: .userDirectory, in: .userDomainMask).first?.appendingPathComponent("Desktop/chronicles/.cursor/debug.log") {
-                        let logData = try? JSONSerialization.data(withJSONObject: [
-                            "sessionId": "debug-session",
-                            "runId": "run1",
-                            "hypothesisId": "D",
-                            "location": "CreateEntryView.swift:135",
-                            "message": "Setting focus to true after delay",
-                            "data": [
-                                "contentLength": content.count
-                            ],
-                            "timestamp": Int64(Date().timeIntervalSince1970 * 1000)
-                        ])
-                        if let logData = logData, let logString = String(data: logData, encoding: .utf8) {
-                            try? (logString + "\n").write(to: workspacePath, atomically: true, encoding: .utf8)
-                        }
-                    }
-                    // #endregion
-                    
-                    isEditorFocused = true
-                    isInitialSetup = false
-                }
             }
             .sheet(isPresented: $showScanActionSheet) {
                 ScanActionSheet(
@@ -337,28 +262,6 @@ struct CreateEntryView: View {
     // MARK: - Helpers
     
     private func setupFromTemplate() {
-        // #region agent log
-        let workspacePath = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Desktop/chronicles/.cursor/debug.log")
-        if FileManager.default.fileExists(atPath: workspacePath.deletingLastPathComponent().path) || (try? FileManager.default.createDirectory(at: workspacePath.deletingLastPathComponent(), withIntermediateDirectories: true)) != nil {
-            let logData = try? JSONSerialization.data(withJSONObject: [
-                "sessionId": "debug-session",
-                "runId": "run1",
-                "hypothesisId": "A",
-                "location": "CreateEntryView.swift:289",
-                "message": "setupFromTemplate called",
-                "data": [
-                    "hasTemplate": template != nil,
-                    "hasPrompt": prompt != nil,
-                    "currentContentLength": content.count
-                ],
-                "timestamp": Int64(Date().timeIntervalSince1970 * 1000)
-            ])
-            if let logData = logData, let logString = String(data: logData, encoding: .utf8) {
-                try? (logString + "\n").write(to: workspacePath, atomically: true, encoding: .utf8)
-            }
-        }
-        // #endregion
-        
         if let template = template {
             content = template.formattedPrompts + "\n\n"
         }
@@ -366,26 +269,6 @@ struct CreateEntryView: View {
         if let prompt = prompt {
             content = "Prompt: \(prompt.question)\n\n"
         }
-        
-        // #region agent log
-        let workspacePath2 = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Desktop/chronicles/.cursor/debug.log")
-        if FileManager.default.fileExists(atPath: workspacePath2.deletingLastPathComponent().path) || (try? FileManager.default.createDirectory(at: workspacePath2.deletingLastPathComponent(), withIntermediateDirectories: true)) != nil {
-            let logData = try? JSONSerialization.data(withJSONObject: [
-                "sessionId": "debug-session",
-                "runId": "run1",
-                "hypothesisId": "A",
-                "location": "CreateEntryView.swift:310",
-                "message": "setupFromTemplate completed",
-                "data": [
-                    "newContentLength": content.count
-                ],
-                "timestamp": Int64(Date().timeIntervalSince1970 * 1000)
-            ])
-            if let logData = logData, let logString = String(data: logData, encoding: .utf8) {
-                try? (logString + "\n").write(to: workspacePath2, atomically: true, encoding: .utf8)
-            }
-        }
-        // #endregion
     }
     
     private func processOCR(image: UIImage) {
@@ -601,154 +484,6 @@ struct ScanActionSheet: View {
             }
         }
         .background(Color(hex: "#faf8f3"))
-    }
-}
-
-// MARK: - Cursor Tracking Text Editor
-
-struct CursorTrackingTextEditor: UIViewRepresentable {
-    @Binding var text: String
-    @Binding var isFocused: Bool
-    var font: UIFont = .systemFont(ofSize: 16)
-    var textColor: UIColor = .label
-    var onUserTyped: (() -> Void)?
-    var onCursorChange: (() -> Void)?
-    
-    func makeUIView(context: Context) -> UITextView {
-        let textView = UITextView()
-        textView.delegate = context.coordinator
-        textView.font = font
-        textView.textColor = textColor
-        textView.backgroundColor = .clear
-        textView.isScrollEnabled = false // Let parent ScrollView handle scrolling
-        textView.textContainerInset = .zero
-        textView.textContainer.lineFragmentPadding = 0
-        context.coordinator.textView = textView
-        return textView
-    }
-    
-    func updateUIView(_ textView: UITextView, context: Context) {
-        // #region agent log
-        let textChanged = textView.text != text
-        if textChanged {
-            let workspacePath = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Desktop/chronicles/.cursor/debug.log")
-            if FileManager.default.fileExists(atPath: workspacePath.deletingLastPathComponent().path) || (try? FileManager.default.createDirectory(at: workspacePath.deletingLastPathComponent(), withIntermediateDirectories: true)) != nil {
-            let logData = try? JSONSerialization.data(withJSONObject: [
-                "sessionId": "debug-session",
-                "runId": "run1",
-                "hypothesisId": "B",
-                "location": "CursorTrackingTextEditor.swift:537",
-                "message": "updateUIView setting text",
-                "data": [
-                    "oldTextLength": textView.text?.count ?? 0,
-                    "newTextLength": text.count,
-                    "isFocused": isFocused
-                ],
-                "timestamp": Int64(Date().timeIntervalSince1970 * 1000)
-            ])
-                if let logData = logData, let logString = String(data: logData, encoding: .utf8) {
-                    try? (logString + "\n").write(to: workspacePath, atomically: true, encoding: .utf8)
-                }
-            }
-        }
-        // #endregion
-        
-        if textChanged {
-            textView.text = text
-        }
-        textView.font = font
-        textView.textColor = textColor
-        
-        // Handle programmatic focus changes
-        if isFocused && !textView.isFirstResponder {
-            DispatchQueue.main.async {
-                textView.becomeFirstResponder()
-            }
-        } else if !isFocused && textView.isFirstResponder {
-            DispatchQueue.main.async {
-                textView.resignFirstResponder()
-            }
-        }
-    }
-    
-    func makeCoordinator() -> Coordinator {
-        Coordinator(self)
-    }
-    
-    class Coordinator: NSObject, UITextViewDelegate {
-        var parent: CursorTrackingTextEditor
-        weak var textView: UITextView?
-        
-        init(_ parent: CursorTrackingTextEditor) {
-            self.parent = parent
-        }
-        
-        func textViewDidChange(_ textView: UITextView) {
-            // #region agent log
-            let workspacePath = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Desktop/chronicles/.cursor/debug.log")
-            if FileManager.default.fileExists(atPath: workspacePath.deletingLastPathComponent().path) || (try? FileManager.default.createDirectory(at: workspacePath.deletingLastPathComponent(), withIntermediateDirectories: true)) != nil {
-                let logData = try? JSONSerialization.data(withJSONObject: [
-                    "sessionId": "debug-session",
-                    "runId": "run1",
-                    "hypothesisId": "B",
-                    "location": "CursorTrackingTextEditor.swift:568",
-                    "message": "textViewDidChange called",
-                    "data": [
-                        "textLength": textView.text.count,
-                        "isFirstResponder": textView.isFirstResponder
-                    ],
-                    "timestamp": Int64(Date().timeIntervalSince1970 * 1000)
-                ])
-                if let logData = logData, let logString = String(data: logData, encoding: .utf8) {
-                    try? (logString + "\n").write(to: workspacePath, atomically: true, encoding: .utf8)
-                }
-            }
-            // #endregion
-            
-            // Track if user is typing (text view is first responder)
-            if textView.isFirstResponder {
-                parent.onUserTyped?()
-            }
-            
-            parent.text = textView.text
-            parent.onCursorChange?()
-        }
-        
-        func textViewDidChangeSelection(_ textView: UITextView) {
-            // #region agent log
-            let workspacePath = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Desktop/chronicles/.cursor/debug.log")
-            if FileManager.default.fileExists(atPath: workspacePath.deletingLastPathComponent().path) || (try? FileManager.default.createDirectory(at: workspacePath.deletingLastPathComponent(), withIntermediateDirectories: true)) != nil {
-                let logData = try? JSONSerialization.data(withJSONObject: [
-                    "sessionId": "debug-session",
-                    "runId": "run1",
-                    "hypothesisId": "E",
-                    "location": "CursorTrackingTextEditor.swift:573",
-                    "message": "textViewDidChangeSelection called",
-                    "data": [
-                        "selectedRange": textView.selectedRange.location
-                    ],
-                    "timestamp": Int64(Date().timeIntervalSince1970 * 1000)
-                ])
-                if let logData = logData, let logString = String(data: logData, encoding: .utf8) {
-                    try? (logString + "\n").write(to: workspacePath, atomically: true, encoding: .utf8)
-                }
-            }
-            // #endregion
-            
-            parent.onCursorChange?()
-        }
-        
-        func textViewDidBeginEditing(_ textView: UITextView) {
-            DispatchQueue.main.async {
-                self.parent.isFocused = true
-            }
-        }
-        
-        func textViewDidEndEditing(_ textView: UITextView) {
-            DispatchQueue.main.async {
-                self.parent.isFocused = false
-            }
-        }
     }
 }
 

@@ -8,7 +8,6 @@
 import Foundation
 import Combine
 import FirebaseFirestore
-import os
 
 // MARK: - Firebase Service
 
@@ -37,38 +36,6 @@ class FirebaseService: ObservableObject {
     private let defaultTimeout: TimeInterval = 5.0
     private let longTimeout: TimeInterval = 10.0
     private let maxRetries: Int = 3
-
-    // MARK: - Debug Instrumentation (agent)
-
-    private let agentLogger = Logger(subsystem: "chronicles.agent", category: "agentLog")
-
-    /// Minimal debug logger for runtime evidence (prints JSON to Xcode console in DEBUG builds).
-    private func agentLog(
-        hypothesisId: String,
-        location: String,
-        message: String,
-        data: [String: Any] = [:],
-        runId: String = "run1"
-    ) {
-        #if DEBUG
-        var payload: [String: Any] = [
-            "sessionId": "debug-session",
-            "runId": runId,
-            "hypothesisId": hypothesisId,
-            "location": location,
-            "message": message,
-            "timestamp": Date().timeIntervalSince1970 * 1000
-        ]
-        payload["data"] = data
-        if let jsonData = try? JSONSerialization.data(withJSONObject: payload),
-           let jsonString = String(data: jsonData, encoding: .utf8) {
-            print(jsonString)
-            agentLogger.info("\(jsonString, privacy: .public)")
-            agentLogger.notice("\(jsonString, privacy: .public)")
-            NSLog("%@", jsonString)
-        }
-        #endif
-    }
 
     /// Firestore missing-index errors are typically FAILED_PRECONDITION (code 9).
     private func isMissingIndexError(_ error: Error) -> Bool {
@@ -116,84 +83,24 @@ class FirebaseService: ObservableObject {
         await MainActor.run {
             self.isLoading = true
         }
-
-        // #region agent log
-        agentLog(
-            hypothesisId: "LD1",
-            location: "FirebaseService.swift:loadUserData",
-            message: "start",
-            data: [
-                "userIdLength": userId.count,
-                "networkConnected": NetworkMonitor.shared.isConnected
-            ]
-        )
-        // #endregion
         
         // Load journals and entries in parallel
         await withTaskGroup(of: Void.self) { group in
             group.addTask {
                 do {
-                    let journals = try await self.fetchJournals(userId: userId)
+                    let _ = try await self.fetchJournals(userId: userId)
                     print("[FirebaseService] Loaded journals for user: \(userId)")
-                    // #region agent log
-                    self.agentLog(
-                        hypothesisId: "LD1",
-                        location: "FirebaseService.swift:loadUserData",
-                        message: "journalsLoaded",
-                        data: [
-                            "count": journals.count
-                        ]
-                    )
-                    // #endregion
                 } catch {
                     print("[FirebaseService] Failed to load journals: \(error.localizedDescription)")
-                    let nsError = error as NSError
-                    // #region agent log
-                    self.agentLog(
-                        hypothesisId: "LD1",
-                        location: "FirebaseService.swift:loadUserData",
-                        message: "journalsFailed",
-                        data: [
-                            "domain": nsError.domain,
-                            "code": nsError.code,
-                            "missingIndex": self.isMissingIndexError(error),
-                            "permissionDenied": nsError.localizedDescription.lowercased().contains("missing or insufficient permissions")
-                        ]
-                    )
-                    // #endregion
                 }
             }
             
             group.addTask {
                 do {
-                    let entries = try await self.fetchEntries(userId: userId, journalId: nil)
+                    let _ = try await self.fetchEntries(userId: userId, journalId: nil)
                     print("[FirebaseService] Loaded entries for user: \(userId)")
-                    // #region agent log
-                    self.agentLog(
-                        hypothesisId: "LD1",
-                        location: "FirebaseService.swift:loadUserData",
-                        message: "entriesLoaded",
-                        data: [
-                            "count": entries.count
-                        ]
-                    )
-                    // #endregion
                 } catch {
                     print("[FirebaseService] Failed to load entries: \(error.localizedDescription)")
-                    let nsError = error as NSError
-                    // #region agent log
-                    self.agentLog(
-                        hypothesisId: "LD1",
-                        location: "FirebaseService.swift:loadUserData",
-                        message: "entriesFailed",
-                        data: [
-                            "domain": nsError.domain,
-                            "code": nsError.code,
-                            "missingIndex": self.isMissingIndexError(error),
-                            "permissionDenied": nsError.localizedDescription.lowercased().contains("missing or insufficient permissions")
-                        ]
-                    )
-                    // #endregion
                 }
             }
         }
@@ -204,18 +111,6 @@ class FirebaseService: ObservableObject {
         }
         
         print("[FirebaseService] User data loaded successfully")
-
-        // #region agent log
-        agentLog(
-            hypothesisId: "LD1",
-            location: "FirebaseService.swift:loadUserData",
-            message: "done",
-            data: [
-                "journalsCount": journals.count,
-                "entriesCount": entries.count
-            ]
-        )
-        // #endregion
     }
     
     /// Reset data when user logs out
@@ -243,31 +138,9 @@ class FirebaseService: ObservableObject {
         // Check network availability
         guard NetworkMonitor.shared.isConnected else {
             print("[FirebaseService] Offline - using cached journals")
-            // #region agent log
-            agentLog(
-                hypothesisId: "J1",
-                location: "FirebaseService.swift:fetchJournals",
-                message: "offlineReturn",
-                data: [
-                    "cachedCount": journals.count
-                ]
-            )
-            // #endregion
             return journals
         }
 
-        // #region agent log
-        agentLog(
-            hypothesisId: "J1",
-            location: "FirebaseService.swift:fetchJournals",
-            message: "start",
-            data: [
-                "userIdLength": userId.count,
-                "useOrderByOrder": true
-            ]
-        )
-        // #endregion
-        
         do {
             let snapshot = try await withTimeoutAndRetry(timeout: defaultTimeout, maxRetries: maxRetries) {
                 try await self.db.collection("journals")
@@ -317,37 +190,12 @@ class FirebaseService: ObservableObject {
                 self.journals = fetchedJournals
             }
             
-            // #region agent log
-            agentLog(
-                hypothesisId: "J1",
-                location: "FirebaseService.swift:fetchJournals",
-                message: "success",
-                data: [
-                    "returnedCount": fetchedJournals.count
-                ]
-            )
-            // #endregion
-            
             return fetchedJournals
         } catch {
             let nsError = error as NSError
             let missingIndex = isMissingIndexError(error)
             let permissionDenied = nsError.localizedDescription.lowercased().contains("missing or insufficient permissions")
             
-            // #region agent log
-            agentLog(
-                hypothesisId: "J1",
-                location: "FirebaseService.swift:fetchJournals",
-                message: "failed",
-                data: [
-                    "domain": nsError.domain,
-                    "code": nsError.code,
-                    "missingIndex": missingIndex,
-                    "permissionDenied": permissionDenied
-                ]
-            )
-            // #endregion
-
             // If the composite index isn't created yet, fallback to a query that doesn't require it.
             if missingIndex {
                 let fallbackSnapshot = try await withTimeoutAndRetry(timeout: defaultTimeout, maxRetries: maxRetries) {
@@ -400,18 +248,6 @@ class FirebaseService: ObservableObject {
                     self.journals = sorted
                 }
                 
-                // #region agent log
-                agentLog(
-                    hypothesisId: "J1",
-                    location: "FirebaseService.swift:fetchJournals",
-                    message: "fallbackSuccess",
-                    data: [
-                        "fetchedCount": fetchedJournals.count,
-                        "returnedCount": sorted.count
-                    ]
-                )
-                // #endregion
-                
                 return sorted
             }
             
@@ -420,19 +256,6 @@ class FirebaseService: ObservableObject {
     }
     
     func createJournal(_ journal: Journal) async throws {
-        // #region agent log
-        agentLog(
-            hypothesisId: "J2",
-            location: "FirebaseService.swift:createJournal",
-            message: "start",
-            data: [
-                "userIdIsEmpty": journal.userId.isEmpty,
-                "nameLength": journal.name.count,
-                "order": journal.order
-            ]
-        )
-        // #endregion
-        
         let data: [String: Any] = [
             "userId": journal.userId,
             "name": journal.name,
@@ -448,17 +271,6 @@ class FirebaseService: ObservableObject {
         await MainActor.run {
             journals.append(journal)
         }
-
-        // #region agent log
-        agentLog(
-            hypothesisId: "J2",
-            location: "FirebaseService.swift:createJournal",
-            message: "success",
-            data: [
-                "localJournalsCount": journals.count
-            ]
-        )
-        // #endregion
     }
     
     func updateJournal(_ journal: Journal) async throws {
@@ -528,18 +340,6 @@ class FirebaseService: ObservableObject {
             return entries
         }
 
-        // #region agent log
-        agentLog(
-            hypothesisId: "IDX1",
-            location: "FirebaseService.swift:fetchEntries",
-            message: "start",
-            data: [
-                "hasJournalId": journalId != nil,
-                "useOrderByCreatedAt": true
-            ]
-        )
-        // #endregion
-        
         do {
             var query: Query = db.collection("entries")
                 .whereField("userId", isEqualTo: userId)
@@ -563,35 +363,10 @@ class FirebaseService: ObservableObject {
                 }
             }
             
-            // #region agent log
-            agentLog(
-                hypothesisId: "IDX1",
-                location: "FirebaseService.swift:fetchEntries",
-                message: "success",
-                data: [
-                    "returnedCount": fetchedEntries.count,
-                    "usedFallback": false
-                ]
-            )
-            // #endregion
-            
             return fetchedEntries
         } catch {
             let nsError = error as NSError
             let missingIndex = isMissingIndexError(error)
-            
-            // #region agent log
-            agentLog(
-                hypothesisId: "IDX1",
-                location: "FirebaseService.swift:fetchEntries",
-                message: "orderedQueryFailed",
-                data: [
-                    "domain": nsError.domain,
-                    "code": nsError.code,
-                    "missingIndex": missingIndex
-                ]
-            )
-            // #endregion
             
             // If the composite index isn't created yet, fallback to a query that doesn't require it.
             if missingIndex {
@@ -614,18 +389,6 @@ class FirebaseService: ObservableObject {
                         self.entries = sorted
                     }
                 }
-                
-                // #region agent log
-                agentLog(
-                    hypothesisId: "IDX1",
-                    location: "FirebaseService.swift:fetchEntries",
-                    message: "fallbackSuccess",
-                    data: [
-                        "fetchedCount": allFetched.count,
-                        "returnedCount": sorted.count
-                    ]
-                )
-                // #endregion
                 
                 return sorted
             }
@@ -1259,16 +1022,6 @@ class FirebaseService: ObservableObject {
             let longestStreak = calculateLongestStreak(from: entries.map { $0.createdAt })
             return (currentStreak, longestStreak)
         }
-        // #region agent log
-        agentLog(
-            hypothesisId: "IDX2",
-            location: "FirebaseService.swift:updateStreak",
-            message: "start",
-            data: [
-                "useOrderByCreatedAt": true
-            ]
-        )
-        // #endregion
 
         // Fetch entries to calculate streak with timeout
         let snapshot: QuerySnapshot
@@ -1283,19 +1036,6 @@ class FirebaseService: ObservableObject {
             let nsError = error as NSError
             let missingIndex = isMissingIndexError(error)
             
-            // #region agent log
-            agentLog(
-                hypothesisId: "IDX2",
-                location: "FirebaseService.swift:updateStreak",
-                message: "orderedQueryFailed",
-                data: [
-                    "domain": nsError.domain,
-                    "code": nsError.code,
-                    "missingIndex": missingIndex
-                ]
-            )
-            // #endregion
-            
             if missingIndex {
                 // Fallback: query without orderBy, compute streak from dates.
                 snapshot = try await withTimeoutAndRetry(timeout: defaultTimeout, maxRetries: maxRetries) {
@@ -1304,16 +1044,6 @@ class FirebaseService: ObservableObject {
                         .getDocuments()
                 }
                 
-                // #region agent log
-                agentLog(
-                    hypothesisId: "IDX2",
-                    location: "FirebaseService.swift:updateStreak",
-                    message: "fallbackUsed",
-                    data: [
-                        "docCount": snapshot.documents.count
-                    ]
-                )
-                // #endregion
             } else {
                 throw error
             }
