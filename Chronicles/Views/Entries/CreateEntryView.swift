@@ -33,7 +33,8 @@ struct CreateEntryView: View {
     @State private var showCameraUnavailableAlert = false
     @State private var cameraAvailable = UIImagePickerController.isSourceTypeAvailable(.camera)
     
-    @FocusState private var isEditorFocused: Bool
+    @State private var isEditorFocused = false
+    @State private var scrollProxy: ScrollViewProxy?
     
     var body: some View {
         NavigationView {
@@ -43,26 +44,44 @@ struct CreateEntryView: View {
                 
                 VStack(spacing: 0) {
                     // Main content - text editor always visible
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: Papper.spacing.md) {
-                            // Text Editor
-                            TextEditor(text: $content)
-                                .font(.system(size: 16))
-                                .foregroundColor(PapperColors.neutral800)
-                                .scrollContentBackground(.hidden)
+                    ScrollViewReader { proxy in
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: Papper.spacing.md) {
+                                // Cursor-tracking Text Editor
+                                CursorTrackingTextEditor(
+                                    text: $content,
+                                    isFocused: $isEditorFocused,
+                                    font: .systemFont(ofSize: 16),
+                                    textColor: UIColor(PapperColors.neutral800),
+                                    onCursorChange: {
+                                        // Scroll to bottom anchor when cursor changes
+                                        withAnimation(.easeOut(duration: 0.15)) {
+                                            proxy.scrollTo("cursorAnchor", anchor: .bottom)
+                                        }
+                                    }
+                                )
                                 .frame(minHeight: 350)
                                 .padding()
                                 .background(PapperColors.surfaceBackgroundPlain)
                                 .cornerRadius(16)
-                                .focused($isEditorFocused)
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    isEditorFocused = true
+                                }
+                                
+                                // Invisible anchor for scroll tracking
+                                Color.clear
+                                    .frame(height: 1)
+                                    .id("cursorAnchor")
+                            }
+                            .padding(Papper.spacing.lg)
+                            .padding(.top, 40) // Extra clearance below navigation bar
+                            .padding(.bottom, 60) // Space for bottom toolbar
                         }
-                        .padding(Papper.spacing.lg)
-                        .padding(.top, 20) // Extra clearance below navigation bar
-                        .padding(.bottom, 60) // Space for bottom toolbar
-                    }
-                    .scrollDismissesKeyboard(.interactively)
-                    .onTapGesture {
-                        isEditorFocused = true
+                        .scrollDismissesKeyboard(.interactively)
+                        .onAppear {
+                            scrollProxy = proxy
+                        }
                     }
                     
                     // Fixed bottom toolbar
@@ -490,6 +509,82 @@ struct ScanActionSheet: View {
             }
         }
         .background(Color(hex: "#faf8f3"))
+    }
+}
+
+// MARK: - Cursor Tracking Text Editor
+
+struct CursorTrackingTextEditor: UIViewRepresentable {
+    @Binding var text: String
+    @Binding var isFocused: Bool
+    var font: UIFont = .systemFont(ofSize: 16)
+    var textColor: UIColor = .label
+    var onCursorChange: (() -> Void)?
+    
+    func makeUIView(context: Context) -> UITextView {
+        let textView = UITextView()
+        textView.delegate = context.coordinator
+        textView.font = font
+        textView.textColor = textColor
+        textView.backgroundColor = .clear
+        textView.isScrollEnabled = false // Let parent ScrollView handle scrolling
+        textView.textContainerInset = .zero
+        textView.textContainer.lineFragmentPadding = 0
+        context.coordinator.textView = textView
+        return textView
+    }
+    
+    func updateUIView(_ textView: UITextView, context: Context) {
+        if textView.text != text {
+            textView.text = text
+        }
+        textView.font = font
+        textView.textColor = textColor
+        
+        // Handle programmatic focus changes
+        if isFocused && !textView.isFirstResponder {
+            DispatchQueue.main.async {
+                textView.becomeFirstResponder()
+            }
+        } else if !isFocused && textView.isFirstResponder {
+            DispatchQueue.main.async {
+                textView.resignFirstResponder()
+            }
+        }
+    }
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+    
+    class Coordinator: NSObject, UITextViewDelegate {
+        var parent: CursorTrackingTextEditor
+        weak var textView: UITextView?
+        
+        init(_ parent: CursorTrackingTextEditor) {
+            self.parent = parent
+        }
+        
+        func textViewDidChange(_ textView: UITextView) {
+            parent.text = textView.text
+            parent.onCursorChange?()
+        }
+        
+        func textViewDidChangeSelection(_ textView: UITextView) {
+            parent.onCursorChange?()
+        }
+        
+        func textViewDidBeginEditing(_ textView: UITextView) {
+            DispatchQueue.main.async {
+                self.parent.isFocused = true
+            }
+        }
+        
+        func textViewDidEndEditing(_ textView: UITextView) {
+            DispatchQueue.main.async {
+                self.parent.isFocused = false
+            }
+        }
     }
 }
 
