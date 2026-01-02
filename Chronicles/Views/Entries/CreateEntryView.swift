@@ -322,10 +322,10 @@ struct CreateEntryView: View {
                 promptId: prompt?.id
             )
             
-            // STEP 2: Notify parent that save completed (for navigation)
+            // STEP 2: Dismiss this view first, then notify parent for navigation
             await MainActor.run {
-                onSaveComplete?()
                 dismiss()
+                onSaveComplete?()
             }
             
             // STEP 3: Generate AI title in background and update quietly

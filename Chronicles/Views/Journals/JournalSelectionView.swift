@@ -119,8 +119,7 @@ struct JournalSelectionView: View {
         // Use item: binding - guarantees journal exists when cover presents
         .fullScreenCover(item: $journalForNewEntry) { journal in
             CreateEntryView(journal: journal, onSaveComplete: {
-                // Dismiss this view and notify parent
-                dismiss()
+                // Notify parent to dismiss sheet and navigate to Entries tab
                 onEntrySaved?()
             })
         }
