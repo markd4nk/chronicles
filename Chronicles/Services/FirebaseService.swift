@@ -263,6 +263,34 @@ class FirebaseService: ObservableObject {
     }
     
     func createJournal(_ journal: Journal) async throws {
+        // Update local state immediately for responsive UI
+        await MainActor.run {
+            journals.append(journal)
+        }
+        
+        // Check network availability - queue if offline
+        guard NetworkMonitor.shared.isConnected else {
+            print("[FirebaseService] Offline - queuing journal creation")
+            let operationData = JournalOperationData(
+                journalId: journal.id,
+                userId: journal.userId,
+                name: journal.name,
+                color: journal.color,
+                order: journal.order,
+                createdAt: journal.createdAt,
+                updatedAt: journal.updatedAt,
+                entryCount: journal.entryCount,
+                lastEntryDate: journal.lastEntryDate
+            )
+            OfflineQueueService.shared.enqueue(type: .createJournal, data: operationData)
+            return
+        }
+        
+        try await createJournalDirect(journal)
+    }
+    
+    /// Direct journal creation (bypasses offline check, used by queue processor)
+    func createJournalDirect(_ journal: Journal) async throws {
         let data: [String: Any] = [
             "userId": journal.userId,
             "name": journal.name,
@@ -274,13 +302,39 @@ class FirebaseService: ObservableObject {
         ]
         
         try await db.collection("journals").document(journal.id).setData(data)
-        
-        await MainActor.run {
-            journals.append(journal)
-        }
     }
     
     func updateJournal(_ journal: Journal) async throws {
+        // Update local state immediately for responsive UI
+        await MainActor.run {
+            if let index = journals.firstIndex(where: { $0.id == journal.id }) {
+                journals[index] = journal
+            }
+        }
+        
+        // Check network availability - queue if offline
+        guard NetworkMonitor.shared.isConnected else {
+            print("[FirebaseService] Offline - queuing journal update")
+            let operationData = JournalOperationData(
+                journalId: journal.id,
+                userId: journal.userId,
+                name: journal.name,
+                color: journal.color,
+                order: journal.order,
+                createdAt: journal.createdAt,
+                updatedAt: journal.updatedAt,
+                entryCount: journal.entryCount,
+                lastEntryDate: journal.lastEntryDate
+            )
+            OfflineQueueService.shared.enqueue(type: .updateJournal, data: operationData)
+            return
+        }
+        
+        try await updateJournalDirect(journal)
+    }
+    
+    /// Direct journal update (bypasses offline check, used by queue processor)
+    func updateJournalDirect(_ journal: Journal) async throws {
         var data: [String: Any] = [
             "name": journal.name,
             "color": journal.color,
@@ -294,15 +348,28 @@ class FirebaseService: ObservableObject {
         }
         
         try await db.collection("journals").document(journal.id).updateData(data)
-        
-        await MainActor.run {
-            if let index = journals.firstIndex(where: { $0.id == journal.id }) {
-                journals[index] = journal
-            }
-        }
     }
     
     func deleteJournal(_ journalId: String) async throws {
+        // Update local state immediately for responsive UI
+        await MainActor.run {
+            journals.removeAll { $0.id == journalId }
+            entries.removeAll { $0.journalId == journalId }
+        }
+        
+        // Check network availability - queue if offline
+        guard NetworkMonitor.shared.isConnected else {
+            print("[FirebaseService] Offline - queuing journal deletion")
+            let operationData = DeleteOperationData(id: journalId)
+            OfflineQueueService.shared.enqueue(type: .deleteJournal, data: operationData)
+            return
+        }
+        
+        try await deleteJournalDirect(journalId)
+    }
+    
+    /// Direct journal deletion (bypasses offline check, used by queue processor)
+    func deleteJournalDirect(_ journalId: String) async throws {
         // Delete journal from Firestore
         try await db.collection("journals").document(journalId).delete()
         
@@ -314,24 +381,36 @@ class FirebaseService: ObservableObject {
         for doc in entriesSnapshot.documents {
             try await doc.reference.delete()
         }
-        
-        await MainActor.run {
-            journals.removeAll { $0.id == journalId }
-            entries.removeAll { $0.journalId == journalId }
-        }
     }
     
     func reorderJournals(_ journals: [Journal]) async throws {
-        // Update order for each journal in Firestore
-        for (index, journal) in journals.enumerated() {
-            try await db.collection("journals").document(journal.id).updateData([
-                "order": index,
-                "updatedAt": Timestamp(date: Date())
-            ])
-        }
-        
+        // Update local state immediately for responsive UI
         await MainActor.run {
             self.journals = journals
+        }
+        
+        // Check network availability - queue if offline
+        guard NetworkMonitor.shared.isConnected else {
+            print("[FirebaseService] Offline - queuing journals reorder")
+            let operationData = ReorderJournalsData(
+                journalIds: journals.map { $0.id },
+                orders: journals.indices.map { $0 }
+            )
+            OfflineQueueService.shared.enqueue(type: .reorderJournals, data: operationData)
+            return
+        }
+        
+        try await reorderJournalsDirect(ids: journals.map { $0.id }, orders: journals.indices.map { $0 })
+    }
+    
+    /// Direct journals reorder (bypasses offline check, used by queue processor)
+    func reorderJournalsDirect(ids: [String], orders: [Int]) async throws {
+        // Update order for each journal in Firestore
+        for (journalId, order) in zip(ids, orders) {
+            try await db.collection("journals").document(journalId).updateData([
+                "order": order,
+                "updatedAt": Timestamp(date: Date())
+            ])
         }
     }
     
@@ -471,6 +550,42 @@ class FirebaseService: ObservableObject {
     }
     
     func createEntry(_ entry: JournalEntry) async throws {
+        // Update local state immediately for responsive UI
+        await MainActor.run {
+            entries.insert(entry, at: 0)
+            
+            if let index = journals.firstIndex(where: { $0.id == entry.journalId }) {
+                journals[index].entryCount += 1
+                journals[index].lastEntryDate = entry.createdAt
+            }
+        }
+        
+        // Check network availability - queue if offline
+        guard NetworkMonitor.shared.isConnected else {
+            print("[FirebaseService] Offline - queuing entry creation")
+            let operationData = EntryOperationData(
+                entryId: entry.id,
+                userId: entry.userId,
+                journalId: entry.journalId,
+                templateId: entry.templateId,
+                promptId: entry.promptId,
+                title: entry.title,
+                content: entry.content,
+                createdAt: entry.createdAt,
+                updatedAt: entry.updatedAt,
+                inputMethod: entry.inputMethod.rawValue,
+                mood: entry.mood,
+                wordCount: entry.wordCount
+            )
+            OfflineQueueService.shared.enqueue(type: .createEntry, data: operationData)
+            return
+        }
+        
+        try await createEntryDirect(entry)
+    }
+    
+    /// Direct entry creation (bypasses offline check, used by queue processor)
+    func createEntryDirect(_ entry: JournalEntry) async throws {
         var data: [String: Any] = [
             "userId": entry.userId,
             "journalId": entry.journalId,
@@ -499,18 +614,42 @@ class FirebaseService: ObservableObject {
             "entryCount": FieldValue.increment(Int64(1)),
             "lastEntryDate": Timestamp(date: entry.createdAt)
         ])
-        
-        await MainActor.run {
-            entries.insert(entry, at: 0)
-            
-            if let index = journals.firstIndex(where: { $0.id == entry.journalId }) {
-                journals[index].entryCount += 1
-                journals[index].lastEntryDate = entry.createdAt
-            }
-        }
     }
     
     func updateEntry(_ entry: JournalEntry) async throws {
+        // Update local state immediately for responsive UI
+        await MainActor.run {
+            if let index = entries.firstIndex(where: { $0.id == entry.id }) {
+                entries[index] = entry
+            }
+        }
+        
+        // Check network availability - queue if offline
+        guard NetworkMonitor.shared.isConnected else {
+            print("[FirebaseService] Offline - queuing entry update")
+            let operationData = EntryOperationData(
+                entryId: entry.id,
+                userId: entry.userId,
+                journalId: entry.journalId,
+                templateId: entry.templateId,
+                promptId: entry.promptId,
+                title: entry.title,
+                content: entry.content,
+                createdAt: entry.createdAt,
+                updatedAt: entry.updatedAt,
+                inputMethod: entry.inputMethod.rawValue,
+                mood: entry.mood,
+                wordCount: entry.wordCount
+            )
+            OfflineQueueService.shared.enqueue(type: .updateEntry, data: operationData)
+            return
+        }
+        
+        try await updateEntryDirect(entry)
+    }
+    
+    /// Direct entry update (bypasses offline check, used by queue processor)
+    func updateEntryDirect(_ entry: JournalEntry) async throws {
         var data: [String: Any] = [
             "title": entry.title,
             "content": entry.content,
@@ -523,28 +662,13 @@ class FirebaseService: ObservableObject {
         }
         
         try await db.collection("entries").document(entry.id).updateData(data)
-        
-        await MainActor.run {
-            if let index = entries.firstIndex(where: { $0.id == entry.id }) {
-                entries[index] = entry
-            }
-        }
     }
     
     func deleteEntry(_ entryId: String) async throws {
-        // Get the entry first to update journal count
+        // Get the entry first to update journal count (for local state)
         let entry = entries.first(where: { $0.id == entryId })
         
-        // Delete from Firestore
-        try await db.collection("entries").document(entryId).delete()
-        
-        // Update journal entry count in Firestore
-        if let entry = entry {
-            try await db.collection("journals").document(entry.journalId).updateData([
-                "entryCount": FieldValue.increment(Int64(-1))
-            ])
-        }
-        
+        // Update local state immediately for responsive UI
         await MainActor.run {
             if let entry = entries.first(where: { $0.id == entryId }) {
                 if let index = journals.firstIndex(where: { $0.id == entry.journalId }) {
@@ -552,6 +676,29 @@ class FirebaseService: ObservableObject {
                 }
             }
             entries.removeAll { $0.id == entryId }
+        }
+        
+        // Check network availability - queue if offline
+        guard NetworkMonitor.shared.isConnected else {
+            print("[FirebaseService] Offline - queuing entry deletion")
+            let operationData = DeleteEntryOperationData(entryId: entryId, journalId: entry?.journalId)
+            OfflineQueueService.shared.enqueue(type: .deleteEntry, data: operationData)
+            return
+        }
+        
+        try await deleteEntryDirect(entryId, journalId: entry?.journalId)
+    }
+    
+    /// Direct entry deletion (bypasses offline check, used by queue processor)
+    func deleteEntryDirect(_ entryId: String, journalId: String? = nil) async throws {
+        // Delete from Firestore
+        try await db.collection("entries").document(entryId).delete()
+        
+        // Update journal entry count in Firestore if we know the journal ID
+        if let journalId = journalId {
+            try await db.collection("journals").document(journalId).updateData([
+                "entryCount": FieldValue.increment(Int64(-1))
+            ])
         }
     }
     
@@ -730,6 +877,31 @@ class FirebaseService: ObservableObject {
             throw NSError(domain: "FirebaseService", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not authenticated"])
         }
         
+        // Update local state immediately for responsive UI
+        await MainActor.run {
+            if let index = prompts.firstIndex(where: { $0.id == promptId }) {
+                prompts[index].isLiked.toggle()
+                prompts[index].likes += prompts[index].isLiked ? 1 : -1
+            }
+        }
+        
+        // Check network availability - queue if offline
+        guard NetworkMonitor.shared.isConnected else {
+            print("[FirebaseService] Offline - queuing prompt like")
+            let operationData = PromptOperationData(promptId: promptId, userId: userId)
+            OfflineQueueService.shared.enqueue(type: .likePrompt, data: operationData)
+            return
+        }
+        
+        try await likePromptDirect(promptId)
+    }
+    
+    /// Direct prompt like (bypasses offline check, used by queue processor)
+    func likePromptDirect(_ promptId: String) async throws {
+        guard let userId = AuthService.shared.currentUser?.id else {
+            throw NSError(domain: "FirebaseService", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not authenticated"])
+        }
+        
         // Update in Firestore
         let promptRef = db.collection("prompts").document(promptId)
         let userLikesRef = db.collection("userLikes").document("\(userId)_\(promptId)")
@@ -766,17 +938,33 @@ class FirebaseService: ObservableObject {
                 return nil
             }
         }
-        
-        // Update local state
-        await MainActor.run {
-            if let index = prompts.firstIndex(where: { $0.id == promptId }) {
-                prompts[index].isLiked.toggle()
-                prompts[index].likes += prompts[index].isLiked ? 1 : -1
-            }
-        }
     }
     
     func sharePrompt(_ promptId: String) async throws {
+        guard let userId = AuthService.shared.currentUser?.id else {
+            throw NSError(domain: "FirebaseService", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not authenticated"])
+        }
+        
+        // Update local state immediately for responsive UI
+        await MainActor.run {
+            if let index = prompts.firstIndex(where: { $0.id == promptId }) {
+                prompts[index].shares += 1
+            }
+        }
+        
+        // Check network availability - queue if offline
+        guard NetworkMonitor.shared.isConnected else {
+            print("[FirebaseService] Offline - queuing prompt share")
+            let operationData = PromptOperationData(promptId: promptId, userId: userId)
+            OfflineQueueService.shared.enqueue(type: .sharePrompt, data: operationData)
+            return
+        }
+        
+        try await sharePromptDirect(promptId)
+    }
+    
+    /// Direct prompt share (bypasses offline check, used by queue processor)
+    func sharePromptDirect(_ promptId: String) async throws {
         let promptRef = db.collection("prompts").document(promptId)
         
         let _: Any? = try await db.runTransaction { (transaction, errorPointer) -> Any? in
@@ -795,13 +983,6 @@ class FirebaseService: ObservableObject {
             } catch let fetchError as NSError {
                 errorPointer?.pointee = fetchError
                 return nil
-            }
-        }
-        
-        // Update local state
-        await MainActor.run {
-            if let index = prompts.firstIndex(where: { $0.id == promptId }) {
-                prompts[index].shares += 1
             }
         }
     }
@@ -1033,6 +1214,52 @@ class FirebaseService: ObservableObject {
     
     /// Create a new conversation with metadata and optional initial messages
     func createConversation(_ conversation: AIConversation) async throws {
+        // Update local state immediately for responsive UI
+        var updatedConversation = conversation
+        updatedConversation.storedMessageCount = conversation.messages.count
+        updatedConversation.lastMessagePreview = conversation.messages.last.map { String($0.content.prefix(100)) }
+        updatedConversation.lastMessageAt = conversation.messages.last?.createdAt
+        
+        await MainActor.run {
+            conversations.insert(updatedConversation, at: 0)
+        }
+        
+        // Check network availability - queue if offline
+        guard NetworkMonitor.shared.isConnected else {
+            print("[FirebaseService] Offline - queuing conversation creation")
+            let operationData = ConversationOperationData(
+                conversationId: conversation.id,
+                userId: conversation.userId,
+                title: conversation.title,
+                createdAt: conversation.createdAt,
+                updatedAt: conversation.updatedAt,
+                analyzedJournalIds: conversation.analyzedJournalIds,
+                insightsSummary: conversation.insightsSummary,
+                lastMessagePreview: updatedConversation.lastMessagePreview,
+                lastMessageAt: updatedConversation.lastMessageAt,
+                messageCount: updatedConversation.storedMessageCount
+            )
+            OfflineQueueService.shared.enqueue(type: .createConversation, data: operationData)
+            
+            // Also queue messages if any
+            for message in conversation.messages {
+                let messageData = MessageOperationData(
+                    messageId: message.id,
+                    conversationId: conversation.id,
+                    role: message.role.rawValue,
+                    content: message.content,
+                    createdAt: message.createdAt
+                )
+                OfflineQueueService.shared.enqueue(type: .addMessageToConversation, data: messageData)
+            }
+            return
+        }
+        
+        try await createConversationDirect(conversation)
+    }
+    
+    /// Direct conversation creation (bypasses offline check, used by queue processor)
+    func createConversationDirect(_ conversation: AIConversation) async throws {
         var data: [String: Any] = [
             "userId": conversation.userId,
             "title": conversation.title,
@@ -1078,20 +1305,41 @@ class FirebaseService: ObservableObject {
             
             try await batch.commit()
         }
-        
-        // Update local state
-        var updatedConversation = conversation
-        updatedConversation.storedMessageCount = conversation.messages.count
-        updatedConversation.lastMessagePreview = conversation.messages.last.map { String($0.content.prefix(100)) }
-        updatedConversation.lastMessageAt = conversation.messages.last?.createdAt
-        
-        await MainActor.run {
-            conversations.insert(updatedConversation, at: 0)
-        }
     }
     
     /// Update conversation metadata (not messages)
     func updateConversationMetadata(_ conversation: AIConversation) async throws {
+        // Update local state immediately for responsive UI
+        await MainActor.run {
+            if let index = conversations.firstIndex(where: { $0.id == conversation.id }) {
+                conversations[index] = conversation
+            }
+        }
+        
+        // Check network availability - queue if offline
+        guard NetworkMonitor.shared.isConnected else {
+            print("[FirebaseService] Offline - queuing conversation metadata update")
+            let operationData = ConversationOperationData(
+                conversationId: conversation.id,
+                userId: conversation.userId,
+                title: conversation.title,
+                createdAt: conversation.createdAt,
+                updatedAt: conversation.updatedAt,
+                analyzedJournalIds: conversation.analyzedJournalIds,
+                insightsSummary: conversation.insightsSummary,
+                lastMessagePreview: conversation.lastMessagePreview,
+                lastMessageAt: conversation.lastMessageAt,
+                messageCount: conversation.storedMessageCount
+            )
+            OfflineQueueService.shared.enqueue(type: .updateConversationMetadata, data: operationData)
+            return
+        }
+        
+        try await updateConversationMetadataDirect(conversation)
+    }
+    
+    /// Direct conversation metadata update (bypasses offline check, used by queue processor)
+    func updateConversationMetadataDirect(_ conversation: AIConversation) async throws {
         var data: [String: Any] = [
             "title": conversation.title,
             "updatedAt": Timestamp(date: Date())
@@ -1114,16 +1362,42 @@ class FirebaseService: ObservableObject {
         }
         
         try await db.collection("conversations").document(conversation.id).updateData(data)
-        
-        await MainActor.run {
-            if let index = conversations.firstIndex(where: { $0.id == conversation.id }) {
-                conversations[index] = conversation
-            }
-        }
     }
     
     /// Add a message to conversation using batch write (creates message doc + updates metadata)
     func addMessageToConversation(_ message: AIMessage, conversationId: String) async throws {
+        let preview = String(message.content.prefix(100))
+        
+        // Update local state immediately for responsive UI
+        await MainActor.run {
+            if let index = conversations.firstIndex(where: { $0.id == conversationId }) {
+                conversations[index].messages.append(message)
+                conversations[index].updatedAt = Date()
+                conversations[index].lastMessagePreview = preview
+                conversations[index].lastMessageAt = message.createdAt
+                conversations[index].storedMessageCount = (conversations[index].storedMessageCount ?? 0) + 1
+            }
+        }
+        
+        // Check network availability - queue if offline
+        guard NetworkMonitor.shared.isConnected else {
+            print("[FirebaseService] Offline - queuing message addition")
+            let operationData = MessageOperationData(
+                messageId: message.id,
+                conversationId: conversationId,
+                role: message.role.rawValue,
+                content: message.content,
+                createdAt: message.createdAt
+            )
+            OfflineQueueService.shared.enqueue(type: .addMessageToConversation, data: operationData)
+            return
+        }
+        
+        try await addMessageToConversationDirect(message, conversationId: conversationId)
+    }
+    
+    /// Direct message addition (bypasses offline check, used by queue processor)
+    func addMessageToConversationDirect(_ message: AIMessage, conversationId: String) async throws {
         let batch = db.batch()
         
         // 1. Create message document in subcollection
@@ -1154,28 +1428,30 @@ class FirebaseService: ObservableObject {
         
         // Commit batch
         try await batch.commit()
-        
-        // Update local state
-        await MainActor.run {
-            if let index = conversations.firstIndex(where: { $0.id == conversationId }) {
-                conversations[index].messages.append(message)
-                conversations[index].updatedAt = Date()
-                conversations[index].lastMessagePreview = preview
-                conversations[index].lastMessageAt = message.createdAt
-                conversations[index].storedMessageCount = (conversations[index].storedMessageCount ?? 0) + 1
-            }
-        }
     }
     
     /// Delete a conversation (uses Cloud Function for safe subcollection deletion)
     func deleteConversation(_ conversationId: String) async throws {
-        // Use Cloud Function for safe deletion (handles subcollection)
-        try await FirebaseFunctionsService.shared.deleteConversation(conversationId: conversationId)
-        
-        // Update local state
+        // Update local state immediately for responsive UI
         await MainActor.run {
             conversations.removeAll { $0.id == conversationId }
         }
+        
+        // Check network availability - queue if offline
+        guard NetworkMonitor.shared.isConnected else {
+            print("[FirebaseService] Offline - queuing conversation deletion")
+            let operationData = DeleteOperationData(id: conversationId)
+            OfflineQueueService.shared.enqueue(type: .deleteConversation, data: operationData)
+            return
+        }
+        
+        try await deleteConversationDirect(conversationId)
+    }
+    
+    /// Direct conversation deletion (bypasses offline check, used by queue processor)
+    func deleteConversationDirect(_ conversationId: String) async throws {
+        // Use Cloud Function for safe deletion (handles subcollection)
+        try await FirebaseFunctionsService.shared.deleteConversation(conversationId: conversationId)
     }
     
     // MARK: - User Operations
@@ -1201,6 +1477,39 @@ class FirebaseService: ObservableObject {
     
     /// Save user document to Firestore with timeout
     func saveUser(_ user: User) async throws {
+        // Check network availability - queue if offline
+        guard NetworkMonitor.shared.isConnected else {
+            print("[FirebaseService] Offline - queuing user save")
+            var encodedOnboarding: Data?
+            if let onboardingData = user.onboardingData {
+                encodedOnboarding = try? JSONEncoder().encode(onboardingData)
+            }
+            
+            let operationData = SaveUserData(
+                userId: user.id,
+                email: user.email,
+                displayName: user.displayName,
+                preferredName: user.preferredName,
+                createdAt: user.createdAt,
+                onboardingCompleted: user.onboardingCompleted,
+                subscriptionStatus: user.subscriptionStatus.rawValue,
+                securityEnabled: user.securityEnabled,
+                dashboardLayout: user.dashboardLayout,
+                currentStreak: user.currentStreak,
+                longestStreak: user.longestStreak,
+                totalEntries: user.totalEntries,
+                lastEntryDate: user.lastEntryDate,
+                onboardingData: encodedOnboarding
+            )
+            OfflineQueueService.shared.enqueue(type: .saveUser, data: operationData)
+            return
+        }
+        
+        try await saveUserDirect(user)
+    }
+    
+    /// Direct user save (bypasses offline check, used by queue processor)
+    func saveUserDirect(_ user: User) async throws {
         var data: [String: Any] = [
             "email": user.email,
             "createdAt": Timestamp(date: user.createdAt),
@@ -1227,13 +1536,6 @@ class FirebaseService: ObservableObject {
            let encoded = try? JSONEncoder().encode(onboardingData),
            let json = try? JSONSerialization.jsonObject(with: encoded) as? [String: Any] {
             data["onboardingData"] = json
-        }
-        
-        // Check network availability
-        guard NetworkMonitor.shared.isConnected else {
-            print("[FirebaseService] Offline - user save queued for later")
-            // TODO: Implement offline queue for user saves
-            return
         }
         
         try await withTimeoutAndRetry(timeout: defaultTimeout, maxRetries: maxRetries) {

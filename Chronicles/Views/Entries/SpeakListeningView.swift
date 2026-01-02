@@ -355,7 +355,9 @@ class WhisperAudioRecorder {
     func startRecording() throws {
         // Set up audio session first
         let audioSession = AVAudioSession.sharedInstance()
-        try audioSession.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth])
+        // Note: .allowBluetoothA2DP replaces deprecated .allowBluetooth in iOS 26+
+        // This enables routing to Bluetooth audio devices for recording
+        try audioSession.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetoothA2DP])
         try audioSession.setActive(true)
         
         // Create unique file URL for recording

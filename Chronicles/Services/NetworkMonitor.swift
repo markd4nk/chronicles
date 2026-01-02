@@ -9,6 +9,12 @@ import Foundation
 import Network
 import Combine
 
+/// Notification posted when network becomes available
+extension Notification.Name {
+    static let networkDidBecomeAvailable = Notification.Name("com.chronicles.networkDidBecomeAvailable")
+    static let networkDidBecomeUnavailable = Notification.Name("com.chronicles.networkDidBecomeUnavailable")
+}
+
 /// Monitors network connectivity status
 class NetworkMonitor: ObservableObject {
     static let shared = NetworkMonitor()
@@ -27,6 +33,7 @@ class NetworkMonitor: ObservableObject {
     
     private let monitor: NWPathMonitor
     private let queue = DispatchQueue(label: "com.chronicles.networkmonitor")
+    private var wasConnected: Bool = true
     
     enum ConnectionType: Sendable {
         case wifi
@@ -70,14 +77,27 @@ class NetworkMonitor: ObservableObject {
         }
         
         DispatchQueue.main.async { [weak self] in
-            self?.isConnected = connected
-            self?.isExpensive = expensive
-            self?.isConstrained = constrained
-            self?.connectionType = type
+            guard let self = self else { return }
+            
+            let previouslyConnected = self.wasConnected
+            self.wasConnected = connected
+            
+            self.isConnected = connected
+            self.isExpensive = expensive
+            self.isConstrained = constrained
+            self.connectionType = type
             
             #if DEBUG
             print("[NetworkMonitor] Status: \(connected ? "Connected" : "Disconnected"), Type: \(type)")
             #endif
+            
+            // Post notifications on state change
+            if connected && !previouslyConnected {
+                NotificationCenter.default.post(name: .networkDidBecomeAvailable, object: nil)
+                print("[NetworkMonitor] Network became available - triggering offline queue sync")
+            } else if !connected && previouslyConnected {
+                NotificationCenter.default.post(name: .networkDidBecomeUnavailable, object: nil)
+            }
         }
     }
     
