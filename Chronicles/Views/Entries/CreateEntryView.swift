@@ -176,7 +176,7 @@ struct CreateEntryView: View {
                             "timestamp": Int64(Date().timeIntervalSince1970 * 1000)
                         ])
                         if let logData = logData, let logString = String(data: logData, encoding: .utf8) {
-                            try? (logString + "\n").write(to: logPath, atomically: true, encoding: .utf8)
+                            try? (logString + "\n").write(to: workspacePath, atomically: true, encoding: .utf8)
                         }
                     }
                     // #endregion
@@ -354,7 +354,7 @@ struct CreateEntryView: View {
                 "timestamp": Int64(Date().timeIntervalSince1970 * 1000)
             ])
             if let logData = logData, let logString = String(data: logData, encoding: .utf8) {
-                try? (logString + "\n").write(to: logPath, atomically: true, encoding: .utf8)
+                try? (logString + "\n").write(to: workspacePath, atomically: true, encoding: .utf8)
             }
         }
         // #endregion
@@ -368,8 +368,8 @@ struct CreateEntryView: View {
         }
         
         // #region agent log
-        let workspacePath = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Desktop/chronicles/.cursor/debug.log")
-        if FileManager.default.fileExists(atPath: workspacePath.deletingLastPathComponent().path) || (try? FileManager.default.createDirectory(at: workspacePath.deletingLastPathComponent(), withIntermediateDirectories: true)) != nil {
+        let workspacePath2 = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Desktop/chronicles/.cursor/debug.log")
+        if FileManager.default.fileExists(atPath: workspacePath2.deletingLastPathComponent().path) || (try? FileManager.default.createDirectory(at: workspacePath2.deletingLastPathComponent(), withIntermediateDirectories: true)) != nil {
             let logData = try? JSONSerialization.data(withJSONObject: [
                 "sessionId": "debug-session",
                 "runId": "run1",
@@ -382,7 +382,7 @@ struct CreateEntryView: View {
                 "timestamp": Int64(Date().timeIntervalSince1970 * 1000)
             ])
             if let logData = logData, let logString = String(data: logData, encoding: .utf8) {
-                try? (logString + "\n").write(to: workspacePath, atomically: true, encoding: .utf8)
+                try? (logString + "\n").write(to: workspacePath2, atomically: true, encoding: .utf8)
             }
         }
         // #endregion
