@@ -12,8 +12,7 @@ import Photos
 
 struct PromptsFeedView: View {
     @StateObject private var viewModel = PromptsViewModel()
-    @State private var showCreateEntry = false
-    @State private var selectedPrompt: JournalPrompt?
+    @State private var promptForEntry: JournalPrompt?
     @State private var showCopyFeedback = false
     @State private var currentVisibleIndex = 0
     
@@ -64,8 +63,7 @@ struct PromptsFeedView: View {
                                             }
                                         },
                                         onWriteItOut: {
-                                            selectedPrompt = prompt
-                                            showCreateEntry = true
+                                            promptForEntry = prompt
                                         }
                                     )
                                     .frame(height: geometry.size.height)
@@ -92,10 +90,9 @@ struct PromptsFeedView: View {
         .onAppear {
             viewModel.onTabAppear()
         }
-        .sheet(isPresented: $showCreateEntry) {
-            if let prompt = selectedPrompt {
-                CreateEntryFromPromptView(prompt: prompt)
-            }
+        // Use item: binding - guarantees prompt exists when sheet presents
+        .sheet(item: $promptForEntry) { prompt in
+            CreateEntryFromPromptView(prompt: prompt)
         }
     }
     
