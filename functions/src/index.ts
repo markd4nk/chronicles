@@ -576,6 +576,99 @@ export const healthCheck = onRequest(
   }
 );
 
+// Type definition for delete conversation request
+interface DeleteConversationRequest {
+  conversationId: string;
+}
+
+/**
+ * Delete a conversation and all its messages (subcollection)
+ * Uses batch deletion to safely remove all messages before deleting the conversation
+ */
+export const deleteConversation = onCall<DeleteConversationRequest>(
+  {
+    cors: true,
+  },
+  async (request: CallableRequest<DeleteConversationRequest>) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "User must be authenticated");
+    }
+
+    const {conversationId} = request.data;
+
+    if (!conversationId) {
+      throw new HttpsError("invalid-argument", "Conversation ID is required");
+    }
+
+    logger.info("Delete conversation request", {
+      userId: request.auth.uid,
+      conversationId,
+    });
+
+    try {
+      const conversationRef = db.collection("conversations").doc(conversationId);
+      const conversationDoc = await conversationRef.get();
+
+      if (!conversationDoc.exists) {
+        throw new HttpsError("not-found", "Conversation not found");
+      }
+
+      const conversationData = conversationDoc.data();
+      if (conversationData?.userId !== request.auth.uid) {
+        throw new HttpsError(
+          "permission-denied",
+          "Not authorized to delete this conversation"
+        );
+      }
+
+      // Delete all messages in subcollection (batch delete in chunks of 500)
+      const messagesRef = conversationRef.collection("messages");
+      let deletedCount = 0;
+      let hasMore = true;
+
+      while (hasMore) {
+        const snapshot = await messagesRef.limit(500).get();
+        if (snapshot.empty) {
+          hasMore = false;
+        } else {
+          const batch = db.batch();
+          snapshot.docs.forEach((doc) => {
+            batch.delete(doc.ref);
+          });
+          await batch.commit();
+          deletedCount += snapshot.size;
+          logger.info(`Deleted ${deletedCount} messages so far...`);
+        }
+      }
+
+      // Delete conversation document
+      await conversationRef.delete();
+
+      logger.info("Conversation deleted successfully", {
+        userId: request.auth.uid,
+        conversationId,
+        messagesDeleted: deletedCount,
+      });
+
+      return {
+        success: true,
+        messagesDeleted: deletedCount,
+      };
+    } catch (error) {
+      logger.error("Delete conversation failed", {
+        error,
+        userId: request.auth?.uid,
+      });
+
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+
+      throw new HttpsError("internal", "Failed to delete conversation");
+    }
+  }
+);
+
 /**
  * Seed prompts from JournalBuddies and Wikiquote
  * Processes in batches to avoid timeouts

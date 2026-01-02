@@ -17,17 +17,36 @@ struct AIConversation: Identifiable, Codable {
     var analyzedJournalIds: [String]
     var insightsSummary: String?
     
+    // MARK: - Metadata Fields (for scalable subcollection architecture)
+    // These fields allow fast history list rendering without loading all messages
+    
+    var lastMessagePreview: String?  // First 100 chars of last message (stored in Firestore)
+    var lastMessageAt: Date?         // Timestamp of last message
+    var storedMessageCount: Int?     // Total message count from Firestore metadata
+    
     // MARK: - Computed Properties
     
     var lastMessage: AIMessage? {
         messages.last
     }
     
+    /// Returns stored message count if available, otherwise falls back to messages array count
     var messageCount: Int {
-        messages.count
+        storedMessageCount ?? messages.count
     }
     
+    /// Returns true if messages have been loaded from subcollection
+    var hasMessages: Bool {
+        !messages.isEmpty
+    }
+    
+    /// Returns preview from metadata if available, otherwise generates from messages array
     var preview: String {
+        // Prefer stored preview from metadata (faster, no message loading needed)
+        if let storedPreview = lastMessagePreview, !storedPreview.isEmpty {
+            return storedPreview + (storedPreview.count >= 100 ? "..." : "")
+        }
+        // Fallback to computing from messages array
         if let lastMsg = lastMessage {
             return String(lastMsg.content.prefix(100)) + (lastMsg.content.count > 100 ? "..." : "")
         }
@@ -147,6 +166,7 @@ struct AIMessage: Identifiable, Codable {
         ]
     }
 }
+
 
 
 

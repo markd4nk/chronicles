@@ -42,6 +42,7 @@ class FirebaseFunctionsService {
         case generateTitle = "generateTitle"
         case generatePersonalizedPrompt = "generatePersonalizedPrompt"
         case transcribeAudio = "transcribeAudio"
+        case deleteConversation = "deleteConversation"
     }
     
     // MARK: - OCR (Text Extraction from Image)
@@ -224,6 +225,24 @@ class FirebaseFunctionsService {
         }
         
         return transcription
+    }
+    
+    // MARK: - Conversation Management
+    
+    /// Delete a conversation and all its messages via Cloud Function
+    /// Uses Cloud Function for safe subcollection deletion
+    /// - Parameter conversationId: The ID of the conversation to delete
+    func deleteConversation(conversationId: String) async throws {
+        let data: [String: Any] = [
+            "conversationId": conversationId
+        ]
+        
+        let result = try await callFunction(.deleteConversation, data: data)
+        
+        // Verify success
+        guard let success = result["success"] as? Bool, success else {
+            throw FirebaseFunctionsError.invalidResponse("Delete conversation failed")
+        }
     }
     
     // MARK: - Private Helpers

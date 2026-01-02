@@ -21,6 +21,7 @@ class AIReflectViewModel: ObservableObject {
     @Published var inputText = ""
     @Published var isAnalyzing = false
     @Published var isGenerating = false
+    @Published var isLoadingMessages = false  // New: for loading messages from subcollection
     @Published var analysisSummary: String?
     @Published var error: String?
     @Published var showError = false
@@ -104,21 +105,19 @@ class AIReflectViewModel: ObservableObject {
             createdAt: Date()
         )
         
-        if var conversation = currentConversation {
-            // Add to existing conversation
-            conversation.messages.append(systemMessage)
-            conversation.updatedAt = Date()
-            
+        if let conversation = currentConversation {
+            // Add message to existing conversation using new subcollection pattern
             do {
-                try await firebaseService.updateConversation(conversation)
-                currentConversation = conversation
-                messages = conversation.messages
+                try await firebaseService.addMessageToConversation(systemMessage, conversationId: conversation.id)
+                messages.append(systemMessage)
+                currentConversation?.messages = messages
+                currentConversation?.updatedAt = Date()
             } catch {
                 self.error = error.localizedDescription
                 showError = true
             }
         } else {
-            // Create new conversation
+            // Create new conversation with initial message
             let conversation = AIConversation(
                 id: conversationId,
                 userId: AuthService.shared.currentUser?.id ?? "",
@@ -127,7 +126,10 @@ class AIReflectViewModel: ObservableObject {
                 updatedAt: Date(),
                 messages: [systemMessage],
                 analyzedJournalIds: Array(selectedJournals),
-                insightsSummary: String(summary.prefix(100))
+                insightsSummary: String(summary.prefix(100)),
+                lastMessagePreview: String(summary.prefix(100)),
+                lastMessageAt: Date(),
+                storedMessageCount: 1
             )
             
             do {
@@ -197,11 +199,34 @@ class AIReflectViewModel: ObservableObject {
     
     // MARK: - Conversation Management
     
-    func loadConversation(_ conversation: AIConversation) {
+    /// Load a conversation and its messages from Firestore subcollection
+    func loadConversation(_ conversation: AIConversation) async {
+        // Set metadata immediately for fast UI
         currentConversation = conversation
-        messages = conversation.messages
         selectedJournals = Set(conversation.analyzedJournalIds)
         analysisSummary = conversation.insightsSummary
+        
+        // If messages are already loaded (e.g., from cache), use them
+        if conversation.hasMessages {
+            messages = conversation.messages
+            return
+        }
+        
+        // Load messages from subcollection
+        isLoadingMessages = true
+        
+        do {
+            let loadedMessages = try await firebaseService.fetchMessages(conversationId: conversation.id)
+            messages = loadedMessages
+            currentConversation?.messages = loadedMessages
+        } catch {
+            self.error = error.localizedDescription
+            showError = true
+            // Set empty messages on error
+            messages = []
+        }
+        
+        isLoadingMessages = false
     }
     
     func startNewConversation() {

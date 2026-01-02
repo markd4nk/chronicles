@@ -560,8 +560,10 @@ struct ConversationHistoryView: View {
                                     if isEditMode {
                                         toggleSelection(conversation.id)
                                     } else {
-                                        viewModel.loadConversation(conversation)
-                                        dismiss()
+                                        Task {
+                                            await viewModel.loadConversation(conversation)
+                                            dismiss()
+                                        }
                                     }
                                 }
                             }
@@ -699,15 +701,32 @@ struct ConversationRow: View {
                     
                     Spacer()
                     
-                    Text(conversation.updatedAt.shortDateString)
+                    // Use lastMessageAt if available (from metadata), otherwise fall back to updatedAt
+                    Text((conversation.lastMessageAt ?? conversation.updatedAt).shortDateString)
                         .font(Papper.typography.bodySmall)
                         .foregroundColor(PapperColors.neutral500)
                 }
                 
-                Text(conversation.preview)
-                    .font(Papper.typography.body)
-                    .foregroundColor(PapperColors.neutral600)
-                    .lineLimit(2)
+                HStack {
+                    // Use preview which checks lastMessagePreview first (metadata), then falls back to messages array
+                    Text(conversation.preview)
+                        .font(Papper.typography.body)
+                        .foregroundColor(PapperColors.neutral600)
+                        .lineLimit(2)
+                    
+                    Spacer()
+                    
+                    // Show message count from metadata if available
+                    if conversation.messageCount > 0 {
+                        Text("\(conversation.messageCount)")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(PapperColors.neutral500)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(PapperColors.neutral200)
+                            .cornerRadius(8)
+                    }
+                }
             }
         }
         .padding(Papper.spacing.md)

@@ -75,7 +75,7 @@ class FirebaseService: ObservableObject {
     
     // MARK: - Load All User Data
     
-    /// Load all user data (journals, entries) when user authenticates
+    /// Load all user data (journals, entries, conversations) when user authenticates
     /// This fixes the critical bug where data wasn't loading on app restart
     func loadUserData(userId: String) async {
         guard !userId.isEmpty else { return }
@@ -84,7 +84,7 @@ class FirebaseService: ObservableObject {
             self.isLoading = true
         }
         
-        // Load journals and entries in parallel
+        // Load journals, entries, and conversations in parallel
         await withTaskGroup(of: Void.self) { group in
             group.addTask {
                 do {
@@ -101,6 +101,15 @@ class FirebaseService: ObservableObject {
                     print("[FirebaseService] Loaded entries for user: \(userId)")
                 } catch {
                     print("[FirebaseService] Failed to load entries: \(error.localizedDescription)")
+                }
+            }
+            
+            group.addTask {
+                do {
+                    let _ = try await self.fetchConversations(userId: userId)
+                    print("[FirebaseService] Loaded conversations for user: \(userId)")
+                } catch {
+                    print("[FirebaseService] Failed to load conversations: \(error.localizedDescription)")
                 }
             }
         }
@@ -869,19 +878,245 @@ class FirebaseService: ObservableObject {
         )
     }
     
-    // MARK: - AI Conversation Operations
+    // MARK: - AI Conversation Parse Helpers
     
-    func fetchConversations(userId: String) async throws -> [AIConversation] {
-        return conversations
+    /// Parse conversation metadata from Firestore document (messages loaded separately from subcollection)
+    private func parseConversationFromDocument(_ doc: DocumentSnapshot) -> AIConversation? {
+        guard let data = doc.data() else { return nil }
+        
+        let createdAt: Date
+        if let timestamp = data["createdAt"] as? Timestamp {
+            createdAt = timestamp.dateValue()
+        } else {
+            createdAt = Date()
+        }
+        
+        let updatedAt: Date
+        if let timestamp = data["updatedAt"] as? Timestamp {
+            updatedAt = timestamp.dateValue()
+        } else {
+            updatedAt = Date()
+        }
+        
+        let lastMessageAt: Date?
+        if let timestamp = data["lastMessageAt"] as? Timestamp {
+            lastMessageAt = timestamp.dateValue()
+        } else {
+            lastMessageAt = nil
+        }
+        
+        let analyzedJournalIds = data["analyzedJournalIds"] as? [String] ?? []
+        let insightsSummary = data["insightsSummary"] as? String
+        let lastMessagePreview = data["lastMessagePreview"] as? String
+        let storedMessageCount = data["messageCount"] as? Int
+        
+        return AIConversation(
+            id: doc.documentID,
+            userId: data["userId"] as? String ?? "",
+            title: data["title"] as? String ?? "Untitled",
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            messages: [],  // Messages loaded separately from subcollection
+            analyzedJournalIds: analyzedJournalIds,
+            insightsSummary: insightsSummary,
+            lastMessagePreview: lastMessagePreview,
+            lastMessageAt: lastMessageAt,
+            storedMessageCount: storedMessageCount
+        )
     }
     
-    func createConversation(_ conversation: AIConversation) async throws {
-        await MainActor.run {
-            conversations.insert(conversation, at: 0)
+    /// Parse message from Firestore document (subcollection document)
+    private func parseMessageFromDocument(_ doc: DocumentSnapshot, conversationId: String) -> AIMessage? {
+        guard let data = doc.data() else { return nil }
+        
+        let createdAt: Date
+        if let timestamp = data["createdAt"] as? Timestamp {
+            createdAt = timestamp.dateValue()
+        } else {
+            createdAt = Date()
+        }
+        
+        let roleString = data["role"] as? String ?? "assistant"
+        let role = AIMessage.MessageRole(rawValue: roleString) ?? .assistant
+        
+        return AIMessage(
+            id: doc.documentID,
+            conversationId: conversationId,
+            role: role,
+            content: data["content"] as? String ?? "",
+            createdAt: createdAt
+        )
+    }
+    
+    // MARK: - AI Conversation Operations
+    
+    /// Fetch conversation metadata for a user (messages loaded separately)
+    func fetchConversations(userId: String) async throws -> [AIConversation] {
+        // Check network availability
+        guard NetworkMonitor.shared.isConnected else {
+            print("[FirebaseService] Offline - using cached conversations")
+            return conversations
+        }
+        
+        do {
+            let snapshot = try await withTimeoutAndRetry(timeout: defaultTimeout, maxRetries: maxRetries) {
+                try await self.db.collection("conversations")
+                    .whereField("userId", isEqualTo: userId)
+                    .order(by: "updatedAt", descending: true)
+                    .getDocuments()
+            }
+            
+            let fetchedConversations = snapshot.documents.compactMap { doc -> AIConversation? in
+                return parseConversationFromDocument(doc)
+            }
+            
+            await MainActor.run {
+                self.conversations = fetchedConversations
+            }
+            
+            return fetchedConversations
+        } catch {
+            let missingIndex = isMissingIndexError(error)
+            
+            // Fallback if index missing
+            if missingIndex {
+                print("[FirebaseService] Missing index for conversations query, using fallback")
+                let fallbackSnapshot = try await withTimeoutAndRetry(timeout: defaultTimeout, maxRetries: maxRetries) {
+                    try await self.db.collection("conversations")
+                        .whereField("userId", isEqualTo: userId)
+                        .getDocuments()
+                }
+                
+                let allFetched = fallbackSnapshot.documents.compactMap { doc -> AIConversation? in
+                    return parseConversationFromDocument(doc)
+                }
+                
+                let sorted = allFetched.sorted { $0.updatedAt > $1.updatedAt }
+                
+                await MainActor.run {
+                    self.conversations = sorted
+                }
+                
+                return sorted
+            }
+            
+            throw error
         }
     }
     
-    func updateConversation(_ conversation: AIConversation) async throws {
+    /// Fetch messages for a conversation from subcollection
+    func fetchMessages(conversationId: String, limit: Int = 100) async throws -> [AIMessage] {
+        // Check network availability
+        guard NetworkMonitor.shared.isConnected else {
+            print("[FirebaseService] Offline - cannot fetch messages")
+            // Return messages from local conversation if available
+            if let conversation = conversations.first(where: { $0.id == conversationId }) {
+                return conversation.messages
+            }
+            return []
+        }
+        
+        let query = db.collection("conversations")
+            .document(conversationId)
+            .collection("messages")
+            .order(by: "createdAt", descending: false)  // Oldest first for chat UI
+            .limit(to: limit)
+        
+        let snapshot = try await withTimeoutAndRetry(timeout: defaultTimeout, maxRetries: maxRetries) {
+            try await query.getDocuments()
+        }
+        
+        let messages = snapshot.documents.compactMap { doc -> AIMessage? in
+            return parseMessageFromDocument(doc, conversationId: conversationId)
+        }
+        
+        return messages
+    }
+    
+    /// Create a new conversation with metadata and optional initial messages
+    func createConversation(_ conversation: AIConversation) async throws {
+        var data: [String: Any] = [
+            "userId": conversation.userId,
+            "title": conversation.title,
+            "createdAt": Timestamp(date: conversation.createdAt),
+            "updatedAt": Timestamp(date: conversation.updatedAt),
+            "analyzedJournalIds": conversation.analyzedJournalIds,
+            "messageCount": conversation.messages.count,
+            "lastMessageAt": Timestamp(date: conversation.messages.last?.createdAt ?? conversation.createdAt)
+        ]
+        
+        if let insightsSummary = conversation.insightsSummary {
+            data["insightsSummary"] = insightsSummary
+        }
+        
+        // Set initial preview from last message if exists
+        if let lastMessage = conversation.messages.last {
+            let preview = String(lastMessage.content.prefix(100))
+            data["lastMessagePreview"] = preview
+        }
+        
+        // Save conversation metadata document
+        try await db.collection("conversations").document(conversation.id).setData(data)
+        
+        // If conversation has initial messages, save them to subcollection using batch
+        if !conversation.messages.isEmpty {
+            let batch = db.batch()
+            
+            for message in conversation.messages {
+                let messageRef = db.collection("conversations")
+                    .document(conversation.id)
+                    .collection("messages")
+                    .document(message.id)
+                
+                let messageData: [String: Any] = [
+                    "conversationId": conversation.id,
+                    "role": message.role.rawValue,
+                    "content": message.content,
+                    "createdAt": Timestamp(date: message.createdAt)
+                ]
+                
+                batch.setData(messageData, forDocument: messageRef)
+            }
+            
+            try await batch.commit()
+        }
+        
+        // Update local state
+        var updatedConversation = conversation
+        updatedConversation.storedMessageCount = conversation.messages.count
+        updatedConversation.lastMessagePreview = conversation.messages.last.map { String($0.content.prefix(100)) }
+        updatedConversation.lastMessageAt = conversation.messages.last?.createdAt
+        
+        await MainActor.run {
+            conversations.insert(updatedConversation, at: 0)
+        }
+    }
+    
+    /// Update conversation metadata (not messages)
+    func updateConversationMetadata(_ conversation: AIConversation) async throws {
+        var data: [String: Any] = [
+            "title": conversation.title,
+            "updatedAt": Timestamp(date: Date())
+        ]
+        
+        if let insightsSummary = conversation.insightsSummary {
+            data["insightsSummary"] = insightsSummary
+        }
+        
+        if let lastMessagePreview = conversation.lastMessagePreview {
+            data["lastMessagePreview"] = lastMessagePreview
+        }
+        
+        if let lastMessageAt = conversation.lastMessageAt {
+            data["lastMessageAt"] = Timestamp(date: lastMessageAt)
+        }
+        
+        if let messageCount = conversation.storedMessageCount {
+            data["messageCount"] = messageCount
+        }
+        
+        try await db.collection("conversations").document(conversation.id).updateData(data)
+        
         await MainActor.run {
             if let index = conversations.firstIndex(where: { $0.id == conversation.id }) {
                 conversations[index] = conversation
@@ -889,18 +1124,59 @@ class FirebaseService: ObservableObject {
         }
     }
     
-    func deleteConversation(_ conversationId: String) async throws {
-        await MainActor.run {
-            conversations.removeAll { $0.id == conversationId }
-        }
-    }
-    
+    /// Add a message to conversation using batch write (creates message doc + updates metadata)
     func addMessageToConversation(_ message: AIMessage, conversationId: String) async throws {
+        let batch = db.batch()
+        
+        // 1. Create message document in subcollection
+        let messageRef = db.collection("conversations")
+            .document(conversationId)
+            .collection("messages")
+            .document(message.id)
+        
+        let messageData: [String: Any] = [
+            "conversationId": conversationId,
+            "role": message.role.rawValue,
+            "content": message.content,
+            "createdAt": Timestamp(date: message.createdAt)
+        ]
+        
+        batch.setData(messageData, forDocument: messageRef)
+        
+        // 2. Update conversation metadata
+        let conversationRef = db.collection("conversations").document(conversationId)
+        let preview = String(message.content.prefix(100))
+        
+        batch.updateData([
+            "updatedAt": Timestamp(date: Date()),
+            "lastMessagePreview": preview,
+            "lastMessageAt": Timestamp(date: message.createdAt),
+            "messageCount": FieldValue.increment(Int64(1))
+        ], forDocument: conversationRef)
+        
+        // Commit batch
+        try await batch.commit()
+        
+        // Update local state
         await MainActor.run {
             if let index = conversations.firstIndex(where: { $0.id == conversationId }) {
                 conversations[index].messages.append(message)
                 conversations[index].updatedAt = Date()
+                conversations[index].lastMessagePreview = preview
+                conversations[index].lastMessageAt = message.createdAt
+                conversations[index].storedMessageCount = (conversations[index].storedMessageCount ?? 0) + 1
             }
+        }
+    }
+    
+    /// Delete a conversation (uses Cloud Function for safe subcollection deletion)
+    func deleteConversation(_ conversationId: String) async throws {
+        // Use Cloud Function for safe deletion (handles subcollection)
+        try await FirebaseFunctionsService.shared.deleteConversation(conversationId: conversationId)
+        
+        // Update local state
+        await MainActor.run {
+            conversations.removeAll { $0.id == conversationId }
         }
     }
     
@@ -1138,5 +1414,6 @@ class FirebaseService: ObservableObject {
         return streak
     }
 }
+
 
 
