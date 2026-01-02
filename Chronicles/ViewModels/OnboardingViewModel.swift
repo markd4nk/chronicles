@@ -19,10 +19,7 @@ class OnboardingViewModel: ObservableObject {
     
     // Onboarding Data
     @Published var preferredName = ""
-    @Published var journalingExperience = ""
     @Published var primaryGoals: Set<String> = []
-    @Published var interests: Set<String> = []
-    @Published var preferredTime = ""
     @Published var morningReminderEnabled = false
     @Published var eveningReminderEnabled = false
     @Published var morningReminderTime = Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: Date()) ?? Date()
@@ -31,14 +28,8 @@ class OnboardingViewModel: ObservableObject {
     
     // MARK: - Constants
     
-    let totalSteps = 14
-    
-    let experienceLevels = [
-        ("beginner", "I'm new to journaling"),
-        ("occasional", "I journal occasionally"),
-        ("regular", "I journal regularly"),
-        ("expert", "I'm an experienced journaler")
-    ]
+    /// Total steps in onboarding (11 steps: Welcome, Name, Goals, Reminder Intro, Morning, Evening, Notifications, Feature 1-3, Completion)
+    let totalSteps = 11
     
     let goalOptions = [
         ("mindfulness", "Practice mindfulness"),
@@ -51,35 +42,26 @@ class OnboardingViewModel: ObservableObject {
         ("growth", "Personal growth")
     ]
     
-    let interestOptions = [
-        ("health", "Health & Wellness"),
-        ("career", "Career & Work"),
-        ("relationships", "Relationships"),
-        ("creativity", "Creativity"),
-        ("spirituality", "Spirituality"),
-        ("finance", "Finance"),
-        ("travel", "Travel"),
-        ("learning", "Learning")
-    ]
-    
-    let timeOptions = [
-        ("morning", "Morning"),
-        ("afternoon", "Afternoon"),
-        ("evening", "Evening"),
-        ("flexible", "Flexible")
-    ]
-    
     private let notificationService = NotificationService.shared
     
     // MARK: - Navigation
     
+    /// Steps:
+    /// 0 - Welcome
+    /// 1 - Name (required)
+    /// 2 - Goals (required)
+    /// 3 - Reminder Intro
+    /// 4 - Morning Reminder
+    /// 5 - Evening Reminder
+    /// 6 - Notifications
+    /// 7 - Feature Slide 1
+    /// 8 - Feature Slide 2
+    /// 9 - Feature Slide 3
+    /// 10 - Completion
     var canProceed: Bool {
         switch currentStep {
         case 1: return !preferredName.isEmpty
-        case 2: return !journalingExperience.isEmpty
-        case 3: return !primaryGoals.isEmpty
-        case 4: return !interests.isEmpty
-        case 5: return !preferredTime.isEmpty
+        case 2: return !primaryGoals.isEmpty
         default: return true
         }
     }
@@ -113,14 +95,6 @@ class OnboardingViewModel: ObservableObject {
             primaryGoals.remove(goal)
         } else if primaryGoals.count < 3 {
             primaryGoals.insert(goal)
-        }
-    }
-    
-    func toggleInterest(_ interest: String) {
-        if interests.contains(interest) {
-            interests.remove(interest)
-        } else if interests.count < 5 {
-            interests.insert(interest)
         }
     }
     
@@ -160,10 +134,7 @@ class OnboardingViewModel: ObservableObject {
         let defaults = UserDefaults.standard
         
         defaults.set(preferredName, forKey: "onboarding_preferredName")
-        defaults.set(journalingExperience, forKey: "onboarding_journalingExperience")
         defaults.set(Array(primaryGoals), forKey: "onboarding_primaryGoals")
-        defaults.set(Array(interests), forKey: "onboarding_interests")
-        defaults.set(preferredTime, forKey: "onboarding_preferredTime")
         defaults.set(morningReminderEnabled, forKey: "onboarding_morningReminderEnabled")
         defaults.set(eveningReminderEnabled, forKey: "onboarding_eveningReminderEnabled")
         defaults.set(morningReminderTime, forKey: "onboarding_morningReminderTime")
@@ -181,13 +152,13 @@ class OnboardingViewModel: ObservableObject {
         }
         
         return User.OnboardingData(
-            journalingExperience: defaults.string(forKey: "onboarding_journalingExperience") ?? "",
+            journalingExperience: "", // Not collected in streamlined flow
             primaryGoals: defaults.stringArray(forKey: "onboarding_primaryGoals") ?? [],
-            preferredTime: defaults.string(forKey: "onboarding_preferredTime") ?? "",
+            preferredTime: "", // Not collected in streamlined flow
             morningReminderTime: defaults.bool(forKey: "onboarding_morningReminderEnabled") ? defaults.object(forKey: "onboarding_morningReminderTime") as? Date : nil,
             eveningReminderTime: defaults.bool(forKey: "onboarding_eveningReminderEnabled") ? defaults.object(forKey: "onboarding_eveningReminderTime") as? Date : nil,
             notificationsEnabled: defaults.bool(forKey: "onboarding_notificationsEnabled"),
-            interests: defaults.stringArray(forKey: "onboarding_interests") ?? [],
+            interests: [], // Not collected in streamlined flow
             completedAt: defaults.object(forKey: "onboarding_completedAt") as? Date ?? Date()
         )
     }
@@ -202,10 +173,7 @@ class OnboardingViewModel: ObservableObject {
         let defaults = UserDefaults.standard
         let keys = [
             "onboarding_preferredName",
-            "onboarding_journalingExperience",
             "onboarding_primaryGoals",
-            "onboarding_interests",
-            "onboarding_preferredTime",
             "onboarding_morningReminderEnabled",
             "onboarding_eveningReminderEnabled",
             "onboarding_morningReminderTime",

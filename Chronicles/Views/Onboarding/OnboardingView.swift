@@ -2,7 +2,8 @@
 //  OnboardingView.swift
 //  Chronicles
 //
-//  14-step onboarding flow with Papper design system
+//  11-step onboarding flow with Papper design system
+//  Steps: Welcome, Name, Goals, Reminder Intro, Morning, Evening, Notifications, Feature 1-3, Completion
 //
 
 import SwiftUI
@@ -26,18 +27,15 @@ struct OnboardingView: View {
                 TabView(selection: $viewModel.currentStep) {
                     WelcomeStep(viewModel: viewModel).tag(0)
                     NameStep(viewModel: viewModel).tag(1)
-                    ExperienceStep(viewModel: viewModel).tag(2)
-                    GoalsStep(viewModel: viewModel).tag(3)
-                    InterestsStep(viewModel: viewModel).tag(4)
-                    TimeStep(viewModel: viewModel).tag(5)
-                    ReminderIntroStep(viewModel: viewModel).tag(6)
-                    MorningReminderStep(viewModel: viewModel).tag(7)
-                    EveningReminderStep(viewModel: viewModel).tag(8)
-                    NotificationStep(viewModel: viewModel).tag(9)
-                    FeatureSlide1(viewModel: viewModel).tag(10)
-                    FeatureSlide2(viewModel: viewModel).tag(11)
-                    FeatureSlide3(viewModel: viewModel).tag(12)
-                    CompletionStep(viewModel: viewModel).tag(13)
+                    GoalsStep(viewModel: viewModel).tag(2)
+                    ReminderIntroStep(viewModel: viewModel).tag(3)
+                    MorningReminderStep(viewModel: viewModel).tag(4)
+                    EveningReminderStep(viewModel: viewModel).tag(5)
+                    NotificationStep(viewModel: viewModel).tag(6)
+                    FeatureSlide1(viewModel: viewModel).tag(7)
+                    FeatureSlide2(viewModel: viewModel).tag(8)
+                    FeatureSlide3(viewModel: viewModel).tag(9)
+                    CompletionStep(viewModel: viewModel).tag(10)
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 .animation(.spring(response: 0.5, dampingFraction: 0.8), value: viewModel.currentStep)
@@ -75,7 +73,7 @@ struct OnboardingView: View {
             Spacer()
             
             // Skip Button (only on certain steps)
-            if viewModel.currentStep > 0 && viewModel.currentStep < 13 {
+            if viewModel.currentStep > 0 && viewModel.currentStep < 10 {
                 OnboardingSecondaryButton(title: "Skip") {
                     viewModel.skipToEnd()
                 }
@@ -84,10 +82,10 @@ struct OnboardingView: View {
             // Next/Continue Button
             Button(action: viewModel.nextStep) {
                 HStack(spacing: Papper.spacing.xs) {
-                    Text(viewModel.currentStep == 13 ? "Get Started" : "Continue")
+                    Text(viewModel.currentStep == 10 ? "Get Started" : "Continue")
                         .font(.system(size: 16, weight: .semibold))
                     
-                    if viewModel.currentStep < 13 {
+                    if viewModel.currentStep < 10 {
                         Image(systemName: "chevron.right")
                             .font(.system(size: 14, weight: .semibold))
                     }
@@ -192,45 +190,6 @@ struct NameStep: View {
     }
 }
 
-// MARK: - Experience Step
-
-struct ExperienceStep: View {
-    @ObservedObject var viewModel: OnboardingViewModel
-    
-    private let cardColors: [Color] = [
-        PapperColors.mint200,
-        PapperColors.grayblue200,
-        PapperColors.lavanda200,
-        PapperColors.peach200
-    ]
-    
-    var body: some View {
-        VStack(spacing: Papper.spacing.xl) {
-            VStack(spacing: Papper.spacing.md) {
-                Text("How experienced are you\nwith journaling?")
-                    .font(PapperTypography.listTitle())
-                    .foregroundColor(PapperColors.neutral800)
-                    .multilineTextAlignment(.center)
-            }
-            .padding(.top, Papper.spacing.xxl)
-            
-            VStack(spacing: Papper.spacing.sm) {
-                ForEach(Array(viewModel.experienceLevels.enumerated()), id: \.element.0) { index, level in
-                    OnboardingSelectionCard(
-                        title: level.1,
-                        isSelected: viewModel.journalingExperience == level.0,
-                        selectedColor: cardColors[index % cardColors.count],
-                        action: { viewModel.journalingExperience = level.0 }
-                    )
-                }
-            }
-            
-            Spacer()
-        }
-        .padding(Papper.spacing.xl)
-    }
-}
-
 // MARK: - Goals Step
 
 struct GoalsStep: View {
@@ -268,123 +227,6 @@ struct GoalsStep: View {
                         backgroundColor: goalColors[index % goalColors.count],
                         action: { viewModel.toggleGoal(goal.0) }
                     )
-                }
-            }
-            
-            Spacer()
-        }
-        .padding(Papper.spacing.xl)
-    }
-}
-
-// MARK: - Interests Step
-
-struct InterestsStep: View {
-    @ObservedObject var viewModel: OnboardingViewModel
-    
-    private let interestColors: [Color] = [
-        PapperColors.green200,
-        PapperColors.blue200,
-        PapperColors.pink200,
-        PapperColors.lavanda200,
-        PapperColors.purple200,
-        PapperColors.yellow200,
-        PapperColors.peach200,
-        PapperColors.mint200
-    ]
-    
-    var body: some View {
-        VStack(spacing: Papper.spacing.xl) {
-            VStack(spacing: Papper.spacing.md) {
-                Text("What interests you?")
-                    .font(PapperTypography.listTitle())
-                    .foregroundColor(PapperColors.neutral800)
-                
-                Text("We'll personalize prompts just for you")
-                    .font(PapperTypography.cardBody())
-                    .foregroundColor(PapperColors.neutral600)
-            }
-            .padding(.top, Papper.spacing.lg)
-            
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: Papper.spacing.sm) {
-                ForEach(Array(viewModel.interestOptions.enumerated()), id: \.element.0) { index, interest in
-                    OnboardingMultiSelectCard(
-                        title: interest.1,
-                        isSelected: viewModel.interests.contains(interest.0),
-                        backgroundColor: interestColors[index % interestColors.count],
-                        action: { viewModel.toggleInterest(interest.0) }
-                    )
-                }
-            }
-            
-            Spacer()
-        }
-        .padding(Papper.spacing.xl)
-    }
-}
-
-// MARK: - Time Step
-
-struct TimeStep: View {
-    @ObservedObject var viewModel: OnboardingViewModel
-    
-    private let timeColors: [(String, Color, String)] = [
-        ("morning", PapperColors.yellow200, "sun.max.fill"),
-        ("afternoon", PapperColors.peach200, "sun.horizon.fill"),
-        ("evening", PapperColors.lavanda200, "moon.stars.fill"),
-        ("flexible", PapperColors.grayblue200, "clock.fill")
-    ]
-    
-    var body: some View {
-        VStack(spacing: Papper.spacing.xl) {
-            VStack(spacing: Papper.spacing.md) {
-                Text("Find Your Daily\nMoment")
-                    .font(PapperTypography.listTitle())
-                    .foregroundColor(PapperColors.neutral800)
-                    .multilineTextAlignment(.center)
-                
-                Text("When's the best time for your journaling ritual?")
-                    .font(PapperTypography.cardBody())
-                    .foregroundColor(PapperColors.neutral600)
-                    .multilineTextAlignment(.center)
-            }
-            .padding(.top, Papper.spacing.xxl)
-            
-            VStack(spacing: Papper.spacing.sm) {
-                ForEach(viewModel.timeOptions, id: \.0) { time in
-                    let colorInfo = timeColors.first { $0.0 == time.0 } ?? ("", PapperColors.grayblue200, "clock")
-                    
-                    Button(action: { viewModel.preferredTime = time.0 }) {
-                        HStack(spacing: Papper.spacing.md) {
-                            Image(systemName: colorInfo.2)
-                                .font(.system(size: 24))
-                                .foregroundColor(PapperColors.neutral700)
-                                .frame(width: 32)
-                            
-                            Text(time.1)
-                                .font(PapperTypography.cardBody())
-                                .foregroundColor(PapperColors.neutral800)
-                            
-                            Spacer()
-                            
-                            if viewModel.preferredTime == time.0 {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .font(.system(size: 22))
-                                    .foregroundColor(PapperColors.neutral700)
-                            }
-                        }
-                        .padding(.horizontal, Papper.spacing.lg)
-                        .padding(.vertical, Papper.spacing.md)
-                        .background(viewModel.preferredTime == time.0 ? colorInfo.1 : PapperColors.surfaceBackgroundPlain)
-                        .cornerRadius(16)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16)
-                                .stroke(viewModel.preferredTime == time.0 ? PapperColors.borderActive : PapperColors.neutral300, lineWidth: viewModel.preferredTime == time.0 ? 2 : 1)
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    .scaleEffect(viewModel.preferredTime == time.0 ? 1.02 : 1)
-                    .animation(.spring(response: 0.3, dampingFraction: 0.7), value: viewModel.preferredTime)
                 }
             }
             
