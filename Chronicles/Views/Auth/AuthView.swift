@@ -3,18 +3,19 @@
 //  Chronicles
 //
 //  Sign in screen with Google and Apple authentication
+//  Shown after onboarding, right before paywall
 //
 
 import SwiftUI
 
 struct AuthView: View {
     @StateObject private var viewModel = AuthViewModel()
-    @State private var showOnboarding = false
+    @State private var isAnimated = false
     
     var body: some View {
         ZStack {
             // Background
-            backgroundGradient
+            OnboardingGradientBackground()
             
             VStack(spacing: 0) {
                 Spacer()
@@ -22,27 +23,27 @@ struct AuthView: View {
                 // Logo & Title
                 VStack(spacing: Papper.spacing.lg) {
                     // App Icon
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 24)
-                            .fill(PapperColors.surfaceBackgroundPlain)
-                            .frame(width: 100, height: 100)
-                            .shadow(color: Color.black.opacity(0.1), radius: 20, x: 0, y: 10)
-                        
-                        Image(systemName: "book.closed.fill")
-                            .font(.system(size: 44))
-                            .foregroundColor(PapperColors.neutral700)
-                    }
+                    OnboardingIconCircle(
+                        icon: "person.crop.circle.badge.checkmark",
+                        size: 120,
+                        iconSize: 50,
+                        backgroundColor: PapperColors.grayblue200,
+                        iconColor: PapperColors.neutral700
+                    )
                     
-                    VStack(spacing: Papper.spacing.xs) {
-                        Text("Chronicles")
-                            .font(.system(size: 36, weight: .bold, design: .serif))
+                    VStack(spacing: Papper.spacing.sm) {
+                        Text("Create Your Account")
+                            .font(PapperTypography.listTitle())
                             .foregroundColor(PapperColors.neutral800)
                         
-                        Text("Your personal journaling companion")
-                            .font(Papper.typography.body)
+                        Text("Sign in to save your journal and\naccess it across all your devices")
+                            .font(PapperTypography.cardBody())
                             .foregroundColor(PapperColors.neutral600)
+                            .multilineTextAlignment(.center)
                     }
                 }
+                .opacity(isAnimated ? 1 : 0)
+                .offset(y: isAnimated ? 0 : 20)
                 
                 Spacer()
                 
@@ -60,9 +61,9 @@ struct AuthView: View {
                         }
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 54)
-                        .background(Color.black)
-                        .cornerRadius(12)
+                        .frame(height: 56)
+                        .background(PapperColors.neutral800)
+                        .cornerRadius(14)
                     }
                     
                     // Google Sign In
@@ -77,16 +78,18 @@ struct AuthView: View {
                         }
                         .foregroundColor(PapperColors.neutral800)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 54)
+                        .frame(height: 56)
                         .background(PapperColors.surfaceBackgroundPlain)
-                        .cornerRadius(12)
+                        .cornerRadius(14)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 12)
+                            RoundedRectangle(cornerRadius: 14)
                                 .stroke(PapperColors.neutral300, lineWidth: 1)
                         )
                     }
                 }
                 .padding(.horizontal, Papper.spacing.xl)
+                .opacity(isAnimated ? 1 : 0)
+                .offset(y: isAnimated ? 0 : 30)
                 
                 // Terms
                 VStack(spacing: Papper.spacing.xs) {
@@ -110,6 +113,7 @@ struct AuthView: View {
                 }
                 .padding(.top, Papper.spacing.xl)
                 .padding(.bottom, Papper.spacing.xxxl)
+                .opacity(isAnimated ? 1 : 0)
             }
             
             // Loading Overlay
@@ -122,6 +126,11 @@ struct AuthView: View {
                     .tint(.white)
             }
         }
+        .onAppear {
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.2)) {
+                isAnimated = true
+            }
+        }
         .alert("Error", isPresented: $viewModel.showError) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -129,27 +138,36 @@ struct AuthView: View {
         }
         .onChange(of: viewModel.isAuthenticated) { _, isAuthenticated in
             if isAuthenticated {
-                // Check if onboarding needed
-                if viewModel.currentUser?.onboardingCompleted == false {
-                    showOnboarding = true
-                }
+                // Sync onboarding data after authentication
+                syncOnboardingData()
             }
-        }
-        .fullScreenCover(isPresented: $showOnboarding) {
-            OnboardingView()
         }
     }
     
-    private var backgroundGradient: some View {
-        LinearGradient(
-            colors: [
-                Color(hex: "#faf8f3"),
-                Color(hex: "#f5f3ee")
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-        .ignoresSafeArea()
+    /// Sync locally stored onboarding data to the authenticated user
+    private func syncOnboardingData() {
+        Task {
+            guard let onboardingData = OnboardingViewModel.getLocalOnboardingData() else {
+                return
+            }
+            
+            do {
+                // Complete onboarding with the stored data
+                try await AuthService.shared.completeOnboarding(data: onboardingData)
+                
+                // Update preferred name if available
+                if let preferredName = OnboardingViewModel.getLocalPreferredName(),
+                   var user = AuthService.shared.currentUser {
+                    user.preferredName = preferredName
+                    try await AuthService.shared.updateUser(user)
+                }
+                
+                // Clear local data after successful sync
+                OnboardingViewModel.clearLocalOnboardingData()
+            } catch {
+                print("Failed to sync onboarding data: \(error)")
+            }
+        }
     }
 }
 
@@ -162,4 +180,3 @@ struct AuthView_Previews: PreviewProvider {
     }
 }
 #endif
-

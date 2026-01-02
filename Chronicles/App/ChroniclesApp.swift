@@ -3,6 +3,7 @@
 //  Chronicles
 //
 //  Main app entry point with routing logic
+//  Flow: Welcome → Onboarding → Auth → Paywall → Main App
 //
 
 import SwiftUI
@@ -27,8 +28,13 @@ struct ChroniclesApp: App {
     @ObservedObject private var subscriptionService = SubscriptionService.shared
     @ObservedObject private var securityService = SecurityService.shared
     
-    @State private var isLocked = false
-    @State private var showPaywall = false
+    // Local app state (persisted in UserDefaults)
+    @AppStorage("hasSeenWelcome") private var hasSeenWelcome = false
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+    
+    // Navigation state
+    @State private var showOnboarding = false
+    @State private var showAuth = false
     
     var body: some Scene {
         WindowGroup {
@@ -53,11 +59,12 @@ struct ChroniclesApp: App {
     
     @ViewBuilder
     private var rootView: some View {
+        // Flow: Welcome → Onboarding → Auth → Paywall → Main App
+        
         if authService.isAuthenticated {
+            // User is authenticated
             if let user = authService.currentUser {
-                if !user.onboardingCompleted {
-                    OnboardingView()
-                } else if !subscriptionService.isSubscribed {
+                if !subscriptionService.isSubscribed {
                     // Show paywall (user must subscribe)
                     PaywallView()
                 } else {
@@ -68,16 +75,32 @@ struct ChroniclesApp: App {
                 // Loading state
                 loadingView
             }
-        } else {
-            // Auth screen
+        } else if hasCompletedOnboarding || showAuth {
+            // Onboarding done, show auth screen
             AuthView()
+                .transition(.opacity)
+        } else if hasSeenWelcome || showOnboarding {
+            // Show onboarding
+            OnboardingContainerView(
+                hasCompletedOnboarding: $hasCompletedOnboarding
+            )
+            .transition(.opacity)
+        } else {
+            // First time user - show welcome screen
+            WelcomeView(
+                showOnboarding: $showOnboarding,
+                showAuth: $showAuth
+            )
+            .transition(.opacity)
+            .onDisappear {
+                hasSeenWelcome = true
+            }
         }
     }
     
     private var loadingView: some View {
         ZStack {
-            Color(hex: "#faf8f3")
-                .ignoresSafeArea()
+            OnboardingGradientBackground()
             
             VStack(spacing: Papper.spacing.lg) {
                 Image(systemName: "book.closed.fill")
@@ -91,6 +114,25 @@ struct ChroniclesApp: App {
     }
 }
 
+// MARK: - Onboarding Container View
+
+/// Container for onboarding that doesn't require authentication
+struct OnboardingContainerView: View {
+    @Binding var hasCompletedOnboarding: Bool
+    @StateObject private var viewModel = OnboardingViewModel()
+    
+    var body: some View {
+        OnboardingView()
+            .environmentObject(viewModel)
+            .onChange(of: viewModel.isComplete) { _, isComplete in
+                if isComplete {
+                    // Mark onboarding as complete (local state)
+                    hasCompletedOnboarding = true
+                }
+            }
+    }
+}
+
 // MARK: - Lock Screen View
 
 struct LockScreenView: View {
@@ -100,24 +142,27 @@ struct LockScreenView: View {
     var body: some View {
         ZStack {
             // Background
-            Color(hex: "#faf8f3")
-                .ignoresSafeArea()
+            OnboardingGradientBackground()
             
             VStack(spacing: Papper.spacing.xxl) {
                 Spacer()
                 
                 // App Icon
                 VStack(spacing: Papper.spacing.lg) {
-                    Image(systemName: "lock.fill")
-                        .font(.system(size: 60))
-                        .foregroundColor(PapperColors.neutral700)
+                    OnboardingIconCircle(
+                        icon: "lock.fill",
+                        size: 100,
+                        iconSize: 44,
+                        backgroundColor: PapperColors.grayblue200,
+                        iconColor: PapperColors.neutral700
+                    )
                     
                     Text("Chronicles is Locked")
-                        .font(.system(size: 24, weight: .bold))
+                        .font(PapperTypography.listTitle())
                         .foregroundColor(PapperColors.neutral800)
                     
                     Text("Use \(securityService.biometryName) to unlock")
-                        .font(Papper.typography.body)
+                        .font(PapperTypography.cardBody())
                         .foregroundColor(PapperColors.neutral600)
                 }
                 

@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct OnboardingView: View {
-    @StateObject private var viewModel = OnboardingViewModel()
+    @EnvironmentObject var viewModel: OnboardingViewModel
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
@@ -789,6 +789,7 @@ struct FeatureSlideView: View {
 struct OnboardingView_Previews: PreviewProvider {
     static var previews: some View {
         OnboardingView()
+            .environmentObject(OnboardingViewModel())
     }
 }
 #endif

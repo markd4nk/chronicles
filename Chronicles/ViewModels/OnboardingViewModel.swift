@@ -3,6 +3,7 @@
 //  Chronicles
 //
 //  Onboarding flow view model
+//  Works without authentication - stores data locally first
 //
 
 import Foundation
@@ -68,7 +69,6 @@ class OnboardingViewModel: ObservableObject {
         ("flexible", "Flexible")
     ]
     
-    private let authService = AuthService.shared
     private let notificationService = NotificationService.shared
     
     // MARK: - Navigation
@@ -141,44 +141,78 @@ class OnboardingViewModel: ObservableObject {
     
     // MARK: - Complete Onboarding
     
+    /// Complete onboarding - stores data locally without requiring authentication
     func completeOnboarding() {
         isLoading = true
         
-        let onboardingData = User.OnboardingData(
-            journalingExperience: journalingExperience,
-            primaryGoals: Array(primaryGoals),
-            preferredTime: preferredTime,
-            morningReminderTime: morningReminderEnabled ? morningReminderTime : nil,
-            eveningReminderTime: eveningReminderEnabled ? eveningReminderTime : nil,
-            notificationsEnabled: notificationsEnabled,
-            interests: Array(interests),
-            completedAt: Date()
-        )
+        // Store onboarding data locally
+        saveOnboardingDataLocally()
         
-        Task {
-            do {
-                try await authService.completeOnboarding(data: onboardingData)
-                
-                // Update preferred name
-                if var user = authService.currentUser {
-                    user.preferredName = preferredName
-                    try await authService.updateUser(user)
-                }
-                
-                // Setup reminders
-                setupReminders()
-                
-                isLoading = false
-                isComplete = true
-            } catch {
-                isLoading = false
-            }
+        // Setup reminders
+        setupReminders()
+        
+        isLoading = false
+        isComplete = true
+    }
+    
+    /// Save onboarding data to UserDefaults for later sync after authentication
+    private func saveOnboardingDataLocally() {
+        let defaults = UserDefaults.standard
+        
+        defaults.set(preferredName, forKey: "onboarding_preferredName")
+        defaults.set(journalingExperience, forKey: "onboarding_journalingExperience")
+        defaults.set(Array(primaryGoals), forKey: "onboarding_primaryGoals")
+        defaults.set(Array(interests), forKey: "onboarding_interests")
+        defaults.set(preferredTime, forKey: "onboarding_preferredTime")
+        defaults.set(morningReminderEnabled, forKey: "onboarding_morningReminderEnabled")
+        defaults.set(eveningReminderEnabled, forKey: "onboarding_eveningReminderEnabled")
+        defaults.set(morningReminderTime, forKey: "onboarding_morningReminderTime")
+        defaults.set(eveningReminderTime, forKey: "onboarding_eveningReminderTime")
+        defaults.set(notificationsEnabled, forKey: "onboarding_notificationsEnabled")
+        defaults.set(Date(), forKey: "onboarding_completedAt")
+    }
+    
+    /// Get locally stored onboarding data (for syncing after auth)
+    static func getLocalOnboardingData() -> User.OnboardingData? {
+        let defaults = UserDefaults.standard
+        
+        guard defaults.object(forKey: "onboarding_completedAt") != nil else {
+            return nil
         }
+        
+        return User.OnboardingData(
+            journalingExperience: defaults.string(forKey: "onboarding_journalingExperience") ?? "",
+            primaryGoals: defaults.stringArray(forKey: "onboarding_primaryGoals") ?? [],
+            preferredTime: defaults.string(forKey: "onboarding_preferredTime") ?? "",
+            morningReminderTime: defaults.bool(forKey: "onboarding_morningReminderEnabled") ? defaults.object(forKey: "onboarding_morningReminderTime") as? Date : nil,
+            eveningReminderTime: defaults.bool(forKey: "onboarding_eveningReminderEnabled") ? defaults.object(forKey: "onboarding_eveningReminderTime") as? Date : nil,
+            notificationsEnabled: defaults.bool(forKey: "onboarding_notificationsEnabled"),
+            interests: defaults.stringArray(forKey: "onboarding_interests") ?? [],
+            completedAt: defaults.object(forKey: "onboarding_completedAt") as? Date ?? Date()
+        )
+    }
+    
+    /// Get locally stored preferred name
+    static func getLocalPreferredName() -> String? {
+        return UserDefaults.standard.string(forKey: "onboarding_preferredName")
+    }
+    
+    /// Clear locally stored onboarding data (after sync)
+    static func clearLocalOnboardingData() {
+        let defaults = UserDefaults.standard
+        let keys = [
+            "onboarding_preferredName",
+            "onboarding_journalingExperience",
+            "onboarding_primaryGoals",
+            "onboarding_interests",
+            "onboarding_preferredTime",
+            "onboarding_morningReminderEnabled",
+            "onboarding_eveningReminderEnabled",
+            "onboarding_morningReminderTime",
+            "onboarding_eveningReminderTime",
+            "onboarding_notificationsEnabled",
+            "onboarding_completedAt"
+        ]
+        keys.forEach { defaults.removeObject(forKey: $0) }
     }
 }
-
-
-
-
-
-
