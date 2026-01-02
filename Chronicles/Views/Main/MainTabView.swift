@@ -56,9 +56,9 @@ struct MainTabView: View {
         .ignoresSafeArea(.keyboard)
         .sheet(isPresented: $showJournalSelection) {
             JournalSelectionView(onEntrySaved: {
-                // Dismiss sheet and navigate to entries tab
-                showJournalSelection = false
+                // Switch tab FIRST (instant), then dismiss sheet (which also dismisses fullScreenCover)
                 selectedTab = .entries
+                showJournalSelection = false
             })
         }
     }

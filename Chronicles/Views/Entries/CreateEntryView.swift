@@ -322,9 +322,8 @@ struct CreateEntryView: View {
                 promptId: prompt?.id
             )
             
-            // STEP 2: Dismiss this view first, then notify parent for navigation
+            // STEP 2: Switch tab and dismiss sheet - fullScreenCover auto-dismisses with sheet
             await MainActor.run {
-                dismiss()
                 onSaveComplete?()
             }
             
