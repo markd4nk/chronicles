@@ -8,6 +8,8 @@
 import SwiftUI
 
 struct JournalSelectionView: View {
+    var onEntrySaved: (() -> Void)? = nil
+    
     @ObservedObject private var firebaseService = FirebaseService.shared
     @Environment(\.dismiss) private var dismiss
     
@@ -116,7 +118,11 @@ struct JournalSelectionView: View {
         }
         // Use item: binding - guarantees journal exists when cover presents
         .fullScreenCover(item: $journalForNewEntry) { journal in
-            CreateEntryView(journal: journal)
+            CreateEntryView(journal: journal, onSaveComplete: {
+                // Dismiss this view and notify parent
+                dismiss()
+                onEntrySaved?()
+            })
         }
     }
     

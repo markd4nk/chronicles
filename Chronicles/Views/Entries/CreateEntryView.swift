@@ -14,6 +14,7 @@ struct CreateEntryView: View {
     let journal: Journal
     var template: JournalTemplate? = nil
     var prompt: JournalPrompt? = nil
+    var onSaveComplete: (() -> Void)? = nil
     
     @StateObject private var viewModel = JournalViewModel()
     @Environment(\.dismiss) private var dismiss
@@ -321,8 +322,9 @@ struct CreateEntryView: View {
                 promptId: prompt?.id
             )
             
-            // STEP 2: Dismiss immediately - user sees instant feedback
+            // STEP 2: Notify parent that save completed (for navigation)
             await MainActor.run {
+                onSaveComplete?()
                 dismiss()
             }
             
