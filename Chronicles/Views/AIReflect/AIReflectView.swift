@@ -723,7 +723,7 @@ struct ConversationRow: View {
                             .foregroundColor(PapperColors.neutral500)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
-                            .background(PapperColors.neutral200)
+                            .background(PapperColors.neutral200b)
                             .cornerRadius(8)
                     }
                 }

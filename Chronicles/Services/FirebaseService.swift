@@ -201,9 +201,7 @@ class FirebaseService: ObservableObject {
             
             return fetchedJournals
         } catch {
-            let nsError = error as NSError
             let missingIndex = isMissingIndexError(error)
-            let permissionDenied = nsError.localizedDescription.lowercased().contains("missing or insufficient permissions")
             
             // If the composite index isn't created yet, fallback to a query that doesn't require it.
             if missingIndex {
@@ -358,8 +356,9 @@ class FirebaseService: ObservableObject {
                 query = query.whereField("journalId", isEqualTo: journalId)
             }
             
+            let finalQuery = query
             let snapshot = try await withTimeoutAndRetry(timeout: defaultTimeout, maxRetries: maxRetries) {
-                try await query.getDocuments()
+                try await finalQuery.getDocuments()
             }
             
             let fetchedEntries = snapshot.documents.compactMap { doc -> JournalEntry? in
@@ -374,7 +373,6 @@ class FirebaseService: ObservableObject {
             
             return fetchedEntries
         } catch {
-            let nsError = error as NSError
             let missingIndex = isMissingIndexError(error)
             
             // If the composite index isn't created yet, fallback to a query that doesn't require it.
@@ -1309,7 +1307,6 @@ class FirebaseService: ObservableObject {
                     .getDocuments()
             }
         } catch {
-            let nsError = error as NSError
             let missingIndex = isMissingIndexError(error)
             
             if missingIndex {
@@ -1319,7 +1316,6 @@ class FirebaseService: ObservableObject {
                         .whereField("userId", isEqualTo: userId)
                         .getDocuments()
                 }
-                
             } else {
                 throw error
             }
