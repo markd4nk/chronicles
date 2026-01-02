@@ -14,7 +14,7 @@ struct OnboardingIconCircle: View {
     let icon: String
     var size: CGFloat = 140
     var iconSize: CGFloat = 60
-    var backgroundColor: Color = PapperColors.peach200
+    var backgroundColor: Color = PapperColors.grayblue200
     var iconColor: Color = PapperColors.neutral700
     @State private var isAnimated = false
     
@@ -45,7 +45,7 @@ struct OnboardingIconCircle: View {
 struct OnboardingSelectionCard: View {
     let title: String
     let isSelected: Bool
-    var selectedColor: Color = PapperColors.peach200
+    var selectedColor: Color = PapperColors.grayblue200
     let action: () -> Void
     
     var body: some View {
@@ -80,11 +80,11 @@ struct OnboardingSelectionCard: View {
 
 // MARK: - Onboarding Multi-Select Card
 
-/// Multi-select card for grid layouts with color coding
+/// Multi-select card for grid layouts
 struct OnboardingMultiSelectCard: View {
     let title: String
     let isSelected: Bool
-    var backgroundColor: Color = PapperColors.peach200
+    var backgroundColor: Color = PapperColors.grayblue200
     let action: () -> Void
     
     var body: some View {
@@ -128,7 +128,7 @@ struct OnboardingFeatureListItem: View {
     let number: Int
     let title: String
     let description: String
-    var accentColor: Color = PapperColors.peach400
+    var accentColor: Color = PapperColors.grayblue200
     
     var body: some View {
         HStack(alignment: .top, spacing: Papper.spacing.md) {
@@ -157,22 +157,13 @@ struct OnboardingFeatureListItem: View {
     }
 }
 
-// MARK: - Onboarding Gradient Background
+// MARK: - Onboarding Background
 
-/// Full-screen gradient background using Papper colors
+/// Full-screen solid background matching main app
 struct OnboardingGradientBackground: View {
     var body: some View {
-        LinearGradient(
-            colors: [
-                PapperColors.peach200.opacity(0.6),
-                PapperColors.pink200.opacity(0.4),
-                PapperColors.grayblue200.opacity(0.3),
-                Color(hex: "#faf8f3")
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-        .ignoresSafeArea()
+        Color(hex: "#faf8f3")
+            .ignoresSafeArea()
     }
 }
 
@@ -306,7 +297,7 @@ struct OnboardingComponents_Previews: PreviewProvider {
                 OnboardingMultiSelectCard(
                     title: "Practice mindfulness",
                     isSelected: true,
-                    backgroundColor: PapperColors.mint200,
+                    backgroundColor: PapperColors.grayblue200,
                     action: {}
                 )
                 

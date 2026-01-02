@@ -54,7 +54,7 @@ struct WelcomeView: View {
                 icon: "brain.head.profile",
                 size: 160,
                 iconSize: 70,
-                backgroundColor: PapperColors.peach200,
+                backgroundColor: PapperColors.grayblue200,
                 iconColor: PapperColors.neutral700
             )
         }

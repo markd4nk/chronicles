@@ -138,7 +138,7 @@ struct WelcomeStep: View {
                 icon: "book.closed.fill",
                 size: 140,
                 iconSize: 60,
-                backgroundColor: PapperColors.peach200,
+                backgroundColor: PapperColors.grayblue200,
                 iconColor: PapperColors.neutral700
             )
             
@@ -176,7 +176,7 @@ struct NameStep: View {
                 icon: "person.fill",
                 size: 100,
                 iconSize: 44,
-                backgroundColor: PapperColors.pink200,
+                backgroundColor: PapperColors.grayblue200,
                 iconColor: PapperColors.neutral700
             )
             
@@ -216,17 +216,6 @@ struct NameStep: View {
 struct GoalsStep: View {
     @ObservedObject var viewModel: OnboardingViewModel
     
-    private let goalColors: [Color] = [
-        PapperColors.peach200,
-        PapperColors.pink200,
-        PapperColors.grayblue200,
-        PapperColors.mint200,
-        PapperColors.lavanda200,
-        PapperColors.yellow200,
-        PapperColors.blue200,
-        PapperColors.green200
-    ]
-    
     var body: some View {
         VStack(spacing: Papper.spacing.xl) {
             VStack(spacing: Papper.spacing.md) {
@@ -241,11 +230,11 @@ struct GoalsStep: View {
             .padding(.top, Papper.spacing.lg)
             
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: Papper.spacing.sm) {
-                ForEach(Array(viewModel.goalOptions.enumerated()), id: \.element.0) { index, goal in
+                ForEach(viewModel.goalOptions, id: \.0) { goal in
                     OnboardingMultiSelectCard(
                         title: goal.1,
                         isSelected: viewModel.primaryGoals.contains(goal.0),
-                        backgroundColor: goalColors[index % goalColors.count],
+                        backgroundColor: PapperColors.grayblue200,
                         action: { viewModel.toggleGoal(goal.0) }
                     )
                 }
@@ -270,7 +259,7 @@ struct ReminderIntroStep: View {
                 icon: "bell.fill",
                 size: 120,
                 iconSize: 50,
-                backgroundColor: PapperColors.pink200,
+                backgroundColor: PapperColors.grayblue200,
                 iconColor: PapperColors.neutral700
             )
             
@@ -317,7 +306,7 @@ struct MorningReminderStep: View {
                     icon: "sun.horizon.fill",
                     size: 80,
                     iconSize: 36,
-                    backgroundColor: PapperColors.yellow200,
+                    backgroundColor: PapperColors.grayblue200,
                     iconColor: PapperColors.neutral700
                 )
                 
@@ -334,7 +323,7 @@ struct MorningReminderStep: View {
                         .font(PapperTypography.cardTitle())
                         .foregroundColor(PapperColors.neutral800)
                 }
-                .tint(PapperColors.yellow400)
+                .tint(PapperColors.neutral700)
                 .padding()
                 .background(PapperColors.surfaceBackgroundPlain)
                 .cornerRadius(16)
@@ -357,7 +346,7 @@ struct MorningReminderStep: View {
                             .frame(height: 150)
                     }
                     .padding()
-                    .background(PapperColors.yellow200.opacity(0.3))
+                    .background(PapperColors.grayblue200.opacity(0.3))
                     .cornerRadius(16)
                     .transition(.opacity.combined(with: .scale(scale: 0.95)))
                 }
@@ -382,7 +371,7 @@ struct EveningReminderStep: View {
                     icon: "moon.stars.fill",
                     size: 80,
                     iconSize: 36,
-                    backgroundColor: PapperColors.lavanda200,
+                    backgroundColor: PapperColors.grayblue200,
                     iconColor: PapperColors.neutral700
                 )
                 
@@ -399,7 +388,7 @@ struct EveningReminderStep: View {
                         .font(PapperTypography.cardTitle())
                         .foregroundColor(PapperColors.neutral800)
                 }
-                .tint(PapperColors.purple400)
+                .tint(PapperColors.neutral700)
                 .padding()
                 .background(PapperColors.surfaceBackgroundPlain)
                 .cornerRadius(16)
@@ -422,7 +411,7 @@ struct EveningReminderStep: View {
                             .frame(height: 150)
                     }
                     .padding()
-                    .background(PapperColors.lavanda200.opacity(0.3))
+                    .background(PapperColors.grayblue200.opacity(0.3))
                     .cornerRadius(16)
                     .transition(.opacity.combined(with: .scale(scale: 0.95)))
                 }
@@ -448,7 +437,7 @@ struct NotificationStep: View {
                 icon: viewModel.notificationsEnabled ? "bell.badge.fill" : "bell.fill",
                 size: 120,
                 iconSize: 50,
-                backgroundColor: viewModel.notificationsEnabled ? PapperColors.green200 : PapperColors.grayblue200,
+                backgroundColor: PapperColors.grayblue200,
                 iconColor: PapperColors.neutral700
             )
             
@@ -480,7 +469,7 @@ struct NotificationStep: View {
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .frame(height: 54)
-                .background(viewModel.notificationsEnabled ? PapperColors.green400 : PapperColors.neutral700)
+                .background(PapperColors.neutral700)
                 .cornerRadius(14)
             }
             .padding(.horizontal, Papper.spacing.xl)
@@ -501,7 +490,7 @@ struct FeatureSlide1: View {
     var body: some View {
         FeatureSlideView(
             icon: "square.and.pencil",
-            iconBackground: PapperColors.peach200,
+            iconBackground: PapperColors.grayblue200,
             title: "Write Your Story",
             description: "Capture your thoughts with text, voice, or by scanning handwritten notes"
         )
@@ -514,7 +503,7 @@ struct FeatureSlide2: View {
     var body: some View {
         FeatureSlideView(
             icon: "brain.head.profile",
-            iconBackground: PapperColors.mint200,
+            iconBackground: PapperColors.grayblue200,
             title: "AI-Powered Insights",
             description: "Get personalized reflections and discover patterns in your journey"
         )
@@ -549,8 +538,8 @@ struct CompletionStep: View {
                 icon: "checkmark",
                 size: 100,
                 iconSize: 44,
-                backgroundColor: PapperColors.green200,
-                iconColor: PapperColors.green400
+                backgroundColor: PapperColors.grayblue200,
+                iconColor: PapperColors.neutral700
             )
             
             VStack(spacing: Papper.spacing.sm) {
@@ -570,7 +559,7 @@ struct CompletionStep: View {
                     number: 1,
                     title: "Start Journaling",
                     description: "Record your first voice entry to begin",
-                    accentColor: PapperColors.peach400
+                    accentColor: PapperColors.grayblue200
                 )
                 .opacity(showFeatures ? 1 : 0)
                 .offset(y: showFeatures ? 0 : 20)
@@ -579,7 +568,7 @@ struct CompletionStep: View {
                     number: 2,
                     title: "Get Insights",
                     description: "Receive custom analysis of your entries, powered by AI",
-                    accentColor: PapperColors.pink400
+                    accentColor: PapperColors.grayblue200
                 )
                 .opacity(showFeatures ? 1 : 0)
                 .offset(y: showFeatures ? 0 : 20)
@@ -588,7 +577,7 @@ struct CompletionStep: View {
                     number: 3,
                     title: "Track Progress",
                     description: "See your self-reflection journey unfold",
-                    accentColor: PapperColors.grayblue400
+                    accentColor: PapperColors.grayblue200
                 )
                 .opacity(showFeatures ? 1 : 0)
                 .offset(y: showFeatures ? 0 : 20)
@@ -612,7 +601,7 @@ struct CompletionStep: View {
 
 struct FeatureSlideView: View {
     let icon: String
-    var iconBackground: Color = PapperColors.peach200
+    var iconBackground: Color = PapperColors.grayblue200
     let title: String
     let description: String
     
