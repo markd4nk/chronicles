@@ -26,10 +26,18 @@ class OnboardingViewModel: ObservableObject {
     @Published var eveningReminderTime = Calendar.current.date(bySettingHour: 21, minute: 0, second: 0, of: Date()) ?? Date()
     @Published var notificationsEnabled = false
     
+    /// Whether we have a name from the user's account (Google/Apple sign-in)
+    private(set) var hasAccountName = false
+    
     // MARK: - Constants
     
-    /// Total steps in onboarding (11 steps: Welcome, Name, Goals, Reminder Intro, Morning, Evening, Notifications, Feature 1-3, Completion)
-    let totalSteps = 11
+    /// Base total steps in onboarding (11 steps: Welcome, Name, Goals, Reminder Intro, Morning, Evening, Notifications, Feature 1-3, Completion)
+    private let baseTotalSteps = 11
+    
+    /// Effective total steps (10 if name step is skipped, 11 otherwise)
+    var totalSteps: Int {
+        hasAccountName ? baseTotalSteps - 1 : baseTotalSteps
+    }
     
     let goalOptions = [
         ("mindfulness", "Practice mindfulness"),
@@ -44,11 +52,21 @@ class OnboardingViewModel: ObservableObject {
     
     private let notificationService = NotificationService.shared
     
+    // MARK: - Initialization
+    
+    init() {
+        // Check if we have an account name from Google/Apple sign-in
+        if let accountName = OnboardingViewModel.getAccountName(), !accountName.isEmpty {
+            preferredName = accountName
+            hasAccountName = true
+        }
+    }
+    
     // MARK: - Navigation
     
-    /// Steps:
+    /// Steps (when name step is shown):
     /// 0 - Welcome
-    /// 1 - Name (required)
+    /// 1 - Name (skipped if hasAccountName)
     /// 2 - Goals (required)
     /// 3 - Reminder Intro
     /// 4 - Morning Reminder
@@ -60,8 +78,17 @@ class OnboardingViewModel: ObservableObject {
     /// 10 - Completion
     var canProceed: Bool {
         switch currentStep {
-        case 1: return !preferredName.isEmpty
-        case 2: return !primaryGoals.isEmpty
+        case 1: 
+            // If we have account name and are on step 1, it's Goals step
+            if hasAccountName {
+                return !primaryGoals.isEmpty
+            }
+            // Otherwise it's Name step
+            return !preferredName.isEmpty
+        case 2: 
+            // If we have account name, step 2 is Reminder Intro (always can proceed)
+            // Otherwise it's Goals step
+            return hasAccountName ? true : !primaryGoals.isEmpty
         default: return true
         }
     }
@@ -182,5 +209,24 @@ class OnboardingViewModel: ObservableObject {
             "onboarding_completedAt"
         ]
         keys.forEach { defaults.removeObject(forKey: $0) }
+    }
+    
+    // MARK: - Account Name (from Google/Apple Sign-In)
+    
+    private static let accountNameKey = "account_preferredName"
+    
+    /// Save the user's name from their Google/Apple account
+    static func saveAccountName(_ name: String) {
+        UserDefaults.standard.set(name, forKey: accountNameKey)
+    }
+    
+    /// Get the user's name from their Google/Apple account
+    static func getAccountName() -> String? {
+        return UserDefaults.standard.string(forKey: accountNameKey)
+    }
+    
+    /// Clear the stored account name
+    static func clearAccountName() {
+        UserDefaults.standard.removeObject(forKey: accountNameKey)
     }
 }

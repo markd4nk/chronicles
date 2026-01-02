@@ -348,6 +348,9 @@ class AuthService: NSObject, ObservableObject {
             // Reset onboarding flags for testing (allows re-testing onboarding flow)
             UserDefaults.standard.removeObject(forKey: "hasSeenWelcome")
             UserDefaults.standard.removeObject(forKey: "hasCompletedOnboarding")
+            
+            // Clear account name so name step shows again
+            OnboardingViewModel.clearAccountName()
         } catch {
             self.error = .signOutFailed
         }

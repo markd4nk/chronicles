@@ -2,8 +2,9 @@
 //  OnboardingView.swift
 //  Chronicles
 //
-//  11-step onboarding flow with Papper design system
-//  Steps: Welcome, Name, Goals, Reminder Intro, Morning, Evening, Notifications, Feature 1-3, Completion
+//  10-11 step onboarding flow with Papper design system
+//  Steps: Welcome, Name (optional), Goals, Reminder Intro, Morning, Evening, Notifications, Feature 1-3, Completion
+//  Name step is skipped if user's name is available from Google/Apple sign-in
 //
 
 import SwiftUI
@@ -23,19 +24,34 @@ struct OnboardingView: View {
                     .padding(.horizontal, Papper.spacing.lg)
                     .padding(.top, Papper.spacing.sm)
                 
-                // Content
+                // Content - steps are dynamically tagged based on whether name step is shown
                 TabView(selection: $viewModel.currentStep) {
                     WelcomeStep(viewModel: viewModel).tag(0)
-                    NameStep(viewModel: viewModel).tag(1)
-                    GoalsStep(viewModel: viewModel).tag(2)
-                    ReminderIntroStep(viewModel: viewModel).tag(3)
-                    MorningReminderStep(viewModel: viewModel).tag(4)
-                    EveningReminderStep(viewModel: viewModel).tag(5)
-                    NotificationStep(viewModel: viewModel).tag(6)
-                    FeatureSlide1(viewModel: viewModel).tag(7)
-                    FeatureSlide2(viewModel: viewModel).tag(8)
-                    FeatureSlide3(viewModel: viewModel).tag(9)
-                    CompletionStep(viewModel: viewModel).tag(10)
+                    
+                    if viewModel.hasAccountName {
+                        // Name step skipped - shift all subsequent steps down by 1
+                        GoalsStep(viewModel: viewModel).tag(1)
+                        ReminderIntroStep(viewModel: viewModel).tag(2)
+                        MorningReminderStep(viewModel: viewModel).tag(3)
+                        EveningReminderStep(viewModel: viewModel).tag(4)
+                        NotificationStep(viewModel: viewModel).tag(5)
+                        FeatureSlide1(viewModel: viewModel).tag(6)
+                        FeatureSlide2(viewModel: viewModel).tag(7)
+                        FeatureSlide3(viewModel: viewModel).tag(8)
+                        CompletionStep(viewModel: viewModel).tag(9)
+                    } else {
+                        // Full flow with name step
+                        NameStep(viewModel: viewModel).tag(1)
+                        GoalsStep(viewModel: viewModel).tag(2)
+                        ReminderIntroStep(viewModel: viewModel).tag(3)
+                        MorningReminderStep(viewModel: viewModel).tag(4)
+                        EveningReminderStep(viewModel: viewModel).tag(5)
+                        NotificationStep(viewModel: viewModel).tag(6)
+                        FeatureSlide1(viewModel: viewModel).tag(7)
+                        FeatureSlide2(viewModel: viewModel).tag(8)
+                        FeatureSlide3(viewModel: viewModel).tag(9)
+                        CompletionStep(viewModel: viewModel).tag(10)
+                    }
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 .animation(.spring(response: 0.5, dampingFraction: 0.8), value: viewModel.currentStep)
@@ -52,6 +68,11 @@ struct OnboardingView: View {
     }
     
     // MARK: - Navigation Buttons
+    
+    /// The last step index (Completion step)
+    private var lastStepIndex: Int {
+        viewModel.totalSteps - 1
+    }
     
     private var navigationButtons: some View {
         HStack(spacing: Papper.spacing.md) {
@@ -72,8 +93,8 @@ struct OnboardingView: View {
             
             Spacer()
             
-            // Skip Button (only on certain steps)
-            if viewModel.currentStep > 0 && viewModel.currentStep < 10 {
+            // Skip Button (only on certain steps, not on completion)
+            if viewModel.currentStep > 0 && viewModel.currentStep < lastStepIndex {
                 OnboardingSecondaryButton(title: "Skip") {
                     viewModel.skipToEnd()
                 }
@@ -82,10 +103,10 @@ struct OnboardingView: View {
             // Next/Continue Button
             Button(action: viewModel.nextStep) {
                 HStack(spacing: Papper.spacing.xs) {
-                    Text(viewModel.currentStep == 10 ? "Get Started" : "Continue")
+                    Text(viewModel.currentStep == lastStepIndex ? "Get Started" : "Continue")
                         .font(.system(size: 16, weight: .semibold))
                     
-                    if viewModel.currentStep < 10 {
+                    if viewModel.currentStep < lastStepIndex {
                         Image(systemName: "chevron.right")
                             .font(.system(size: 14, weight: .semibold))
                     }
