@@ -947,7 +947,7 @@ struct PapperTodayCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("Today")
-                .font(.custom("Hacky-ExtraBold", size: 32))
+                .font(.system(size: 32, weight: .bold, design: .serif))
                 .foregroundColor(PapperColors.fontMain)
             
             Text(dateString)
@@ -1125,7 +1125,7 @@ struct PapperCheckerCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text(title)
-                .font(.custom("Hacky-ExtraBold", size: 32))
+                .font(.system(size: 32, weight: .bold, design: .serif))
                 .foregroundColor(PapperColors.fontMain)
             
             if let description = description {
@@ -1302,7 +1302,7 @@ struct PapperTasksAmountButton: View {
         Button(action: { action?() }) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("\(amount)")
-                    .font(.custom("Hacky-ExtraBold", size: 32))
+                    .font(.system(size: 32, weight: .bold, design: .serif))
                     .foregroundColor(PapperColors.fontFancy)
                 
                 Text(label)
@@ -1602,7 +1602,7 @@ struct PapperPaywallPriceCard: View {
             
             VStack(spacing: 4) {
                 Text(price)
-                    .font(.custom("Hacky-ExtraBold", size: 32))
+                    .font(.system(size: 32, weight: .bold, design: .serif))
                     .foregroundColor(Papper.colors.fontsPaywall)
                 
                 Text(priceLabel)
@@ -1684,7 +1684,7 @@ struct PapperSyncCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(title)
-                .font(.custom("Hacky-SemiBold", size: 32))
+                .font(.system(size: 32, weight: .semibold, design: .serif))
                 .foregroundColor(Papper.colors.fontMain)
             
             HStack(spacing: 12) {

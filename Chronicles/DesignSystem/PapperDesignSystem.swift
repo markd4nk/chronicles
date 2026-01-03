@@ -232,30 +232,29 @@ struct PapperGradients {
 /// Typography system from Papper Design Library
 ///
 /// Font Families:
-/// - Hacky: Display/heading font (custom font - needs to be added)
-/// - New York: Serif font for elegant text (system serif on iOS)
+/// - New York: Serif font for headings and elegant text (system serif on iOS)
 /// - SF Pro: Sans-serif for body text (system default on iOS)
 /// - IBM Plex Mono: Monospace for code (custom font - needs to be added)
 struct PapperTypography {
     
-    // MARK: - Serif Fonts (Hacky, New York)
+    // MARK: - Serif Fonts (New York)
     
-    /// Papper Title - Hacky Medium/Italic 60px
+    /// Papper Title - New York Medium 60px
     static func papperTitle(italic: Bool = true) -> Font {
         if italic {
-            return .custom("Hacky-MediumItalic", size: 60)
+            return .system(size: 60, weight: .medium, design: .serif).italic()
         }
-        return .custom("Hacky-Medium", size: 60)
+        return .system(size: 60, weight: .medium, design: .serif)
     }
     
-    /// List Title - Hacky Extra Bold 32px
+    /// List Title - New York Bold 32px
     static func listTitle() -> Font {
-        .custom("Hacky-ExtraBold", size: 32)
+        .system(size: 32, weight: .bold, design: .serif)
     }
     
-    /// Discovery Title - Hacky Semi Bold 32px
+    /// Discovery Title - New York Semibold 32px
     static func discoveryTitle() -> Font {
-        .custom("Hacky-SemiBold", size: 32)
+        .system(size: 32, weight: .semibold, design: .serif)
     }
     
     /// Header Discovery - New York Extra Large Regular 28px
