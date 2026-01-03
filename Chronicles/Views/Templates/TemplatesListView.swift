@@ -24,7 +24,7 @@ struct TemplatesListView: View {
     
     var body: some View {
         ZStack {
-            Color(hex: "#faf8f3")
+            PapperColors.backgroundWarm
                 .ignoresSafeArea()
             
             ScrollView(showsIndicators: false) {
@@ -86,7 +86,7 @@ struct TemplatesListView: View {
                             .frame(maxWidth: .infinity)
                             .padding(Papper.spacing.xxl)
                             .background(PapperColors.surfaceBackgroundPlain)
-                            .cornerRadius(16)
+                            .cornerRadius(PapperComponents.CornerRadius.card)
                         } else {
                             ForEach(userTemplates) { template in
                                 TemplateCard(
@@ -190,7 +190,7 @@ struct TemplateCard: View {
         }
         .padding(Papper.spacing.md)
         .background(PapperColors.surfaceBackgroundPlain)
-        .cornerRadius(14)
+        .cornerRadius(PapperComponents.CornerRadius.medium)
         .shadow(color: Color.black.opacity(0.04), radius: 4, x: 0, y: 2)
     }
 }
@@ -212,7 +212,7 @@ struct CreateTemplateView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color(hex: "#faf8f3")
+                PapperColors.backgroundWarm
                     .ignoresSafeArea()
                 
                 ScrollView {
@@ -227,7 +227,7 @@ struct CreateTemplateView: View {
                                 .font(.system(size: 16))
                                 .padding()
                                 .background(PapperColors.surfaceBackgroundPlain)
-                                .cornerRadius(12)
+                                .cornerRadius(PapperComponents.CornerRadius.medium)
                             
                             Text("Icon")
                                 .font(Papper.typography.bodySmall)
@@ -250,7 +250,7 @@ struct CreateTemplateView: View {
                             }
                             .padding()
                             .background(PapperColors.surfaceBackgroundPlain)
-                            .cornerRadius(12)
+                            .cornerRadius(PapperComponents.CornerRadius.medium)
                         }
                         
                         // Journal
@@ -293,7 +293,7 @@ struct CreateTemplateView: View {
                                 }
                                 .padding()
                                 .background(PapperColors.surfaceBackgroundPlain)
-                                .cornerRadius(12)
+                                .cornerRadius(PapperComponents.CornerRadius.medium)
                             }
                         }
                         
@@ -396,7 +396,7 @@ struct EditTemplateView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color(hex: "#faf8f3")
+                PapperColors.backgroundWarm
                     .ignoresSafeArea()
                 
                 ScrollView {
@@ -411,7 +411,7 @@ struct EditTemplateView: View {
                                 .font(.system(size: 16))
                                 .padding()
                                 .background(PapperColors.surfaceBackgroundPlain)
-                                .cornerRadius(12)
+                                .cornerRadius(PapperComponents.CornerRadius.medium)
                             
                             Text("Icon")
                                 .font(Papper.typography.bodySmall)
@@ -434,7 +434,7 @@ struct EditTemplateView: View {
                             }
                             .padding()
                             .background(PapperColors.surfaceBackgroundPlain)
-                            .cornerRadius(12)
+                            .cornerRadius(PapperComponents.CornerRadius.medium)
                         }
                         
                         // Prompts
@@ -481,7 +481,7 @@ struct EditTemplateView: View {
                             .frame(maxWidth: .infinity)
                             .padding(Papper.spacing.md)
                             .background(PapperColors.surfaceBackgroundPlain)
-                            .cornerRadius(12)
+                            .cornerRadius(PapperComponents.CornerRadius.medium)
                         }
                     }
                     .padding(Papper.spacing.lg)
@@ -554,6 +554,7 @@ struct TemplatesListView_Previews: PreviewProvider {
     }
 }
 #endif
+
 
 
 

@@ -20,7 +20,7 @@ struct DashboardView: View {
         NavigationView {
             ZStack {
                 // Background
-                Color(hex: "#faf8f3")
+                PapperColors.backgroundWarm
                     .ignoresSafeArea()
                 
                 ScrollView(showsIndicators: false) {
@@ -97,7 +97,7 @@ struct DashboardView: View {
                 .foregroundColor(.orange)
             
             Text(message)
-                .font(.system(size: 14))
+                .font(PapperTypography.body)
                 .foregroundColor(PapperColors.neutral800)
             
             Spacer()
@@ -106,13 +106,13 @@ struct DashboardView: View {
                 viewModel.clearError()
             } label: {
                 Image(systemName: "xmark")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(PapperTypography.bodySmallText())
                     .foregroundColor(PapperColors.neutral500)
             }
         }
         .padding(Papper.spacing.md)
         .background(PapperColors.surfaceBackgroundPlain)
-        .cornerRadius(12)
+        .cornerRadius(PapperComponents.CornerRadius.medium)
         .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 4)
         .padding(.horizontal, Papper.spacing.lg)
     }
@@ -123,7 +123,7 @@ struct DashboardView: View {
         VStack(spacing: Papper.spacing.md) {
             HStack {
                 Text("Today's Focus")
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(PapperTypography.cardTitle())
                     .foregroundColor(PapperColors.neutral800)
                 
                 Spacer()
@@ -144,7 +144,7 @@ struct DashboardView: View {
             VStack(spacing: Papper.spacing.md) {
                 HStack {
                     Text("Today's Focus")
-                        .font(.system(size: 18, weight: .semibold))
+                        .font(PapperTypography.cardTitle())
                         .foregroundColor(PapperColors.neutral800)
                     
                     Spacer()
@@ -156,11 +156,11 @@ struct DashboardView: View {
                         .foregroundColor(PapperColors.neutral300)
                     
                     Text("No widgets yet")
-                        .font(.system(size: 16, weight: .medium))
+                        .font(PapperTypography.cardBody())
                         .foregroundColor(PapperColors.neutral600)
                     
                     Text("Create custom widgets to track your daily journaling habits")
-                        .font(.system(size: 14))
+                        .font(PapperTypography.body)
                         .foregroundColor(PapperColors.neutral500)
                         .multilineTextAlignment(.center)
                     
@@ -171,19 +171,19 @@ struct DashboardView: View {
                             Image(systemName: "plus.circle.fill")
                             Text("Add Widget")
                         }
-                        .font(.system(size: 15, weight: .medium))
+                        .font(PapperTypography.bodyText())
                         .foregroundColor(.white)
                         .padding(.horizontal, Papper.spacing.lg)
                         .padding(.vertical, Papper.spacing.sm)
                         .background(PapperColors.neutral700)
-                        .cornerRadius(20)
+                        .cornerRadius(PapperComponents.CornerRadius.large)
                     }
                     .padding(.top, Papper.spacing.sm)
                 }
                 .padding(Papper.spacing.xl)
                 .frame(maxWidth: .infinity)
                 .background(PapperColors.surfaceBackgroundPlain)
-                .cornerRadius(16)
+                .cornerRadius(PapperComponents.CornerRadius.card)
                 .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 2)
             }
         }
@@ -196,17 +196,17 @@ struct DashboardView: View {
             // Streak Badge
             HStack(spacing: Papper.spacing.xs) {
                 Image(systemName: "flame.fill")
-                    .font(.system(size: 16))
+                    .font(PapperTypography.cardBody())
                     .foregroundColor(PapperColors.neutral700)
                 
                 Text("\(viewModel.currentStreak)")
-                    .font(.system(size: 16, weight: .bold))
+                    .font(PapperTypography.cardTitle())
                     .foregroundColor(PapperColors.neutral800)
             }
             .padding(.horizontal, Papper.spacing.sm)
             .padding(.vertical, Papper.spacing.xs)
             .background(PapperColors.surfaceBackgroundPlain)
-            .cornerRadius(20)
+            .cornerRadius(PapperComponents.CornerRadius.large)
             .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
             
             Spacer()
@@ -220,7 +220,7 @@ struct DashboardView: View {
                         .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
                     
                     Image(systemName: "gearshape.fill")
-                        .font(.system(size: 18))
+                        .font(PapperTypography.cardTitle())
                         .foregroundColor(PapperColors.neutral700)
                 }
             }
@@ -232,22 +232,22 @@ struct DashboardView: View {
     private var welcomeCard: some View {
         VStack(alignment: .leading, spacing: Papper.spacing.xs) {
             Text(viewModel.greeting + ",")
-                .font(.system(size: 24, weight: .regular))
+                .font(PapperTypography.header2)
                 .foregroundColor(PapperColors.neutral600)
             
             Text(viewModel.userName)
-                .font(.system(size: 28, weight: .bold, design: .serif))
+                .font(PapperTypography.headerDiscovery())
                 .foregroundColor(PapperColors.neutral800)
             
             Text(viewModel.formattedDate)
-                .font(.system(size: 13))
+                .font(PapperTypography.bodyText())
                 .foregroundColor(PapperColors.neutral500)
                 .padding(.top, Papper.spacing.xxs)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(Papper.spacing.lg)
         .background(PapperColors.surfaceBackgroundPlain)
-        .cornerRadius(16)
+        .cornerRadius(PapperComponents.CornerRadius.card)
         .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 2)
     }
     
@@ -258,7 +258,7 @@ struct DashboardView: View {
             // Section Header
             HStack {
                 Text("Today's Focus")
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(PapperTypography.cardTitle())
                     .foregroundColor(PapperColors.neutral800)
                 
                 Spacer()
@@ -315,7 +315,7 @@ struct QuickEntryWidgetCard: View {
                             .frame(width: 40, height: 40)
                         
                         Image(systemName: widget.icon)
-                            .font(.system(size: 18))
+                            .font(PapperTypography.cardTitle())
                             .foregroundColor(Color(hex: widget.color))
                     }
                     
@@ -324,13 +324,13 @@ struct QuickEntryWidgetCard: View {
                     // Custom widget indicator
                     if widget.isCustom {
                         Image(systemName: "star.fill")
-                            .font(.system(size: 12))
+                            .font(PapperTypography.bodySmallText())
                             .foregroundColor(Color(hex: widget.color).opacity(0.6))
                     }
                     
                     if isCompleted {
                         Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 20))
+                            .font(PapperTypography.paywallSubtitleLarge())
                             .foregroundColor(PapperColors.green400)
                             .transition(.scale.combined(with: .opacity))
                     }
@@ -341,13 +341,13 @@ struct QuickEntryWidgetCard: View {
                 // Title & Status
                 VStack(alignment: .leading, spacing: 2) {
                     Text(widget.title)
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(PapperTypography.bodyTitleBold())
                         .foregroundColor(PapperColors.neutral800)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
                     
                     Text(isCompleted ? "Completed" : "Tap to start")
-                        .font(.system(size: 11))
+                        .font(PapperTypography.bodySmallText())
                         .foregroundColor(isCompleted ? PapperColors.green400 : PapperColors.neutral500)
                 }
             }
@@ -355,7 +355,7 @@ struct QuickEntryWidgetCard: View {
             .frame(maxWidth: .infinity)
             .frame(height: 120)
             .background(PapperColors.surfaceBackgroundPlain)
-            .cornerRadius(16)
+            .cornerRadius(PapperComponents.CornerRadius.card)
             .shadow(color: Color.black.opacity(isPressed ? 0.08 : 0.04), radius: isPressed ? 4 : 8, x: 0, y: isPressed ? 1 : 2)
             .scaleEffect(isPressed ? 0.97 : 1.0)
         }
@@ -417,7 +417,7 @@ struct CreateEntryFromWidgetView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color(hex: "#faf8f3")
+                PapperColors.backgroundWarm
                     .ignoresSafeArea()
                 
                 ScrollView {
@@ -430,13 +430,13 @@ struct CreateEntryFromWidgetView: View {
                                     .frame(width: 44, height: 44)
                                 
                                 Image(systemName: widget.icon)
-                                    .font(.system(size: 20))
+                                    .font(PapperTypography.paywallSubtitleLarge())
                                     .foregroundColor(Color(hex: widget.color))
                             }
                             
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(widget.title)
-                                    .font(.system(size: 16, weight: .semibold))
+                                    .font(PapperTypography.cardTitle())
                                     .foregroundColor(PapperColors.neutral800)
                                 
                                 Text(widget.isCustom ? "Custom widget" : "Quick entry template")
@@ -447,7 +447,7 @@ struct CreateEntryFromWidgetView: View {
                         .padding()
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(Color(hex: widget.color).opacity(0.1))
-                        .cornerRadius(12)
+                        .cornerRadius(PapperComponents.CornerRadius.medium)
                         
                         // Question/Prompt (for custom widgets)
                         if widget.isCustom, let question = widget.question, !question.isEmpty {
@@ -457,12 +457,12 @@ struct CreateEntryFromWidgetView: View {
                                     .foregroundColor(PapperColors.neutral500)
                                 
                                 Text(question)
-                                    .font(.system(size: 15))
+                                    .font(PapperTypography.bodyText())
                                     .foregroundColor(PapperColors.neutral700)
                                     .padding()
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .background(Color(hex: widget.color).opacity(0.05))
-                                    .cornerRadius(12)
+                                    .cornerRadius(PapperComponents.CornerRadius.medium)
                             }
                         }
                         
@@ -486,12 +486,12 @@ struct CreateEntryFromWidgetView: View {
                                     Spacer()
                                     
                                     Image(systemName: "lock.fill")
-                                        .font(.system(size: 12))
+                                        .font(PapperTypography.bodySmallText())
                                         .foregroundColor(PapperColors.neutral400)
                                 }
                                 .padding()
                                 .background(PapperColors.surfaceBackgroundPlain)
-                                .cornerRadius(12)
+                                .cornerRadius(PapperComponents.CornerRadius.medium)
                             } else {
                                 Menu {
                                     ForEach(journalViewModel.journals) { journal in
@@ -524,7 +524,7 @@ struct CreateEntryFromWidgetView: View {
                                     }
                                     .padding()
                                     .background(PapperColors.surfaceBackgroundPlain)
-                                    .cornerRadius(12)
+                                    .cornerRadius(PapperComponents.CornerRadius.medium)
                                 }
                             }
                         }
@@ -536,10 +536,10 @@ struct CreateEntryFromWidgetView: View {
                                 .foregroundColor(PapperColors.neutral500)
                             
                             TextField("Entry title", text: $title)
-                                .font(.system(size: 16))
+                                .font(PapperTypography.cardBody())
                                 .padding()
                                 .background(PapperColors.surfaceBackgroundPlain)
-                                .cornerRadius(12)
+                                .cornerRadius(PapperComponents.CornerRadius.medium)
                         }
                         
                         // Content
@@ -549,11 +549,11 @@ struct CreateEntryFromWidgetView: View {
                                 .foregroundColor(PapperColors.neutral500)
                             
                             TextEditor(text: $content)
-                                .font(.system(size: 16))
+                                .font(PapperTypography.cardBody())
                                 .frame(minHeight: 200)
                                 .padding()
                                 .background(PapperColors.surfaceBackgroundPlain)
-                                .cornerRadius(12)
+                                .cornerRadius(PapperComponents.CornerRadius.medium)
                         }
                     }
                     .padding(Papper.spacing.lg)
@@ -573,7 +573,7 @@ struct CreateEntryFromWidgetView: View {
                     Button("Save") {
                         saveEntry()
                     }
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(PapperTypography.cardTitle())
                     .foregroundColor(PapperColors.neutral700)
                     .disabled(selectedJournal == nil || content.isEmpty || isSaving)
                 }
@@ -627,7 +627,7 @@ struct SkeletonWidgetCard: View {
         VStack(alignment: .leading, spacing: Papper.spacing.sm) {
             HStack {
                 Circle()
-                    .fill(shimmerGradient)
+                    .fill(shimmerColor)
                     .frame(width: 40, height: 40)
                 
                 Spacer()
@@ -637,11 +637,11 @@ struct SkeletonWidgetCard: View {
             
             VStack(alignment: .leading, spacing: 6) {
                 RoundedRectangle(cornerRadius: 4)
-                    .fill(shimmerGradient)
+                    .fill(shimmerColor)
                     .frame(width: 80, height: 14)
                 
                 RoundedRectangle(cornerRadius: 4)
-                    .fill(shimmerGradient)
+                    .fill(shimmerColor)
                     .frame(width: 60, height: 10)
             }
         }
@@ -649,7 +649,7 @@ struct SkeletonWidgetCard: View {
         .frame(maxWidth: .infinity)
         .frame(height: 120)
         .background(PapperColors.surfaceBackgroundPlain)
-        .cornerRadius(16)
+        .cornerRadius(PapperComponents.CornerRadius.card)
         .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 2)
         .onAppear {
             withAnimation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true)) {
@@ -658,15 +658,8 @@ struct SkeletonWidgetCard: View {
         }
     }
     
-    private var shimmerGradient: some ShapeStyle {
-        LinearGradient(
-            colors: [
-                PapperColors.neutral300.opacity(isAnimating ? 0.3 : 0.6),
-                PapperColors.neutral300.opacity(isAnimating ? 0.6 : 0.3)
-            ],
-            startPoint: .leading,
-            endPoint: .trailing
-        )
+    private var shimmerColor: Color {
+        PapperColors.neutral300.opacity(isAnimating ? 0.3 : 0.6)
     }
 }
 

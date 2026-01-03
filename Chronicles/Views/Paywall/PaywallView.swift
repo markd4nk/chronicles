@@ -17,7 +17,7 @@ struct PaywallView: View {
     var body: some View {
         ZStack {
             // Background
-            Color(hex: "#faf8f3")
+            PapperColors.backgroundWarm
                 .ignoresSafeArea()
             
             ScrollView(showsIndicators: false) {
@@ -93,7 +93,7 @@ struct PaywallView: View {
                         .frame(maxWidth: .infinity)
                         .frame(height: 60)
                         .background(PapperColors.neutral700)
-                        .cornerRadius(14)
+                        .cornerRadius(PapperComponents.CornerRadius.medium)
                         .disabled(isLoading)
                         
                         // Restore Purchases
@@ -226,7 +226,7 @@ struct PlanCard: View {
             }
             .padding(Papper.spacing.md)
             .background(PapperColors.surfaceBackgroundPlain)
-            .cornerRadius(14)
+            .cornerRadius(PapperComponents.CornerRadius.medium)
             .overlay(
                 RoundedRectangle(cornerRadius: 14)
                     .stroke(isSelected ? PapperColors.neutral700 : PapperColors.neutral300, lineWidth: isSelected ? 2 : 1)

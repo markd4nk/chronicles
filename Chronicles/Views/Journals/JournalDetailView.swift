@@ -38,7 +38,7 @@ struct JournalDetailView: View {
     
     var body: some View {
         ZStack {
-            Color(hex: "#faf8f3")
+            PapperColors.backgroundWarm
                 .ignoresSafeArea()
             
             if entriesForJournal.isEmpty && searchText.isEmpty {
@@ -135,7 +135,7 @@ struct JournalDetailView: View {
         }
         .padding(Papper.spacing.md)
         .background(PapperColors.surfaceBackgroundPlain)
-        .cornerRadius(16)
+        .cornerRadius(PapperComponents.CornerRadius.card)
         .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 2)
     }
     
@@ -161,7 +161,7 @@ struct JournalDetailView: View {
         }
         .padding(Papper.spacing.sm)
         .background(PapperColors.surfaceBackgroundPlain)
-        .cornerRadius(12)
+        .cornerRadius(PapperComponents.CornerRadius.medium)
         .shadow(color: Color.black.opacity(0.04), radius: 4, x: 0, y: 2)
     }
     
@@ -201,7 +201,7 @@ struct JournalDetailView: View {
                 .padding(.horizontal, Papper.spacing.xl)
                 .padding(.vertical, Papper.spacing.sm)
                 .background(PapperColors.neutral700)
-                .cornerRadius(12)
+                .cornerRadius(PapperComponents.CornerRadius.medium)
             }
         }
         .padding(Papper.spacing.xl)
@@ -266,7 +266,7 @@ struct JournalDetailEntryCard: View {
         }
         .padding(Papper.spacing.md)
         .background(PapperColors.surfaceBackgroundPlain)
-        .cornerRadius(14)
+        .cornerRadius(PapperComponents.CornerRadius.medium)
         .shadow(color: Color.black.opacity(0.03), radius: 4, x: 0, y: 1)
     }
 }

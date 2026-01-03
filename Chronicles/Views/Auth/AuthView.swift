@@ -63,7 +63,7 @@ struct AuthView: View {
                         .frame(maxWidth: .infinity)
                         .frame(height: 56)
                         .background(PapperColors.neutral800)
-                        .cornerRadius(14)
+                        .cornerRadius(PapperComponents.CornerRadius.medium)
                     }
                     
                     // Google Sign In
@@ -80,7 +80,7 @@ struct AuthView: View {
                         .frame(maxWidth: .infinity)
                         .frame(height: 56)
                         .background(PapperColors.surfaceBackgroundPlain)
-                        .cornerRadius(14)
+                        .cornerRadius(PapperComponents.CornerRadius.medium)
                         .overlay(
                             RoundedRectangle(cornerRadius: 14)
                                 .stroke(PapperColors.neutral300, lineWidth: 1)

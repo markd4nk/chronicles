@@ -20,7 +20,7 @@ struct CreateJournalView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color(hex: "#faf8f3")
+                PapperColors.backgroundWarm
                     .ignoresSafeArea()
                     .onTapGesture {
                         isTextFieldFocused = false
@@ -41,7 +41,7 @@ struct CreateJournalView: View {
                                 .font(.system(size: 16))
                                 .padding()
                                 .background(PapperColors.surfaceBackgroundPlain)
-                                .cornerRadius(12)
+                                .cornerRadius(PapperComponents.CornerRadius.medium)
                                 .focused($isTextFieldFocused)
                         }
                         
@@ -74,7 +74,7 @@ struct CreateJournalView: View {
                             }
                             .padding()
                             .background(PapperColors.surfaceBackgroundPlain)
-                            .cornerRadius(16)
+                            .cornerRadius(PapperComponents.CornerRadius.card)
                         }
                         
                         Spacer()

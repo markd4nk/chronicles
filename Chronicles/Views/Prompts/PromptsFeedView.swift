@@ -20,7 +20,7 @@ struct PromptsFeedView: View {
         GeometryReader { geometry in
             ZStack {
                 // Background
-                Color(hex: "#faf8f3")
+                PapperColors.backgroundWarm
                     .ignoresSafeArea()
                 
                 // Prompts Feed - Vertical scrolling
@@ -107,7 +107,7 @@ struct PromptsFeedView: View {
         .padding(.horizontal, 100)
         .padding(.vertical, Papper.spacing.sm)
         .background(
-            Color(hex: "#faf8f3").opacity(0.95)
+            PapperColors.backgroundWarm.opacity(0.95)
         )
     }
     
@@ -127,7 +127,7 @@ struct PromptsFeedView: View {
     private var emptyState: some View {
         VStack(spacing: Papper.spacing.lg) {
             Image(systemName: viewModel.showLikedOnly ? "heart" : "lightbulb.fill")
-                .font(.system(size: 60))
+                .font(PapperTypography.papperTitle())
                 .foregroundColor(PapperColors.neutral400)
             
             Text(viewModel.showLikedOnly ? "No liked prompts yet" : "No prompts yet")
@@ -174,7 +174,7 @@ struct PromptCardView: View {
                 // Prompt Content
                 VStack(spacing: Papper.spacing.md) {
                     Text(prompt.question)
-                        .font(.system(size: 24, weight: .bold, design: .serif))
+                        .font(PapperTypography.header2)
                         .foregroundColor(PapperColors.neutral800)
                         .multilineTextAlignment(.center)
                         .lineSpacing(6)
@@ -182,7 +182,7 @@ struct PromptCardView: View {
                     // Only show hint for quotes (attribution like "- Steve Jobs")
                     if prompt.category == .quote {
                         Text(prompt.hint)
-                            .font(.system(size: 16))
+                            .font(PapperTypography.cardBody())
                             .foregroundColor(PapperColors.neutral600)
                             .multilineTextAlignment(.center)
                             .lineSpacing(4)
@@ -198,7 +198,7 @@ struct PromptCardView: View {
                     ZStack {
                         Button(action: onShare) {
                             Image(systemName: "square.and.arrow.up")
-                                .font(.system(size: 24))
+                                .font(PapperTypography.header2)
                                 .foregroundColor(PapperColors.neutral600)
                                 .frame(width: 44, height: 44)
                         }
@@ -218,21 +218,21 @@ struct PromptCardView: View {
                     Button(action: onWriteItOut) {
                         HStack(spacing: Papper.spacing.xs) {
                             Image(systemName: "pencil")
-                                .font(.system(size: 16, weight: .semibold))
+                                .font(PapperTypography.cardTitle())
                             Text("Write it Out")
-                                .font(.system(size: 16, weight: .semibold))
+                                .font(PapperTypography.cardTitle())
                         }
                         .foregroundColor(.white)
                         .padding(.horizontal, Papper.spacing.xl)
                         .padding(.vertical, Papper.spacing.md)
                         .background(PapperColors.neutral700)
-                        .cornerRadius(25)
+                        .cornerRadius(PapperComponents.CornerRadius.pill)
                     }
                     
                     // Like Button (saves to Liked section)
                     Button(action: onLike) {
                         Image(systemName: prompt.isLiked ? "heart.fill" : "heart")
-                            .font(.system(size: 24))
+                            .font(PapperTypography.header2)
                             .foregroundColor(prompt.isLiked ? PapperColors.pink600 : PapperColors.neutral600)
                             .frame(width: 44, height: 44)
                     }
@@ -242,7 +242,7 @@ struct PromptCardView: View {
             .padding(.horizontal, Papper.spacing.lg)
         }
         .background(
-            RoundedRectangle(cornerRadius: 24)
+            RoundedRectangle(cornerRadius: PapperComponents.CornerRadius.large)
                 .fill(PapperColors.surfaceBackgroundPlain)
                 .shadow(color: Color.black.opacity(0.05), radius: 20, x: 0, y: 4)
                 .padding(.horizontal, Papper.spacing.md)
@@ -257,9 +257,9 @@ struct CopyFeedbackView: View {
     var body: some View {
         HStack(spacing: 6) {
             Image(systemName: "checkmark")
-                .font(.system(size: 12, weight: .semibold))
+                .font(PapperTypography.bodySmallText())
             Text("Copied")
-                .font(.system(size: 13, weight: .medium))
+                .font(PapperTypography.bodyText())
         }
         .foregroundColor(.white)
         .padding(.horizontal, 12)
@@ -381,7 +381,7 @@ struct CreateEntryFromPromptView: View {
     
     private var mainContent: some View {
         ZStack {
-            Color(hex: "#faf8f3")
+            PapperColors.backgroundWarm
                 .ignoresSafeArea()
             
             ScrollView {
@@ -418,13 +418,13 @@ struct CreateEntryFromPromptView: View {
                 .foregroundColor(PapperColors.neutral500)
             
             Text(prompt.question)
-                .font(.system(size: 18, weight: .semibold))
+                .font(PapperTypography.cardTitle())
                 .foregroundColor(PapperColors.neutral800)
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(PapperColors.neutral100)
-        .cornerRadius(12)
+        .cornerRadius(PapperComponents.CornerRadius.medium)
     }
     
     // MARK: - Journal Section
@@ -476,7 +476,7 @@ struct CreateEntryFromPromptView: View {
         }
         .padding()
         .background(PapperColors.surfaceBackgroundPlain)
-        .cornerRadius(12)
+        .cornerRadius(PapperComponents.CornerRadius.medium)
     }
     
     // MARK: - Response Section
@@ -488,12 +488,12 @@ struct CreateEntryFromPromptView: View {
                 .foregroundColor(PapperColors.neutral500)
             
             TextEditor(text: $content)
-                .font(.system(size: 16))
+                .font(PapperTypography.cardBody())
                 .scrollContentBackground(.hidden)
                 .frame(minHeight: 200)
                 .padding()
                 .background(PapperColors.surfaceBackgroundPlain)
-                .cornerRadius(12)
+                .cornerRadius(PapperComponents.CornerRadius.medium)
                 .focused($isEditorFocused)
         }
     }
@@ -513,7 +513,7 @@ struct CreateEntryFromPromptView: View {
             Button("Save") {
                 saveEntry()
             }
-            .font(.system(size: 16, weight: .semibold))
+            .font(PapperTypography.cardTitle())
             .foregroundColor(canSave ? PapperColors.neutral700 : PapperColors.neutral400)
             .disabled(!canSave)
         }
@@ -527,7 +527,7 @@ struct CreateEntryFromPromptView: View {
     private var keyboardToolbarContent: some View {
         Button(action: { isEditorFocused = false }) {
             Image(systemName: "chevron.down")
-                .font(.system(size: 16, weight: .medium))
+                .font(PapperTypography.cardBody())
                 .foregroundColor(PapperColors.neutral700)
                 .frame(width: 32, height: 32)
                 .background(PapperColors.neutral100)
@@ -544,7 +544,7 @@ struct CreateEntryFromPromptView: View {
             }
         }) {
             Image(systemName: "doc.text.viewfinder")
-                .font(.system(size: 16))
+                .font(PapperTypography.cardBody())
                 .foregroundColor(PapperColors.neutral700)
                 .frame(width: 32, height: 32)
                 .background(PapperColors.neutral100)
@@ -553,7 +553,7 @@ struct CreateEntryFromPromptView: View {
         
         Button(action: { showListeningView = true }) {
             Image(systemName: "mic.fill")
-                .font(.system(size: 16))
+                .font(PapperTypography.cardBody())
                 .foregroundColor(PapperColors.neutral700)
                 .frame(width: 32, height: 32)
                 .background(PapperColors.neutral100)
@@ -574,12 +574,12 @@ struct CreateEntryFromPromptView: View {
                     .tint(PapperColors.neutral700)
                 
                 Text("Processing image...")
-                    .font(.system(size: 14, weight: .medium))
+                    .font(PapperTypography.bodyTitleBold())
                     .foregroundColor(PapperColors.neutral700)
             }
             .padding(Papper.spacing.xl)
             .background(PapperColors.surfaceBackgroundPlain)
-            .cornerRadius(16)
+            .cornerRadius(PapperComponents.CornerRadius.card)
         }
     }
     

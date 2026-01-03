@@ -21,7 +21,7 @@ struct JournalListView: View {
     
     var body: some View {
         ZStack {
-            Color(hex: "#faf8f3")
+            PapperColors.backgroundWarm
                 .ignoresSafeArea()
             
             if viewModel.journals.isEmpty {
@@ -82,7 +82,7 @@ struct JournalListView: View {
         }
         .padding(Papper.spacing.sm)
         .background(PapperColors.surfaceBackgroundPlain)
-        .cornerRadius(12)
+        .cornerRadius(PapperComponents.CornerRadius.medium)
         .shadow(color: Color.black.opacity(0.04), radius: 4, x: 0, y: 2)
     }
     
@@ -122,7 +122,7 @@ struct JournalListView: View {
                 .padding(.horizontal, Papper.spacing.xl)
                 .padding(.vertical, Papper.spacing.sm)
                 .background(PapperColors.neutral700)
-                .cornerRadius(12)
+                .cornerRadius(PapperComponents.CornerRadius.medium)
             }
         }
         .padding(Papper.spacing.xl)
@@ -183,7 +183,7 @@ struct JournalListCard: View {
         }
         .padding(Papper.spacing.md)
         .background(PapperColors.surfaceBackgroundPlain)
-        .cornerRadius(14)
+        .cornerRadius(PapperComponents.CornerRadius.medium)
         .shadow(color: Color.black.opacity(0.04), radius: 4, x: 0, y: 2)
     }
 }

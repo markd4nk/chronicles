@@ -19,7 +19,7 @@ struct ManageJournalsView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color(hex: "#faf8f3")
+                PapperColors.backgroundWarm
                     .ignoresSafeArea()
                 
                 if viewModel.journals.isEmpty {
@@ -109,7 +109,7 @@ struct ManageJournalsView: View {
                     .padding(.horizontal, Papper.spacing.xl)
                     .padding(.vertical, Papper.spacing.sm)
                     .background(PapperColors.neutral700)
-                    .cornerRadius(12)
+                    .cornerRadius(PapperComponents.CornerRadius.medium)
             }
         }
     }
@@ -161,7 +161,7 @@ struct JournalManageRow: View {
         }
         .padding(Papper.spacing.md)
         .background(PapperColors.surfaceBackgroundPlain)
-        .cornerRadius(12)
+        .cornerRadius(PapperComponents.CornerRadius.medium)
         .contentShape(Rectangle())
     }
 }
@@ -179,7 +179,7 @@ struct EditJournalView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color(hex: "#faf8f3")
+                PapperColors.backgroundWarm
                     .ignoresSafeArea()
                 
                 VStack(spacing: Papper.spacing.xl) {
@@ -193,7 +193,7 @@ struct EditJournalView: View {
                             .font(.system(size: 16))
                             .padding()
                             .background(PapperColors.surfaceBackgroundPlain)
-                            .cornerRadius(12)
+                            .cornerRadius(PapperComponents.CornerRadius.medium)
                     }
                     
                     // Color
@@ -221,7 +221,7 @@ struct EditJournalView: View {
                         }
                         .padding()
                         .background(PapperColors.surfaceBackgroundPlain)
-                        .cornerRadius(12)
+                        .cornerRadius(PapperComponents.CornerRadius.medium)
                     }
                     
                     Spacer()

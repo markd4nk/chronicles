@@ -27,7 +27,7 @@ struct SpeakListeningView: View {
     var body: some View {
         ZStack {
             // Background
-            Color(hex: "#faf8f3")
+            PapperColors.backgroundWarm
                 .ignoresSafeArea()
             
             VStack(spacing: Papper.spacing.xxl) {
@@ -101,7 +101,7 @@ struct SpeakListeningView: View {
                 }
                 .padding(Papper.spacing.xl)
                 .background(PapperColors.neutral800.opacity(0.9))
-                .cornerRadius(16)
+                .cornerRadius(PapperComponents.CornerRadius.card)
             }
         }
         .onAppear {
@@ -160,17 +160,7 @@ struct SpeakListeningView: View {
             
             // Main blob
             Circle()
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            PapperColors.neutral600,
-                            PapperColors.neutral700,
-                            PapperColors.neutral800
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
+                .fill(PapperColors.neutral700)
                 .frame(width: 140, height: 140)
                 .scaleEffect(isRecording ? animationScale : 1.0)
                 .shadow(color: PapperColors.neutral700.opacity(0.3), radius: 20, x: 0, y: 10)
@@ -218,7 +208,7 @@ struct SpeakListeningView: View {
                     .frame(maxWidth: .infinity)
                     .frame(height: 54)
                     .background(PapperColors.pink600)
-                    .cornerRadius(14)
+                    .cornerRadius(PapperComponents.CornerRadius.medium)
                 }
                 .padding(.horizontal, Papper.spacing.xl)
             } else if isTranscribing {
@@ -233,7 +223,7 @@ struct SpeakListeningView: View {
                 .frame(maxWidth: .infinity)
                 .frame(height: 54)
                 .background(PapperColors.neutral500)
-                .cornerRadius(14)
+                .cornerRadius(PapperComponents.CornerRadius.medium)
                 .padding(.horizontal, Papper.spacing.xl)
             } else if !transcribedText.isEmpty {
                 // Done button (when we have text)
@@ -248,7 +238,7 @@ struct SpeakListeningView: View {
                     .frame(maxWidth: .infinity)
                     .frame(height: 54)
                     .background(PapperColors.neutral700)
-                    .cornerRadius(14)
+                    .cornerRadius(PapperComponents.CornerRadius.medium)
                 }
                 .padding(.horizontal, Papper.spacing.xl)
                 
@@ -271,7 +261,7 @@ struct SpeakListeningView: View {
                     .frame(maxWidth: .infinity)
                     .frame(height: 54)
                     .background(PapperColors.neutral700)
-                    .cornerRadius(14)
+                    .cornerRadius(PapperComponents.CornerRadius.medium)
                 }
                 .padding(.horizontal, Papper.spacing.xl)
             }

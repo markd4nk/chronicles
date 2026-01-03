@@ -18,7 +18,7 @@ struct AIReflectView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color(hex: "#faf8f3")
+                PapperColors.backgroundWarm
                     .ignoresSafeArea()
                 
                 if viewModel.currentConversation == nil && viewModel.analysisSummary == nil {
@@ -47,7 +47,7 @@ struct AIReflectView: View {
                             showNewConversationAlert = true
                         }) {
                             Text("New Chat")
-                                .font(.system(size: 14, weight: .medium))
+                                .font(PapperTypography.bodyTitleBold())
                                 .foregroundColor(PapperColors.neutral700)
                         }
                     }
@@ -85,14 +85,14 @@ struct AIReflectView: View {
                     .frame(width: 120, height: 120)
                 
                 Image(systemName: "brain.head.profile")
-                    .font(.system(size: 50))
+                    .font(PapperTypography.papperTitle())
                     .foregroundColor(PapperColors.neutral700)
             }
             
             // Title
             VStack(spacing: Papper.spacing.md) {
                 Text("Reflect")
-                    .font(.system(size: 28, weight: .bold))
+                    .font(PapperTypography.headerDiscovery())
                     .foregroundColor(PapperColors.neutral800)
                 
                 Text("Analyze your journals and discover\npatterns, insights, and growth")
@@ -105,15 +105,15 @@ struct AIReflectView: View {
             Button(action: { showJournalSelection = true }) {
                 HStack(spacing: Papper.spacing.sm) {
                     Image(systemName: "sparkles")
-                        .font(.system(size: 18))
+                        .font(PapperTypography.cardTitle())
                     Text("Start Analysis")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(PapperTypography.cardTitle())
                 }
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .frame(height: 54)
                 .background(PapperColors.neutral700)
-                .cornerRadius(14)
+                .cornerRadius(PapperComponents.CornerRadius.medium)
             }
             .padding(.horizontal, Papper.spacing.xl)
             .padding(.top, Papper.spacing.xxl)
@@ -176,7 +176,7 @@ struct AIReflectView: View {
                 // Input field with prominent styling
                 HStack {
                     TextField("Share your thoughts...", text: $viewModel.inputText)
-                        .font(.system(size: 16))
+                        .font(PapperTypography.cardBody())
                         .focused($isInputFocused)
                 }
                 .padding(.horizontal, Papper.spacing.md)
@@ -203,7 +203,7 @@ struct AIReflectView: View {
                             .frame(width: 44, height: 44)
                         
                         Image(systemName: "arrow.up")
-                            .font(.system(size: 18, weight: .semibold))
+                            .font(PapperTypography.cardTitle())
                             .foregroundColor(.white)
                     }
                 }
@@ -213,7 +213,7 @@ struct AIReflectView: View {
             .padding(.top, Papper.spacing.md)
             .padding(.bottom, 70) // Extra padding to clear custom tab bar
         }
-        .background(Color(hex: "#faf8f3"))
+        .background(PapperColors.backgroundWarm)
     }
 }
 
@@ -232,15 +232,15 @@ struct MessageBubble: View {
             
             VStack(alignment: isUser ? .trailing : .leading, spacing: 4) {
                 Text(message.content)
-                    .font(.system(size: 15))
+                    .font(PapperTypography.bodyText())
                     .foregroundColor(isUser ? .white : PapperColors.neutral800)
                     .padding(.horizontal, Papper.spacing.md)
                     .padding(.vertical, Papper.spacing.sm)
                     .background(isUser ? PapperColors.neutral700 : PapperColors.surfaceBackgroundPlain)
-                    .cornerRadius(16)
+                    .cornerRadius(PapperComponents.CornerRadius.card)
                 
                 Text(message.createdAt.timeString)
-                    .font(.system(size: 10))
+                    .font(PapperTypography.bodySmallText())
                     .foregroundColor(PapperColors.neutral400)
             }
             .frame(maxWidth: 280, alignment: isUser ? .trailing : .leading)
@@ -274,7 +274,7 @@ struct TypingIndicator: View {
         .padding(.horizontal, Papper.spacing.md)
         .padding(.vertical, Papper.spacing.sm)
         .background(PapperColors.surfaceBackgroundPlain)
-        .cornerRadius(16)
+        .cornerRadius(PapperComponents.CornerRadius.card)
         .onAppear {
             animationAmount = 1.0
         }
@@ -301,7 +301,7 @@ struct AnalysisLoadingView: View {
     
     var body: some View {
         ZStack {
-            Color(hex: "#faf8f3")
+            PapperColors.backgroundWarm
                 .ignoresSafeArea()
             
             VStack(spacing: Papper.spacing.xxl) {
@@ -344,7 +344,7 @@ struct AnalysisLoadingView: View {
                     
                     // Analyzing Text
                     Text("Analyzing your journals...")
-                        .font(.system(size: 14, weight: .medium))
+                        .font(PapperTypography.bodyTitleBold())
                         .foregroundColor(PapperColors.neutral600)
                 }
                 .padding(.bottom, Papper.spacing.xxxl)
@@ -371,7 +371,7 @@ struct JournalAnalysisSelectionView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color(hex: "#faf8f3")
+                PapperColors.backgroundWarm
                     .ignoresSafeArea()
                 
                 if viewModel.isAnalyzing {
@@ -419,7 +419,7 @@ struct JournalAnalysisSelectionView: View {
                         Button("Deselect All") {
                             viewModel.deselectAllJournals()
                         }
-                        .font(.system(size: 14, weight: .medium))
+                        .font(PapperTypography.bodyTitleBold())
                         .foregroundColor(PapperColors.neutral500)
                         
                         Spacer()
@@ -427,7 +427,7 @@ struct JournalAnalysisSelectionView: View {
                         Button("Select All") {
                             viewModel.selectAllJournals()
                         }
-                        .font(.system(size: 14, weight: .medium))
+                        .font(PapperTypography.bodyTitleBold())
                         .foregroundColor(PapperColors.neutral700)
                     }
                     .padding(.horizontal, Papper.spacing.lg)
@@ -458,16 +458,16 @@ struct JournalAnalysisSelectionView: View {
                         Image(systemName: "sparkles")
                         Text("Analyze \(viewModel.selectedJournals.count) Journal\(viewModel.selectedJournals.count == 1 ? "" : "s")")
                     }
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(PapperTypography.cardTitle())
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .frame(height: 54)
                     .background(viewModel.selectedJournals.isEmpty ? PapperColors.neutral400 : PapperColors.neutral700)
-                    .cornerRadius(14)
+                    .cornerRadius(PapperComponents.CornerRadius.medium)
                 }
                 .disabled(viewModel.selectedJournals.isEmpty)
                 .padding(Papper.spacing.lg)
-                .background(Color(hex: "#faf8f3"))
+                .background(PapperColors.backgroundWarm)
             }
         }
     }
@@ -487,7 +487,7 @@ struct JournalSelectionRow: View {
                 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(journal.name)
-                        .font(.system(size: 16, weight: .medium))
+                        .font(PapperTypography.cardBody())
                         .foregroundColor(PapperColors.neutral800)
                     
                     Text("\(journal.entryCount) entries")
@@ -508,14 +508,14 @@ struct JournalSelectionRow: View {
                             .frame(width: 16, height: 16)
                         
                         Image(systemName: "checkmark")
-                            .font(.system(size: 10, weight: .bold))
+                            .font(PapperTypography.bodySmallText())
                             .foregroundColor(.white)
                     }
                 }
             }
             .padding(Papper.spacing.md)
             .background(isSelected ? PapperColors.neutral100 : PapperColors.surfaceBackgroundPlain)
-            .cornerRadius(12)
+            .cornerRadius(PapperComponents.CornerRadius.medium)
         }
     }
 }
@@ -532,7 +532,7 @@ struct ConversationHistoryView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color(hex: "#faf8f3")
+                PapperColors.backgroundWarm
                     .ignoresSafeArea()
                 
                 if viewModel.conversations.isEmpty {
@@ -589,15 +589,15 @@ struct ConversationHistoryView: View {
                                     Image(systemName: "trash")
                                     Text("Delete \(selectedConversations.count) Conversation\(selectedConversations.count == 1 ? "" : "s")")
                                 }
-                                .font(.system(size: 16, weight: .semibold))
+                                .font(PapperTypography.cardTitle())
                                 .foregroundColor(.white)
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 54)
                                 .background(Color.red)
-                                .cornerRadius(14)
+                                .cornerRadius(PapperComponents.CornerRadius.medium)
                             }
                             .padding(Papper.spacing.lg)
-                            .background(Color(hex: "#faf8f3"))
+                            .background(PapperColors.backgroundWarm)
                             .transition(.move(edge: .bottom).combined(with: .opacity))
                         }
                     }
@@ -686,7 +686,7 @@ struct ConversationRow: View {
                             .frame(width: 16, height: 16)
                         
                         Image(systemName: "checkmark")
-                            .font(.system(size: 10, weight: .bold))
+                            .font(PapperTypography.bodySmallText())
                             .foregroundColor(.white)
                     }
                 }
@@ -696,7 +696,7 @@ struct ConversationRow: View {
             VStack(alignment: .leading, spacing: Papper.spacing.xs) {
                 HStack {
                     Text(conversation.title)
-                        .font(.system(size: 16, weight: .medium))
+                        .font(PapperTypography.cardBody())
                         .foregroundColor(PapperColors.neutral800)
                     
                     Spacer()
@@ -719,19 +719,19 @@ struct ConversationRow: View {
                     // Show message count from metadata if available
                     if conversation.messageCount > 0 {
                         Text("\(conversation.messageCount)")
-                            .font(.system(size: 11, weight: .medium))
+                            .font(PapperTypography.bodySmallText())
                             .foregroundColor(PapperColors.neutral500)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
                             .background(PapperColors.neutral200b)
-                            .cornerRadius(8)
+                            .cornerRadius(PapperComponents.CornerRadius.small)
                     }
                 }
             }
         }
         .padding(Papper.spacing.md)
         .background(isSelected ? PapperColors.neutral100 : PapperColors.surfaceBackgroundPlain)
-        .cornerRadius(12)
+        .cornerRadius(PapperComponents.CornerRadius.medium)
         .animation(.easeInOut(duration: 0.15), value: isSelected)
     }
 }

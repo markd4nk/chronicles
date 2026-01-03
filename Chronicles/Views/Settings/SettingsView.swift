@@ -45,7 +45,7 @@ struct SettingsView: View {
             .padding(.horizontal, Papper.spacing.lg)
             .padding(.vertical, Papper.spacing.md)
         }
-        .background(Color(hex: "#faf8f3").ignoresSafeArea())
+        .background(PapperColors.backgroundWarm.ignoresSafeArea())
         .navigationTitle("Settings")
         .alert("Sign Out", isPresented: $showSignOutAlert) {
             Button("Cancel", role: .cancel) { }
@@ -80,7 +80,7 @@ struct SettingsView: View {
             // Name & Email
             VStack(spacing: Papper.spacing.xxs) {
                 Text(authService.currentUser?.displayName ?? "User")
-                    .font(.system(size: 20, weight: .bold))
+                    .font(PapperTypography.paywallSubtitleLarge())
                     .foregroundColor(PapperColors.neutral800)
                 
                 Text(authService.currentUser?.email ?? "")
@@ -91,7 +91,7 @@ struct SettingsView: View {
         .frame(maxWidth: .infinity)
         .padding(Papper.spacing.xl)
         .background(PapperColors.surfaceBackgroundPlain)
-        .cornerRadius(16)
+        .cornerRadius(PapperComponents.CornerRadius.card)
         .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 2)
     }
     
@@ -145,7 +145,7 @@ struct SettingsView: View {
                 HStack {
                     VStack(alignment: .leading, spacing: Papper.spacing.xxs) {
                         Text(subscriptionService.isInTrial ? "Free Trial" : "Premium Member")
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(PapperTypography.cardTitle())
                             .foregroundColor(PapperColors.neutral800)
                         
                         if subscriptionService.isInTrial {
@@ -167,7 +167,7 @@ struct SettingsView: View {
                         .padding(.horizontal, Papper.spacing.sm)
                         .padding(.vertical, 4)
                         .background((subscriptionService.isSubscribed ? PapperColors.green400 : PapperColors.pink600).opacity(0.15))
-                        .cornerRadius(8)
+                        .cornerRadius(PapperComponents.CornerRadius.small)
                 }
                 
                 Divider()
@@ -182,7 +182,7 @@ struct SettingsView: View {
             }
             .padding(Papper.spacing.md)
             .background(PapperColors.surfaceBackgroundPlain)
-            .cornerRadius(14)
+            .cornerRadius(PapperComponents.CornerRadius.medium)
             .shadow(color: Color.black.opacity(0.04), radius: 4, x: 0, y: 2)
         }
     }
@@ -231,7 +231,7 @@ struct SettingsView: View {
                 )
             }
             .background(PapperColors.surfaceBackgroundPlain)
-            .cornerRadius(14)
+            .cornerRadius(PapperComponents.CornerRadius.medium)
             .shadow(color: Color.black.opacity(0.04), radius: 4, x: 0, y: 2)
         }
     }
@@ -281,7 +281,7 @@ struct SettingsView: View {
                 }
             }
             .background(PapperColors.surfaceBackgroundPlain)
-            .cornerRadius(14)
+            .cornerRadius(PapperComponents.CornerRadius.medium)
             .shadow(color: Color.black.opacity(0.04), radius: 4, x: 0, y: 2)
         }
     }
@@ -292,15 +292,15 @@ struct SettingsView: View {
         Button(action: { showSignOutAlert = true }) {
             HStack {
                 Image(systemName: "rectangle.portrait.and.arrow.right")
-                    .font(.system(size: 18))
+                    .font(PapperTypography.cardTitle())
                 Text("Sign Out")
-                    .font(.system(size: 16, weight: .medium))
+                    .font(PapperTypography.cardBody())
             }
             .foregroundColor(PapperColors.pink600)
             .frame(maxWidth: .infinity)
             .padding(Papper.spacing.md)
             .background(PapperColors.surfaceBackgroundPlain)
-            .cornerRadius(14)
+            .cornerRadius(PapperComponents.CornerRadius.medium)
             .shadow(color: Color.black.opacity(0.04), radius: 4, x: 0, y: 2)
         }
         .padding(.bottom, Papper.spacing.xl)
@@ -321,7 +321,7 @@ struct SettingsSection<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Papper.spacing.sm) {
             Text(title.uppercased())
-                .font(.system(size: 12, weight: .medium))
+                .font(PapperTypography.bodySmallText())
                 .foregroundColor(PapperColors.neutral500)
                 .padding(.leading, 4)
             
@@ -340,13 +340,13 @@ struct SettingsRow: View {
     var body: some View {
         HStack(spacing: Papper.spacing.sm) {
             Image(systemName: icon)
-                .font(.system(size: 18))
+                .font(PapperTypography.cardTitle())
                 .foregroundColor(PapperColors.neutral700)
                 .frame(width: 28)
             
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.system(size: 15))
+                    .font(PapperTypography.bodyText())
                     .foregroundColor(PapperColors.neutral800)
                 
                 if let subtitle = subtitle {
@@ -366,7 +366,7 @@ struct SettingsRow: View {
             
             if showChevron {
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .medium))
+                    .font(PapperTypography.bodyTitleBold())
                     .foregroundColor(PapperColors.neutral400)
             }
         }
@@ -384,13 +384,13 @@ struct SettingsToggleRow: View {
     var body: some View {
         HStack(spacing: Papper.spacing.sm) {
             Image(systemName: icon)
-                .font(.system(size: 18))
+                .font(PapperTypography.cardTitle())
                 .foregroundColor(PapperColors.neutral700)
                 .frame(width: 28)
             
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.system(size: 15))
+                    .font(PapperTypography.bodyText())
                     .foregroundColor(PapperColors.neutral800)
                 
                 if let subtitle = subtitle {
@@ -419,11 +419,11 @@ struct SettingsStatCard: View {
     var body: some View {
         VStack(spacing: Papper.spacing.xs) {
             Image(systemName: icon)
-                .font(.system(size: 18))
+                .font(PapperTypography.cardTitle())
                 .foregroundColor(color)
             
             Text(value)
-                .font(.system(size: 20, weight: .bold))
+                .font(PapperTypography.paywallSubtitleLarge())
                 .foregroundColor(PapperColors.neutral800)
             
             Text(label)
@@ -433,7 +433,7 @@ struct SettingsStatCard: View {
         .frame(maxWidth: .infinity)
         .padding(Papper.spacing.md)
         .background(PapperColors.surfaceBackgroundPlain)
-        .cornerRadius(14)
+        .cornerRadius(PapperComponents.CornerRadius.medium)
         .shadow(color: Color.black.opacity(0.04), radius: 4, x: 0, y: 2)
     }
 }

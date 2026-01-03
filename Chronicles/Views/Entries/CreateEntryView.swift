@@ -39,7 +39,7 @@ struct CreateEntryView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color(hex: "#faf8f3")
+                PapperColors.backgroundWarm
                     .ignoresSafeArea()
                 
                 VStack(spacing: 0) {
@@ -48,14 +48,14 @@ struct CreateEntryView: View {
                         VStack(alignment: .leading, spacing: Papper.spacing.md) {
                             // Text Editor
                             TextEditor(text: $content)
-                                .font(.system(size: 16))
+                                .font(PapperTypography.cardBody())
                                 .foregroundColor(PapperColors.neutral800)
                                 .scrollContentBackground(.hidden)
                                 .focused($isEditorFocused)
                                 .frame(minHeight: 350)
                                 .padding()
                                 .background(PapperColors.surfaceBackgroundPlain)
-                                .cornerRadius(16)
+                                .cornerRadius(PapperComponents.CornerRadius.card)
                         }
                         .padding(Papper.spacing.lg)
                         .padding(.top, Papper.spacing.md) // Minimal spacing below navigation bar
@@ -88,12 +88,12 @@ struct CreateEntryView: View {
                                 .frame(width: 8, height: 8)
                             
                             Text(journal.name)
-                                .font(.system(size: 15, weight: .medium))
+                                .font(PapperTypography.bodyText())
                                 .foregroundColor(PapperColors.neutral700)
                         }
                         
                         Text(Date(), format: .dateTime.weekday(.wide).month(.wide).day())
-                            .font(.system(size: 11))
+                            .font(PapperTypography.bodySmallText())
                             .foregroundColor(PapperColors.neutral500)
                     }
                 }
@@ -102,7 +102,7 @@ struct CreateEntryView: View {
                     Button("Save") {
                         saveEntry()
                     }
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(PapperTypography.cardTitle())
                     .foregroundColor(content.isEmpty || isSaving ? PapperColors.neutral400 : PapperColors.neutral700)
                     .disabled(content.isEmpty || isSaving)
                 }
@@ -199,7 +199,7 @@ struct CreateEntryView: View {
                 isEditorFocused = false
             }) {
                 Image(systemName: "chevron.down")
-                    .font(.system(size: 16, weight: .medium))
+                    .font(PapperTypography.cardBody())
                     .foregroundColor(isEditorFocused ? PapperColors.neutral700 : PapperColors.neutral400)
                     .frame(width: 40, height: 40)
                     .background(PapperColors.neutral100)
@@ -217,7 +217,7 @@ struct CreateEntryView: View {
                 }
             }) {
                 Image(systemName: "doc.text.viewfinder")
-                    .font(.system(size: 16))
+                    .font(PapperTypography.cardBody())
                     .foregroundColor(PapperColors.neutral700)
                     .frame(width: 40, height: 40)
                     .background(PapperColors.neutral100)
@@ -229,7 +229,7 @@ struct CreateEntryView: View {
                 showListeningView = true
             }) {
                 Image(systemName: "mic.fill")
-                    .font(.system(size: 16))
+                    .font(PapperTypography.cardBody())
                     .foregroundColor(PapperColors.neutral700)
                     .frame(width: 40, height: 40)
                     .background(PapperColors.neutral100)
@@ -239,7 +239,7 @@ struct CreateEntryView: View {
         .padding(.horizontal, Papper.spacing.lg)
         .padding(.vertical, Papper.spacing.sm)
         .background(
-            Color(hex: "#faf8f3")
+            PapperColors.backgroundWarm
                 .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: -4)
         )
     }
@@ -257,12 +257,12 @@ struct CreateEntryView: View {
                     .tint(PapperColors.neutral700)
                 
                 Text("Processing image...")
-                    .font(.system(size: 14, weight: .medium))
+                    .font(PapperTypography.bodyTitleBold())
                     .foregroundColor(PapperColors.neutral700)
             }
             .padding(Papper.spacing.xl)
             .background(PapperColors.surfaceBackgroundPlain)
-            .cornerRadius(16)
+            .cornerRadius(PapperComponents.CornerRadius.card)
         }
     }
     
@@ -424,7 +424,7 @@ struct ScanActionSheet: View {
             
             VStack(spacing: Papper.spacing.sm) {
                 Text("Add from Photo")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(PapperTypography.bodyText())
                     .foregroundColor(PapperColors.neutral500)
                     .padding(.top, Papper.spacing.md)
                 
@@ -434,12 +434,12 @@ struct ScanActionSheet: View {
                         Button(action: onTakePhoto) {
                             HStack(spacing: Papper.spacing.md) {
                                 Image(systemName: "camera.fill")
-                                    .font(.system(size: 18))
+                                    .font(PapperTypography.cardTitle())
                                     .foregroundColor(PapperColors.neutral700)
                                     .frame(width: 24)
                                 
                                 Text("Take Photo")
-                                    .font(.system(size: 17))
+                                    .font(PapperTypography.cardBody())
                                     .foregroundColor(PapperColors.neutral800)
                                 
                                 Spacer()
@@ -457,12 +457,12 @@ struct ScanActionSheet: View {
                     Button(action: onChooseFromLibrary) {
                         HStack(spacing: Papper.spacing.md) {
                             Image(systemName: "photo.on.rectangle")
-                                .font(.system(size: 18))
+                                .font(PapperTypography.cardTitle())
                                 .foregroundColor(PapperColors.neutral700)
                                 .frame(width: 24)
                             
                             Text("Choose from Library")
-                                .font(.system(size: 17))
+                                .font(PapperTypography.cardBody())
                                 .foregroundColor(PapperColors.neutral800)
                             
                             Spacer()
@@ -473,24 +473,24 @@ struct ScanActionSheet: View {
                     }
                 }
                 .background(PapperColors.surfaceBackgroundPlain)
-                .cornerRadius(12)
+                .cornerRadius(PapperComponents.CornerRadius.medium)
                 .padding(.horizontal, Papper.spacing.lg)
                 
                 // Cancel button
                 Button(action: onCancel) {
                     Text("Cancel")
-                        .font(.system(size: 17, weight: .semibold))
+                        .font(PapperTypography.cardTitle())
                         .foregroundColor(PapperColors.neutral700)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, Papper.spacing.md)
                         .background(PapperColors.surfaceBackgroundPlain)
-                        .cornerRadius(12)
+                        .cornerRadius(PapperComponents.CornerRadius.medium)
                 }
                 .padding(.horizontal, Papper.spacing.lg)
                 .padding(.bottom, Papper.spacing.lg)
             }
         }
-        .background(Color(hex: "#faf8f3"))
+        .background(PapperColors.backgroundWarm)
     }
 }
 

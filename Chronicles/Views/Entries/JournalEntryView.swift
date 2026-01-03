@@ -20,7 +20,7 @@ struct JournalEntryView: View {
     
     var body: some View {
         ZStack {
-            Color(hex: "#faf8f3")
+            PapperColors.backgroundWarm
                 .ignoresSafeArea()
             
             ScrollView(showsIndicators: false) {
@@ -157,7 +157,7 @@ struct JournalEntryView: View {
         }
         .padding(Papper.spacing.lg)
         .background(PapperColors.surfaceBackgroundPlain)
-        .cornerRadius(16)
+        .cornerRadius(PapperComponents.CornerRadius.card)
         .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 2)
     }
     
@@ -174,7 +174,7 @@ struct JournalEntryView: View {
             .padding(Papper.spacing.lg)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(PapperColors.surfaceBackgroundPlain)
-            .cornerRadius(16)
+            .cornerRadius(PapperComponents.CornerRadius.card)
             .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 2)
         }
         .buttonStyle(PlainButtonStyle())
@@ -200,7 +200,7 @@ struct JournalEntryView: View {
         .padding(Papper.spacing.lg)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(PapperColors.surfaceBackgroundPlain)
-        .cornerRadius(16)
+        .cornerRadius(PapperComponents.CornerRadius.card)
         .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 2)
     }
     

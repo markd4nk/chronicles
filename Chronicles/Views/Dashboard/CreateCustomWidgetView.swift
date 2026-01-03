@@ -31,7 +31,7 @@ struct CreateCustomWidgetView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color(hex: "#faf8f3")
+                PapperColors.backgroundWarm
                     .ignoresSafeArea()
                     .onTapGesture {
                         isInputFocused = false
@@ -128,7 +128,7 @@ struct CreateCustomWidgetView: View {
             .padding(Papper.spacing.md)
             .frame(width: 150, height: 120, alignment: .leading)
             .background(PapperColors.surfaceBackgroundPlain)
-            .cornerRadius(16)
+            .cornerRadius(PapperComponents.CornerRadius.card)
             .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 2)
         }
         .frame(maxWidth: .infinity, alignment: .center)
@@ -146,7 +146,7 @@ struct CreateCustomWidgetView: View {
                 .font(.system(size: 16))
                 .padding()
                 .background(PapperColors.surfaceBackgroundPlain)
-                .cornerRadius(12)
+                .cornerRadius(PapperComponents.CornerRadius.medium)
                 .focused($isInputFocused)
         }
     }
@@ -168,7 +168,7 @@ struct CreateCustomWidgetView: View {
                 .frame(minHeight: 80)
                 .padding()
                 .background(PapperColors.surfaceBackgroundPlain)
-                .cornerRadius(12)
+                .cornerRadius(PapperComponents.CornerRadius.medium)
                 .focused($isInputFocused)
         }
     }
@@ -216,7 +216,7 @@ struct CreateCustomWidgetView: View {
                 }
                 .padding()
                 .background(PapperColors.surfaceBackgroundPlain)
-                .cornerRadius(12)
+                .cornerRadius(PapperComponents.CornerRadius.medium)
             }
         }
     }
@@ -244,7 +244,7 @@ struct CreateCustomWidgetView: View {
                 .frame(minHeight: 60)
                 .padding()
                 .background(PapperColors.surfaceBackgroundPlain)
-                .cornerRadius(12)
+                .cornerRadius(PapperComponents.CornerRadius.medium)
                 .focused($isInputFocused)
         }
     }
@@ -287,7 +287,7 @@ struct CreateCustomWidgetView: View {
             }
             .padding()
             .background(PapperColors.surfaceBackgroundPlain)
-            .cornerRadius(12)
+            .cornerRadius(PapperComponents.CornerRadius.medium)
         }
     }
     
@@ -332,7 +332,7 @@ struct CreateCustomWidgetView: View {
             }
             .padding()
             .background(PapperColors.surfaceBackgroundPlain)
-            .cornerRadius(12)
+            .cornerRadius(PapperComponents.CornerRadius.medium)
         }
         .animation(.spring(response: 0.25), value: selectedColor)
     }

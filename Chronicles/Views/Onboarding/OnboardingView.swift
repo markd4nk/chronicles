@@ -142,7 +142,7 @@ struct OnboardingView: View {
                 .padding(.horizontal, Papper.spacing.xl)
                 .padding(.vertical, Papper.spacing.sm)
                 .background(viewModel.canProceed ? PapperColors.neutral700 : PapperColors.neutral400)
-                .cornerRadius(12)
+                .cornerRadius(PapperComponents.CornerRadius.medium)
             }
             .disabled(!viewModel.canProceed)
             
@@ -264,7 +264,7 @@ struct ReminderIntroStep: View {
             }
             .padding(Papper.spacing.md)
             .background(PapperColors.surfaceBackgroundPlain.opacity(0.8))
-            .cornerRadius(12)
+            .cornerRadius(PapperComponents.CornerRadius.medium)
             
             Spacer()
             Spacer()
@@ -305,7 +305,7 @@ struct MorningReminderStep: View {
                 .tint(PapperColors.neutral700)
                 .padding()
                 .background(PapperColors.surfaceBackgroundPlain)
-                .cornerRadius(16)
+                .cornerRadius(PapperComponents.CornerRadius.card)
                 .overlay(
                     RoundedRectangle(cornerRadius: 16)
                         .stroke(PapperColors.neutral300, lineWidth: 1)
@@ -326,7 +326,7 @@ struct MorningReminderStep: View {
                     }
                     .padding()
                     .background(PapperColors.grayblue200.opacity(0.3))
-                    .cornerRadius(16)
+                    .cornerRadius(PapperComponents.CornerRadius.card)
                     .transition(.opacity.combined(with: .scale(scale: 0.95)))
                 }
             }
@@ -370,7 +370,7 @@ struct EveningReminderStep: View {
                 .tint(PapperColors.neutral700)
                 .padding()
                 .background(PapperColors.surfaceBackgroundPlain)
-                .cornerRadius(16)
+                .cornerRadius(PapperComponents.CornerRadius.card)
                 .overlay(
                     RoundedRectangle(cornerRadius: 16)
                         .stroke(PapperColors.neutral300, lineWidth: 1)
@@ -391,7 +391,7 @@ struct EveningReminderStep: View {
                     }
                     .padding()
                     .background(PapperColors.grayblue200.opacity(0.3))
-                    .cornerRadius(16)
+                    .cornerRadius(PapperComponents.CornerRadius.card)
                     .transition(.opacity.combined(with: .scale(scale: 0.95)))
                 }
             }
@@ -449,7 +449,7 @@ struct NotificationStep: View {
                 .frame(maxWidth: .infinity)
                 .frame(height: 54)
                 .background(PapperColors.neutral700)
-                .cornerRadius(14)
+                .cornerRadius(PapperComponents.CornerRadius.medium)
             }
             .padding(.horizontal, Papper.spacing.xl)
             .animation(.spring(response: 0.3, dampingFraction: 0.7), value: viewModel.notificationsEnabled)

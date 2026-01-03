@@ -66,7 +66,7 @@ struct OnboardingSelectionCard: View {
             .padding(.horizontal, Papper.spacing.lg)
             .padding(.vertical, Papper.spacing.md)
             .background(isSelected ? selectedColor : PapperColors.surfaceBackgroundPlain)
-            .cornerRadius(16)
+            .cornerRadius(PapperComponents.CornerRadius.card)
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
                     .stroke(isSelected ? PapperColors.borderActive : PapperColors.neutral300, lineWidth: isSelected ? 2 : 1)
@@ -109,7 +109,7 @@ struct OnboardingMultiSelectCard: View {
             .padding(.vertical, Papper.spacing.md)
             .frame(maxWidth: .infinity, minHeight: 56)
             .background(isSelected ? backgroundColor : PapperColors.surfaceBackgroundPlain)
-            .cornerRadius(14)
+            .cornerRadius(PapperComponents.CornerRadius.medium)
             .overlay(
                 RoundedRectangle(cornerRadius: 14)
                     .stroke(isSelected ? PapperColors.borderActive : PapperColors.neutral300, lineWidth: isSelected ? 2 : 1)
@@ -162,7 +162,7 @@ struct OnboardingFeatureListItem: View {
 /// Full-screen solid background matching main app
 struct OnboardingGradientBackground: View {
     var body: some View {
-        Color(hex: "#faf8f3")
+        PapperColors.backgroundWarm
             .ignoresSafeArea()
     }
 }
@@ -191,7 +191,7 @@ struct OnboardingPrimaryButton: View {
             .frame(maxWidth: .infinity)
             .frame(height: 54)
             .background(isEnabled ? PapperColors.neutral700 : PapperColors.neutral400)
-            .cornerRadius(14)
+            .cornerRadius(PapperComponents.CornerRadius.medium)
         }
         .disabled(!isEnabled)
         .buttonStyle(.plain)
