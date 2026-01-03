@@ -8,13 +8,11 @@
 
 import SwiftUI
 import AVFoundation
-import Photos
 
 struct CreateEntryView: View {
     let journal: Journal
     var template: JournalTemplate? = nil
     var prompt: JournalPrompt? = nil
-    var onSaveComplete: (() -> Void)? = nil
     
     @StateObject private var viewModel = JournalViewModel()
     @Environment(\.dismiss) private var dismiss
@@ -28,46 +26,32 @@ struct CreateEntryView: View {
     @State private var selectedImage: UIImage?
     @State private var isProcessingOCR = false
     
-    // Permission states
-    @State private var showCameraPermissionAlert = false
-    @State private var showPhotoLibraryPermissionAlert = false
-    @State private var showCameraUnavailableAlert = false
-    @State private var cameraAvailable = UIImagePickerController.isSourceTypeAvailable(.camera)
-    
     @FocusState private var isEditorFocused: Bool
     
     var body: some View {
         NavigationView {
             ZStack {
-                PapperColors.backgroundWarm
+                Color(hex: "#faf8f3")
                     .ignoresSafeArea()
                 
-                VStack(spacing: 0) {
-                    // Main content - text editor always visible
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: Papper.spacing.md) {
-                            // Text Editor
-                            TextEditor(text: $content)
-                                .font(PapperTypography.cardBody())
-                                .foregroundColor(PapperColors.neutral800)
-                                .scrollContentBackground(.hidden)
-                                .focused($isEditorFocused)
-                                .frame(minHeight: 350)
-                                .padding()
-                                .background(PapperColors.surfaceBackgroundPlain)
-                                .cornerRadius(PapperComponents.CornerRadius.card)
-                        }
-                        .padding(Papper.spacing.lg)
-                        .padding(.top, Papper.spacing.md) // Minimal spacing below navigation bar
-                        .padding(.bottom, 60) // Space for bottom toolbar
+                // Main content - text editor always visible
+                ScrollView {
+                    VStack(alignment: .leading, spacing: Papper.spacing.md) {
+                        // Text Editor
+                        TextEditor(text: $content)
+                            .font(.system(size: 16))
+                            .foregroundColor(PapperColors.neutral800)
+                            .scrollContentBackground(.hidden)
+                            .frame(minHeight: 350)
+                            .padding()
+                            .background(PapperColors.surfaceBackgroundPlain)
+                            .cornerRadius(16)
+                            .focused($isEditorFocused)
                     }
-                    .scrollDismissesKeyboard(.interactively)
-                    .onTapGesture {
-                        isEditorFocused = true
-                    }
-                    
-                    // Fixed bottom toolbar
-                    bottomToolbar
+                    .padding(Papper.spacing.lg)
+                }
+                .onTapGesture {
+                    isEditorFocused = true
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -88,12 +72,12 @@ struct CreateEntryView: View {
                                 .frame(width: 8, height: 8)
                             
                             Text(journal.name)
-                                .font(PapperTypography.bodyText())
+                                .font(.system(size: 15, weight: .medium))
                                 .foregroundColor(PapperColors.neutral700)
                         }
                         
                         Text(Date(), format: .dateTime.weekday(.wide).month(.wide).day())
-                            .font(PapperTypography.bodySmallText())
+                            .font(.system(size: 11))
                             .foregroundColor(PapperColors.neutral500)
                     }
                 }
@@ -102,71 +86,99 @@ struct CreateEntryView: View {
                     Button("Save") {
                         saveEntry()
                     }
-                    .font(PapperTypography.cardTitle())
+                    .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(content.isEmpty || isSaving ? PapperColors.neutral400 : PapperColors.neutral700)
                     .disabled(content.isEmpty || isSaving)
                 }
+                
+                // Keyboard toolbar with dismiss and action buttons
+                ToolbarItemGroup(placement: .keyboard) {
+                    // Left: Dismiss keyboard button
+                    Button(action: {
+                        isEditorFocused = false
+                    }) {
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(PapperColors.neutral700)
+                            .frame(width: 32, height: 32)
+                            .background(PapperColors.neutral100)
+                            .clipShape(Circle())
+                    }
+                    
+                    Spacer()
+                    
+                    // Right: Scan button
+                    Button(action: {
+                        // Dismiss keyboard first, then show dialog after animation completes
+                        isEditorFocused = false
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                            showScanActionSheet = true
+                        }
+                    }) {
+                        Image(systemName: "doc.text.viewfinder")
+                            .font(.system(size: 16))
+                            .foregroundColor(PapperColors.neutral700)
+                            .frame(width: 32, height: 32)
+                            .background(PapperColors.neutral100)
+                            .clipShape(Circle())
+                    }
+                    
+                    // Right: Speak button
+                    Button(action: {
+                        showListeningView = true
+                    }) {
+                        Image(systemName: "mic.fill")
+                            .font(.system(size: 16))
+                            .foregroundColor(PapperColors.neutral700)
+                            .frame(width: 32, height: 32)
+                            .background(PapperColors.neutral100)
+                            .clipShape(Circle())
+                    }
+                }
             }
             .task {
-                // Setup template content
+                // #region agent log
+                let ts = Date().timeIntervalSince1970 * 1000
+                let payload: [String: Any] = [
+                    "sessionId": "debug-session",
+                    "runId": "run1",
+                    "hypothesisId": "NAV2",
+                    "location": "CreateEntryView.swift:task",
+                    "message": "taskStarted",
+                    "data": [
+                        "journalIdLength": journal.id.count
+                    ],
+                    "timestamp": ts
+                ]
+                if let raw = try? JSONSerialization.data(withJSONObject: payload),
+                   let s = String(data: raw, encoding: .utf8) {
+                    NSLog("%@", s)
+                }
+                // #endregion
+                // Setup template content (non-blocking)
                 setupFromTemplate()
                 
-                // Brief delay for view to render before keyboard
+                // Brief delay for view to fully render before keyboard
                 try? await Task.sleep(nanoseconds: 50_000_000) // 0.05s
                 await MainActor.run {
                     isEditorFocused = true
                 }
+
             }
-            .sheet(isPresented: $showScanActionSheet) {
-                ScanActionSheet(
-                    cameraAvailable: cameraAvailable,
-                    onTakePhoto: {
-                        showScanActionSheet = false
-                        requestCameraAccess()
-                    },
-                    onChooseFromLibrary: {
-                        showScanActionSheet = false
-                        requestPhotoLibraryAccess()
-                    },
-                    onCancel: {
-                        showScanActionSheet = false
-                    }
-                )
-                .presentationDetents([.height(cameraAvailable ? 220 : 160)])
-                .presentationDragIndicator(.visible)
+            .confirmationDialog("Add from Photo", isPresented: $showScanActionSheet, titleVisibility: .visible) {
+                Button("Take Photo") {
+                    showCamera = true
+                }
+                Button("Choose from Library") {
+                    showImagePicker = true
+                }
+                Button("Cancel", role: .cancel) { }
             }
             .sheet(isPresented: $showImagePicker) {
                 ImagePicker(image: $selectedImage, sourceType: .photoLibrary)
             }
             .sheet(isPresented: $showCamera) {
-                if cameraAvailable {
-                    ImagePicker(image: $selectedImage, sourceType: .camera)
-                }
-            }
-            .alert("Camera Access Required", isPresented: $showCameraPermissionAlert) {
-                Button("Open Settings") {
-                    if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
-                        UIApplication.shared.open(settingsURL)
-                    }
-                }
-                Button("Cancel", role: .cancel) { }
-            } message: {
-                Text("Please allow camera access in Settings to take photos for scanning.")
-            }
-            .alert("Photo Library Access Required", isPresented: $showPhotoLibraryPermissionAlert) {
-                Button("Open Settings") {
-                    if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
-                        UIApplication.shared.open(settingsURL)
-                    }
-                }
-                Button("Cancel", role: .cancel) { }
-            } message: {
-                Text("Please allow photo library access in Settings to choose images for scanning.")
-            }
-            .alert("Camera Unavailable", isPresented: $showCameraUnavailableAlert) {
-                Button("OK", role: .cancel) { }
-            } message: {
-                Text("Camera is not available on this device. Please use 'Choose from Library' instead.")
+                ImagePicker(image: $selectedImage, sourceType: .camera)
             }
             .fullScreenCover(isPresented: $showListeningView) {
                 SpeakListeningView(onComplete: { transcribedText in
@@ -190,60 +202,6 @@ struct CreateEntryView: View {
         }
     }
     
-    // MARK: - Bottom Toolbar
-    
-    private var bottomToolbar: some View {
-        HStack(spacing: Papper.spacing.md) {
-            // Dismiss keyboard button
-            Button(action: {
-                isEditorFocused = false
-            }) {
-                Image(systemName: "chevron.down")
-                    .font(PapperTypography.cardBody())
-                    .foregroundColor(isEditorFocused ? PapperColors.neutral700 : PapperColors.neutral400)
-                    .frame(width: 40, height: 40)
-                    .background(PapperColors.neutral100)
-                    .clipShape(Circle())
-            }
-            .disabled(!isEditorFocused)
-            
-            Spacer()
-            
-            // Scan button
-            Button(action: {
-                isEditorFocused = false
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                    showScanActionSheet = true
-                }
-            }) {
-                Image(systemName: "doc.text.viewfinder")
-                    .font(PapperTypography.cardBody())
-                    .foregroundColor(PapperColors.neutral700)
-                    .frame(width: 40, height: 40)
-                    .background(PapperColors.neutral100)
-                    .clipShape(Circle())
-            }
-            
-            // Mic button
-            Button(action: {
-                showListeningView = true
-            }) {
-                Image(systemName: "mic.fill")
-                    .font(PapperTypography.cardBody())
-                    .foregroundColor(PapperColors.neutral700)
-                    .frame(width: 40, height: 40)
-                    .background(PapperColors.neutral100)
-                    .clipShape(Circle())
-            }
-        }
-        .padding(.horizontal, Papper.spacing.lg)
-        .padding(.vertical, Papper.spacing.sm)
-        .background(
-            PapperColors.backgroundWarm
-                .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: -4)
-        )
-    }
-    
     // MARK: - Loading Overlay
     
     private var loadingOverlay: some View {
@@ -257,12 +215,12 @@ struct CreateEntryView: View {
                     .tint(PapperColors.neutral700)
                 
                 Text("Processing image...")
-                    .font(PapperTypography.bodyTitleBold())
+                    .font(.system(size: 14, weight: .medium))
                     .foregroundColor(PapperColors.neutral700)
             }
             .padding(Papper.spacing.xl)
             .background(PapperColors.surfaceBackgroundPlain)
-            .cornerRadius(PapperComponents.CornerRadius.card)
+            .cornerRadius(16)
         }
     }
     
@@ -322,9 +280,9 @@ struct CreateEntryView: View {
                 promptId: prompt?.id
             )
             
-            // STEP 2: Switch tab and dismiss sheet - fullScreenCover auto-dismisses with sheet
+            // STEP 2: Dismiss immediately - user sees instant feedback
             await MainActor.run {
-                onSaveComplete?()
+                dismiss()
             }
             
             // STEP 3: Generate AI title in background and update quietly
@@ -352,146 +310,6 @@ struct CreateEntryView: View {
             print("Background title generation failed: \(error.localizedDescription)")
         }
     }
-    
-    // MARK: - Permission Handling
-    
-    private func requestCameraAccess() {
-        // First check if camera hardware is available
-        guard UIImagePickerController.isSourceTypeAvailable(.camera) else {
-            showCameraUnavailableAlert = true
-            return
-        }
-        
-        let status = AVCaptureDevice.authorizationStatus(for: .video)
-        
-        switch status {
-        case .notDetermined:
-            // Request permission
-            AVCaptureDevice.requestAccess(for: .video) { granted in
-                DispatchQueue.main.async {
-                    if granted {
-                        showCamera = true
-                    } else {
-                        showCameraPermissionAlert = true
-                    }
-                }
-            }
-        case .authorized:
-            showCamera = true
-        case .denied, .restricted:
-            showCameraPermissionAlert = true
-        @unknown default:
-            showCameraPermissionAlert = true
-        }
-    }
-    
-    private func requestPhotoLibraryAccess() {
-        let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
-        
-        switch status {
-        case .notDetermined:
-            // Request permission
-            PHPhotoLibrary.requestAuthorization(for: .readWrite) { newStatus in
-                DispatchQueue.main.async {
-                    if newStatus == .authorized || newStatus == .limited {
-                        showImagePicker = true
-                    } else {
-                        showPhotoLibraryPermissionAlert = true
-                    }
-                }
-            }
-        case .authorized, .limited:
-            showImagePicker = true
-        case .denied, .restricted:
-            showPhotoLibraryPermissionAlert = true
-        @unknown default:
-            showPhotoLibraryPermissionAlert = true
-        }
-    }
-}
-
-// MARK: - Scan Action Sheet
-
-struct ScanActionSheet: View {
-    let cameraAvailable: Bool
-    let onTakePhoto: () -> Void
-    let onChooseFromLibrary: () -> Void
-    let onCancel: () -> Void
-    
-    var body: some View {
-        VStack(spacing: 0) {
-            // Drag indicator is handled by presentationDragIndicator
-            
-            VStack(spacing: Papper.spacing.sm) {
-                Text("Add from Photo")
-                    .font(PapperTypography.bodyText())
-                    .foregroundColor(PapperColors.neutral500)
-                    .padding(.top, Papper.spacing.md)
-                
-                VStack(spacing: 0) {
-                    // Take Photo option - only show if camera is available
-                    if cameraAvailable {
-                        Button(action: onTakePhoto) {
-                            HStack(spacing: Papper.spacing.md) {
-                                Image(systemName: "camera.fill")
-                                    .font(PapperTypography.cardTitle())
-                                    .foregroundColor(PapperColors.neutral700)
-                                    .frame(width: 24)
-                                
-                                Text("Take Photo")
-                                    .font(PapperTypography.cardBody())
-                                    .foregroundColor(PapperColors.neutral800)
-                                
-                                Spacer()
-                            }
-                            .padding(.horizontal, Papper.spacing.lg)
-                            .padding(.vertical, Papper.spacing.md)
-                            .background(PapperColors.surfaceBackgroundPlain)
-                        }
-                        
-                        Divider()
-                            .padding(.leading, 56)
-                    }
-                    
-                    // Choose from Library option
-                    Button(action: onChooseFromLibrary) {
-                        HStack(spacing: Papper.spacing.md) {
-                            Image(systemName: "photo.on.rectangle")
-                                .font(PapperTypography.cardTitle())
-                                .foregroundColor(PapperColors.neutral700)
-                                .frame(width: 24)
-                            
-                            Text("Choose from Library")
-                                .font(PapperTypography.cardBody())
-                                .foregroundColor(PapperColors.neutral800)
-                            
-                            Spacer()
-                        }
-                        .padding(.horizontal, Papper.spacing.lg)
-                        .padding(.vertical, Papper.spacing.md)
-                        .background(PapperColors.surfaceBackgroundPlain)
-                    }
-                }
-                .background(PapperColors.surfaceBackgroundPlain)
-                .cornerRadius(PapperComponents.CornerRadius.medium)
-                .padding(.horizontal, Papper.spacing.lg)
-                
-                // Cancel button
-                Button(action: onCancel) {
-                    Text("Cancel")
-                        .font(PapperTypography.cardTitle())
-                        .foregroundColor(PapperColors.neutral700)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, Papper.spacing.md)
-                        .background(PapperColors.surfaceBackgroundPlain)
-                        .cornerRadius(PapperComponents.CornerRadius.medium)
-                }
-                .padding(.horizontal, Papper.spacing.lg)
-                .padding(.bottom, Papper.spacing.lg)
-            }
-        }
-        .background(PapperColors.backgroundWarm)
-    }
 }
 
 // MARK: - Image Picker
@@ -503,14 +321,7 @@ struct ImagePicker: UIViewControllerRepresentable {
     
     func makeUIViewController(context: Context) -> UIImagePickerController {
         let picker = UIImagePickerController()
-        
-        // Safely set source type - fallback to photo library if camera unavailable
-        if sourceType == .camera && !UIImagePickerController.isSourceTypeAvailable(.camera) {
-            picker.sourceType = .photoLibrary
-        } else {
-            picker.sourceType = sourceType
-        }
-        
+        picker.sourceType = sourceType
         picker.delegate = context.coordinator
         return picker
     }

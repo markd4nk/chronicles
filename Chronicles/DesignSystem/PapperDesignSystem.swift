@@ -126,9 +126,6 @@ struct PapperColors {
     
     // MARK: - Semantic Colors - Surfaces
     
-    /// Warm cream background color (#faf8f3) - used as main app background
-    static let backgroundWarm = Color(hex: "#faf8f3")
-    
     static let surfaceButtonsPrimary = neutral700
     static let surfaceButtonsQuickAction = white60
     static let surfaceBackgroundPlain = neutral000
@@ -552,17 +549,6 @@ struct PapperComponents {
         static let taskWidth: CGFloat = 266
         static let mainRadius: CGFloat = 35
         static let discoveryRadius: CGFloat = 10
-    }
-    
-    // MARK: - Corner Radius Specifications
-    
-    struct CornerRadius {
-        static let small: CGFloat = 8      // Small elements, tags
-        static let medium: CGFloat = 12    // Buttons, inputs
-        static let card: CGFloat = 16      // Standard cards
-        static let large: CGFloat = 20     // Large cards
-        static let pill: CGFloat = 28      // Pill buttons
-        static let extraLarge: CGFloat = 35 // Main cards (same as Cards.mainRadius)
     }
     
     // MARK: - Border Specifications

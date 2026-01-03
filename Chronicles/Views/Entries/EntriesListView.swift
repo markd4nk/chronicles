@@ -76,7 +76,7 @@ struct EntriesListView: View {
     
     var body: some View {
         ZStack {
-            PapperColors.backgroundWarm
+            Color(hex: "#faf8f3")
                 .ignoresSafeArea()
             
             if !hasAnyEntries {
@@ -142,7 +142,7 @@ struct EntriesListView: View {
         }
         .padding(Papper.spacing.sm)
         .background(PapperColors.surfaceBackgroundPlain)
-        .cornerRadius(PapperComponents.CornerRadius.medium)
+        .cornerRadius(12)
         .shadow(color: Color.black.opacity(0.04), radius: 4, x: 0, y: 2)
     }
     
@@ -258,7 +258,7 @@ struct EntryListCard: View {
         }
         .padding(Papper.spacing.md)
         .background(PapperColors.surfaceBackgroundPlain)
-        .cornerRadius(PapperComponents.CornerRadius.medium)
+        .cornerRadius(14)
         .shadow(color: Color.black.opacity(0.03), radius: 4, x: 0, y: 1)
     }
 }

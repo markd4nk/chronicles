@@ -2,189 +2,52 @@
 //  DashboardView.swift
 //  Chronicles
 //
-//  Dashboard/Home view matching chronicles-preview.html design
+//  Dashboard view using Papper Design System
 //
 
 import SwiftUI
 
+// MARK: - Dashboard View
+
 struct DashboardView: View {
-    @StateObject private var viewModel = DashboardViewModel()
-    @State private var showSettings = false
-    @State private var showCreateEntry = false
-    @State private var selectedWidget: DashboardWidget?
-    @State private var showCreateCustomWidget = false
-    @State private var widgetToRemove: DashboardWidget?
-    @State private var showRemoveConfirmation = false
+    @State private var selectedDate = Date()
+    @State private var userName = "Mark"
+    
+    private var greeting: String {
+        let hour = Calendar.current.component(.hour, from: Date())
+        switch hour {
+        case 0..<12: return "Good Morning"
+        case 12..<17: return "Good Afternoon"
+        default: return "Good Evening"
+        }
+    }
+    
+    private var formattedDate: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEEE d MMMM yyyy"
+        return formatter.string(from: Date()).uppercased()
+    }
     
     var body: some View {
-        NavigationView {
-            ZStack {
-                // Background
-                PapperColors.backgroundWarm
-                    .ignoresSafeArea()
-                
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: Papper.spacing.xl) {
-                        // Header
-                        headerSection
-                        
-                        // Welcome Card
-                        welcomeCard
-                        
-                        // Quick Entry Widgets (2x2 Grid)
-                        if viewModel.isLoading && viewModel.activeWidgets.isEmpty {
-                            widgetsSkeletonLoader
-                        } else if viewModel.activeWidgets.isEmpty {
-                            emptyWidgetsState
-                        } else {
-                            widgetsGrid
-                        }
-                    }
-                    .padding(.horizontal, Papper.spacing.lg)
-                    .padding(.top, Papper.spacing.md)
-                    .padding(.bottom, 100)
-                }
-                .refreshable {
-                    await viewModel.refresh()
-                }
-                
-                // Error Toast
-                if let errorMessage = viewModel.errorMessage {
-                    VStack {
-                        Spacer()
-                        errorToast(message: errorMessage)
-                            .padding(.bottom, 120)
-                    }
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .animation(.spring(), value: viewModel.errorMessage)
-                }
-            }
-            .navigationBarHidden(true)
-            .sheet(isPresented: $showSettings) {
-                NavigationView {
-                    SettingsView()
-                }
-            }
-            .sheet(item: $selectedWidget) { widget in
-                CreateEntryFromWidgetView(widget: widget, viewModel: viewModel)
-            }
-            .sheet(isPresented: $showCreateCustomWidget) {
-                CreateCustomWidgetView(viewModel: viewModel)
-            }
-            .alert("Remove Widget", isPresented: $showRemoveConfirmation) {
-                Button("Cancel", role: .cancel) {
-                    widgetToRemove = nil
-                }
-                Button("Remove", role: .destructive) {
-                    if let widget = widgetToRemove {
-                        withAnimation(.spring(response: 0.3)) {
-                            viewModel.removeWidget(widget)
-                        }
-                    }
-                    widgetToRemove = nil
-                }
-            } message: {
-                Text("Are you sure you want to remove this widget from your dashboard?")
-            }
-        }
-    }
-    
-    // MARK: - Error Toast
-    
-    private func errorToast(message: String) -> some View {
-        HStack(spacing: Papper.spacing.sm) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundColor(.orange)
+        ZStack {
+            // Background gradient
+            PapperGradients.lightLinear
+                .ignoresSafeArea()
             
-            Text(message)
-                .font(PapperTypography.body)
-                .foregroundColor(PapperColors.neutral800)
-            
-            Spacer()
-            
-            Button {
-                viewModel.clearError()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(PapperTypography.bodySmallText())
-                    .foregroundColor(PapperColors.neutral500)
-            }
-        }
-        .padding(Papper.spacing.md)
-        .background(PapperColors.surfaceBackgroundPlain)
-        .cornerRadius(PapperComponents.CornerRadius.medium)
-        .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 4)
-        .padding(.horizontal, Papper.spacing.lg)
-    }
-    
-    // MARK: - Skeleton Loader
-    
-    private var widgetsSkeletonLoader: some View {
-        VStack(spacing: Papper.spacing.md) {
-            HStack {
-                Text("Today's Focus")
-                    .font(PapperTypography.cardTitle())
-                    .foregroundColor(PapperColors.neutral800)
-                
-                Spacer()
-            }
-            
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: Papper.spacing.md) {
-                ForEach(0..<4, id: \.self) { _ in
-                    SkeletonWidgetCard()
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: Papper.spacing.xl) {
+                    // Header Section
+                    headerSection
+                    
+                    // Weekly Calendar
+                    WeeklyCalendarView(selectedDate: $selectedDate)
+                    
+                    // Widgets Section
+                    widgetsSection
                 }
-            }
-        }
-    }
-    
-    // MARK: - Empty State
-    
-    private var emptyWidgetsState: some View {
-        VStack(spacing: Papper.spacing.lg) {
-            VStack(spacing: Papper.spacing.md) {
-                HStack {
-                    Text("Today's Focus")
-                        .font(PapperTypography.cardTitle())
-                        .foregroundColor(PapperColors.neutral800)
-                    
-                    Spacer()
-                }
-                
-                VStack(spacing: Papper.spacing.md) {
-                    Image(systemName: "rectangle.grid.2x2")
-                        .font(.system(size: 48))
-                        .foregroundColor(PapperColors.neutral300)
-                    
-                    Text("No widgets yet")
-                        .font(PapperTypography.cardBody())
-                        .foregroundColor(PapperColors.neutral600)
-                    
-                    Text("Create custom widgets to track your daily journaling habits")
-                        .font(PapperTypography.body)
-                        .foregroundColor(PapperColors.neutral500)
-                        .multilineTextAlignment(.center)
-                    
-                    Button {
-                        showCreateCustomWidget = true
-                    } label: {
-                        HStack(spacing: Papper.spacing.xs) {
-                            Image(systemName: "plus.circle.fill")
-                            Text("Add Widget")
-                        }
-                        .font(PapperTypography.bodyText())
-                        .foregroundColor(.white)
-                        .padding(.horizontal, Papper.spacing.lg)
-                        .padding(.vertical, Papper.spacing.sm)
-                        .background(PapperColors.neutral700)
-                        .cornerRadius(PapperComponents.CornerRadius.large)
-                    }
-                    .padding(.top, Papper.spacing.sm)
-                }
-                .padding(Papper.spacing.xl)
-                .frame(maxWidth: .infinity)
-                .background(PapperColors.surfaceBackgroundPlain)
-                .cornerRadius(PapperComponents.CornerRadius.card)
-                .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 2)
+                .padding(.horizontal, Papper.spacing.lg)
+                .padding(.top, Papper.spacing.md)
+                .padding(.bottom, Papper.spacing.xxxl)
             }
         }
     }
@@ -192,474 +55,351 @@ struct DashboardView: View {
     // MARK: - Header Section
     
     private var headerSection: some View {
-        HStack(alignment: .center) {
-            // Streak Badge
-            HStack(spacing: Papper.spacing.xs) {
-                Image(systemName: "flame.fill")
-                    .font(PapperTypography.cardBody())
-                    .foregroundColor(PapperColors.neutral700)
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: Papper.spacing.xxs) {
+                Text("\(greeting),")
+                    .font(Papper.typography.header2)
+                    .foregroundColor(Papper.colors.fontAccent)
                 
-                Text("\(viewModel.currentStreak)")
-                    .font(PapperTypography.cardTitle())
-                    .foregroundColor(PapperColors.neutral800)
+                Text(userName)
+                    .font(.system(size: 28, weight: .bold, design: .serif))
+                    .foregroundColor(Papper.colors.fontAccent)
+                
+                Text(formattedDate)
+                    .font(Papper.typography.bodySmall)
+                    .foregroundColor(Papper.colors.fontSecondary)
+                    .padding(.top, Papper.spacing.xxs)
             }
-            .padding(.horizontal, Papper.spacing.sm)
-            .padding(.vertical, Papper.spacing.xs)
-            .background(PapperColors.surfaceBackgroundPlain)
-            .cornerRadius(PapperComponents.CornerRadius.large)
-            .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
             
             Spacer()
             
-            // Settings Button
-            Button(action: { showSettings = true }) {
+            // Profile Button
+            Button(action: {}) {
                 ZStack {
                     Circle()
-                        .fill(PapperColors.surfaceBackgroundPlain)
-                        .frame(width: 40, height: 40)
-                        .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
+                        .fill(Papper.colors.surfaceBackgroundPlain)
+                        .frame(width: 44, height: 44)
+                        .papperSlightShadow()
                     
-                    Image(systemName: "gearshape.fill")
-                        .font(PapperTypography.cardTitle())
-                        .foregroundColor(PapperColors.neutral700)
+                    Image(systemName: "person.fill")
+                        .font(.system(size: 18))
+                        .foregroundColor(Papper.colors.fontMain)
                 }
             }
         }
     }
     
-    // MARK: - Welcome Card
+    // MARK: - Widgets Section
     
-    private var welcomeCard: some View {
-        VStack(alignment: .leading, spacing: Papper.spacing.xs) {
-            Text(viewModel.greeting + ",")
-                .font(PapperTypography.header2)
-                .foregroundColor(PapperColors.neutral600)
-            
-            Text(viewModel.userName)
-                .font(PapperTypography.headerDiscovery())
-                .foregroundColor(PapperColors.neutral800)
-            
-            Text(viewModel.formattedDate)
-                .font(PapperTypography.bodyText())
-                .foregroundColor(PapperColors.neutral500)
-                .padding(.top, Papper.spacing.xxs)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(Papper.spacing.lg)
-        .background(PapperColors.surfaceBackgroundPlain)
-        .cornerRadius(PapperComponents.CornerRadius.card)
-        .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 2)
-    }
-    
-    // MARK: - Widgets Grid (2x2)
-    
-    private var widgetsGrid: some View {
+    private var widgetsSection: some View {
         VStack(spacing: Papper.spacing.md) {
             // Section Header
             HStack {
                 Text("Today's Focus")
-                    .font(PapperTypography.cardTitle())
-                    .foregroundColor(PapperColors.neutral800)
+                    .font(Papper.typography.bodyTitle)
+                    .foregroundColor(Papper.colors.fontMain)
                 
                 Spacer()
-            }
-            
-            // 2x2 Grid
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: Papper.spacing.md) {
-                ForEach(viewModel.activeWidgets) { widget in
-                    QuickEntryWidgetCard(
-                        widget: widget,
-                        isCompleted: viewModel.isWidgetCompleted(widget),
-                        canRemove: viewModel.canRemoveWidget,
-                        onTap: { selectedWidget = widget },
-                        onRemove: {
-                            widgetToRemove = widget
-                            showRemoveConfirmation = true
-                        },
-                        onAddMore: {
-                            showCreateCustomWidget = true
-                        }
-                    )
+                
+                Button(action: {}) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 22))
+                        .foregroundColor(Papper.colors.purple400)
                 }
             }
+            
+            // Quick Entry Widgets Row
+            HStack(spacing: Papper.spacing.sm) {
+                QuickEntryWidget(
+                    title: "Morning Reflection",
+                    icon: "sun.horizon.fill",
+                    iconColor: Papper.colors.yellow400,
+                    isCompleted: true
+                )
+                
+                QuickEntryWidget(
+                    title: "Goals for Today",
+                    icon: "target",
+                    iconColor: Papper.colors.purple400,
+                    isCompleted: false
+                )
+            }
+            
+            // Daily Quote Widget
+            DailyQuoteWidget(
+                quote: "The only way to do great work is to love what you do.",
+                author: "Steve Jobs"
+            )
+            
+            // Additional Widget Row
+            HStack(spacing: Papper.spacing.sm) {
+                QuickEntryWidget(
+                    title: "Gratitude",
+                    icon: "heart.fill",
+                    iconColor: Papper.colors.pink400,
+                    isCompleted: false
+                )
+                
+                QuickEntryWidget(
+                    title: "Evening Review",
+                    icon: "moon.stars.fill",
+                    iconColor: Papper.colors.purple400,
+                    isCompleted: false
+                )
+            }
+            
+            // Streak Widget
+            StreakWidget(currentStreak: 7, longestStreak: 14)
+        }
+    }
+}
+
+// MARK: - Weekly Calendar View
+
+struct WeeklyCalendarView: View {
+    @Binding var selectedDate: Date
+    
+    private let calendar = Calendar.current
+    private let daysOfWeek = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
+    
+    private var weekDates: [Date] {
+        let today = Date()
+        let weekday = calendar.component(.weekday, from: today)
+        // Adjust for Monday start (weekday 1 is Sunday in Calendar)
+        let daysFromMonday = (weekday + 5) % 7
+        let monday = calendar.date(byAdding: .day, value: -daysFromMonday, to: today)!
+        
+        return (0..<7).compactMap { calendar.date(byAdding: .day, value: $0, to: monday) }
+    }
+    
+    private func isToday(_ date: Date) -> Bool {
+        calendar.isDateInToday(date)
+    }
+    
+    private func isSelected(_ date: Date) -> Bool {
+        calendar.isDate(date, inSameDayAs: selectedDate)
+    }
+    
+    private func dayNumber(_ date: Date) -> String {
+        let day = calendar.component(.day, from: date)
+        return "\(day)"
+    }
+    
+    var body: some View {
+        VStack(spacing: Papper.spacing.sm) {
+            HStack(spacing: 0) {
+                ForEach(Array(zip(daysOfWeek.indices, daysOfWeek)), id: \.0) { index, day in
+                    let date = weekDates[index]
+                    
+                    Button(action: { selectedDate = date }) {
+                        VStack(spacing: Papper.spacing.xxs) {
+                            Text(day)
+                                .font(Papper.typography.bodySmall)
+                                .foregroundColor(Papper.colors.fontSecondary)
+                            
+                            ZStack {
+                                if isToday(date) || isSelected(date) {
+                                    Circle()
+                                        .fill(isToday(date) ? Papper.colors.purple400 : Papper.colors.surfaceBackgroundPlain)
+                                        .frame(width: 36, height: 36)
+                                        .papperSlightShadow()
+                                }
+                                
+                                Text(dayNumber(date))
+                                    .font(Papper.typography.bodyTitle)
+                                    .foregroundColor(isToday(date) ? .white : Papper.colors.fontMain)
+                            }
+                            
+                            // Entry indicator dot
+                            Circle()
+                                .fill(hasEntry(for: date) ? Papper.colors.green400 : .clear)
+                                .frame(width: 6, height: 6)
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                }
+            }
+            .padding(.vertical, Papper.spacing.sm)
+            .padding(.horizontal, Papper.spacing.xs)
+            .background(Papper.colors.surfaceBackgroundPlain)
+            .cornerRadius(Papper.components.Cards.taskRadius)
+            .papperSlightShadow()
         }
     }
     
+    // Mock function - would check actual entries
+    private func hasEntry(for date: Date) -> Bool {
+        // For preview, show dots on some days
+        let day = calendar.component(.day, from: date)
+        return [25, 26, 27].contains(day)
+    }
 }
 
-// MARK: - Quick Entry Widget Card
+// MARK: - Quick Entry Widget
 
-struct QuickEntryWidgetCard: View {
-    let widget: DashboardWidget
+struct QuickEntryWidget: View {
+    let title: String
+    let icon: String
+    let iconColor: Color
     let isCompleted: Bool
-    let canRemove: Bool
-    let onTap: () -> Void
-    let onRemove: () -> Void
-    let onAddMore: () -> Void
-    
-    @State private var isPressed = false
     
     var body: some View {
-        Button {
-            // Light haptic feedback on tap
-            let impactFeedback = UIImpactFeedbackGenerator(style: .light)
-            impactFeedback.impactOccurred()
-            onTap()
-        } label: {
+        Button(action: {}) {
             VStack(alignment: .leading, spacing: Papper.spacing.sm) {
-                // Icon & Status
                 HStack {
+                    // Icon
                     ZStack {
                         Circle()
-                            .fill(Color(hex: widget.color).opacity(0.15))
+                            .fill(iconColor.opacity(0.15))
                             .frame(width: 40, height: 40)
                         
-                        Image(systemName: widget.icon)
-                            .font(PapperTypography.cardTitle())
-                            .foregroundColor(Color(hex: widget.color))
+                        Image(systemName: icon)
+                            .font(.system(size: 18))
+                            .foregroundColor(iconColor)
                     }
                     
                     Spacer()
                     
-                    // Custom widget indicator
-                    if widget.isCustom {
-                        Image(systemName: "star.fill")
-                            .font(PapperTypography.bodySmallText())
-                            .foregroundColor(Color(hex: widget.color).opacity(0.6))
-                    }
-                    
+                    // Status indicator
                     if isCompleted {
                         Image(systemName: "checkmark.circle.fill")
-                            .font(PapperTypography.paywallSubtitleLarge())
-                            .foregroundColor(PapperColors.green400)
-                            .transition(.scale.combined(with: .opacity))
+                            .font(.system(size: 20))
+                            .foregroundColor(Papper.colors.green400)
                     }
                 }
                 
                 Spacer()
                 
-                // Title & Status
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(widget.title)
-                        .font(PapperTypography.bodyTitleBold())
-                        .foregroundColor(PapperColors.neutral800)
+                VStack(alignment: .leading, spacing: Papper.spacing.xxxs) {
+                    Text(title)
+                        .font(Papper.typography.bodyTitle)
+                        .foregroundColor(Papper.colors.fontMain)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
                     
                     Text(isCompleted ? "Completed" : "Tap to start")
-                        .font(PapperTypography.bodySmallText())
-                        .foregroundColor(isCompleted ? PapperColors.green400 : PapperColors.neutral500)
+                        .font(Papper.typography.bodySmall)
+                        .foregroundColor(isCompleted ? Papper.colors.green400 : Papper.colors.fontSecondary)
                 }
             }
             .padding(Papper.spacing.md)
             .frame(maxWidth: .infinity)
-            .frame(height: 120)
-            .background(PapperColors.surfaceBackgroundPlain)
-            .cornerRadius(PapperComponents.CornerRadius.card)
-            .shadow(color: Color.black.opacity(isPressed ? 0.08 : 0.04), radius: isPressed ? 4 : 8, x: 0, y: isPressed ? 1 : 2)
-            .scaleEffect(isPressed ? 0.97 : 1.0)
+            .frame(height: 130)
+            .background(Papper.colors.surfaceBackgroundPlain)
+            .cornerRadius(Papper.components.Cards.taskRadius)
+            .papperSlightShadow()
         }
         .buttonStyle(PlainButtonStyle())
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in
-                    withAnimation(.easeInOut(duration: 0.1)) {
-                        isPressed = true
-                    }
-                }
-                .onEnded { _ in
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
-                        isPressed = false
-                    }
-                }
-        )
-        .contextMenu {
-            // Remove option (only if more than 1 widget)
-            if canRemove {
-                Button(role: .destructive) {
-                    // Medium haptic for destructive action
-                    let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-                    impactFeedback.impactOccurred()
-                    onRemove()
-                } label: {
-                    Label("Remove Widget", systemImage: "minus.circle")
-                }
-            }
-            
-            // Add More option
-            Button {
-                // Light haptic for action
-                let impactFeedback = UIImpactFeedbackGenerator(style: .light)
-                impactFeedback.impactOccurred()
-                onAddMore()
-            } label: {
-                Label("Add New Widget", systemImage: "plus.circle")
-            }
-        }
-        .animation(.spring(response: 0.3), value: isCompleted)
     }
 }
 
-// MARK: - Create Entry From Widget
+// MARK: - Daily Quote Widget
 
-struct CreateEntryFromWidgetView: View {
-    let widget: DashboardWidget
-    @ObservedObject var viewModel: DashboardViewModel
-    @StateObject private var journalViewModel = JournalViewModel()
-    @ObservedObject private var firebaseService = FirebaseService.shared
-    @Environment(\.dismiss) private var dismiss
-    
-    @State private var selectedJournal: Journal?
-    @State private var title = ""
-    @State private var content = ""
-    @State private var isSaving = false
+struct DailyQuoteWidget: View {
+    let quote: String
+    let author: String
     
     var body: some View {
-        NavigationView {
-            ZStack {
-                PapperColors.backgroundWarm
-                    .ignoresSafeArea()
-                
-                ScrollView {
-                    VStack(alignment: .leading, spacing: Papper.spacing.xl) {
-                        // Template Info
-                        HStack(spacing: Papper.spacing.md) {
-                            ZStack {
-                                Circle()
-                                    .fill(Color(hex: widget.color).opacity(0.15))
-                                    .frame(width: 44, height: 44)
-                                
-                                Image(systemName: widget.icon)
-                                    .font(PapperTypography.paywallSubtitleLarge())
-                                    .foregroundColor(Color(hex: widget.color))
-                            }
-                            
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(widget.title)
-                                    .font(PapperTypography.cardTitle())
-                                    .foregroundColor(PapperColors.neutral800)
-                                
-                                Text(widget.isCustom ? "Custom widget" : "Quick entry template")
-                                    .font(Papper.typography.bodySmall)
-                                    .foregroundColor(PapperColors.neutral500)
-                            }
-                        }
-                        .padding()
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color(hex: widget.color).opacity(0.1))
-                        .cornerRadius(PapperComponents.CornerRadius.medium)
-                        
-                        // Question/Prompt (for custom widgets)
-                        if widget.isCustom, let question = widget.question, !question.isEmpty {
-                            VStack(alignment: .leading, spacing: Papper.spacing.xs) {
-                                Text("Prompt")
-                                    .font(Papper.typography.bodySmall)
-                                    .foregroundColor(PapperColors.neutral500)
-                                
-                                Text(question)
-                                    .font(PapperTypography.bodyText())
-                                    .foregroundColor(PapperColors.neutral700)
-                                    .padding()
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .background(Color(hex: widget.color).opacity(0.05))
-                                    .cornerRadius(PapperComponents.CornerRadius.medium)
-                            }
-                        }
-                        
-                        // Journal Selection (disabled for custom widgets with pre-set journal)
-                        VStack(alignment: .leading, spacing: Papper.spacing.xs) {
-                            Text("Journal")
-                                .font(Papper.typography.bodySmall)
-                                .foregroundColor(PapperColors.neutral500)
-                            
-                            if widget.isCustom && widget.journalId != nil {
-                                // Show pre-selected journal for custom widget
-                                HStack {
-                                    if let journal = selectedJournal {
-                                        Circle()
-                                            .fill(journal.displayColor)
-                                            .frame(width: 8, height: 8)
-                                        Text(journal.name)
-                                            .foregroundColor(PapperColors.neutral800)
-                                    }
-                                    
-                                    Spacer()
-                                    
-                                    Image(systemName: "lock.fill")
-                                        .font(PapperTypography.bodySmallText())
-                                        .foregroundColor(PapperColors.neutral400)
-                                }
-                                .padding()
-                                .background(PapperColors.surfaceBackgroundPlain)
-                                .cornerRadius(PapperComponents.CornerRadius.medium)
-                            } else {
-                                Menu {
-                                    ForEach(journalViewModel.journals) { journal in
-                                        Button(action: { selectedJournal = journal }) {
-                                            HStack {
-                                                Circle()
-                                                    .fill(journal.displayColor)
-                                                    .frame(width: 8, height: 8)
-                                                Text(journal.name)
-                                            }
-                                        }
-                                    }
-                                } label: {
-                                    HStack {
-                                        if let journal = selectedJournal {
-                                            Circle()
-                                                .fill(journal.displayColor)
-                                                .frame(width: 8, height: 8)
-                                            Text(journal.name)
-                                                .foregroundColor(PapperColors.neutral800)
-                                        } else {
-                                            Text("Select a journal")
-                                                .foregroundColor(PapperColors.neutral500)
-                                        }
-                                        
-                                        Spacer()
-                                        
-                                        Image(systemName: "chevron.down")
-                                            .foregroundColor(PapperColors.neutral400)
-                                    }
-                                    .padding()
-                                    .background(PapperColors.surfaceBackgroundPlain)
-                                    .cornerRadius(PapperComponents.CornerRadius.medium)
-                                }
-                            }
-                        }
-                        
-                        // Title
-                        VStack(alignment: .leading, spacing: Papper.spacing.xs) {
-                            Text("Title")
-                                .font(Papper.typography.bodySmall)
-                                .foregroundColor(PapperColors.neutral500)
-                            
-                            TextField("Entry title", text: $title)
-                                .font(PapperTypography.cardBody())
-                                .padding()
-                                .background(PapperColors.surfaceBackgroundPlain)
-                                .cornerRadius(PapperComponents.CornerRadius.medium)
-                        }
-                        
-                        // Content
-                        VStack(alignment: .leading, spacing: Papper.spacing.xs) {
-                            Text("Content")
-                                .font(Papper.typography.bodySmall)
-                                .foregroundColor(PapperColors.neutral500)
-                            
-                            TextEditor(text: $content)
-                                .font(PapperTypography.cardBody())
-                                .frame(minHeight: 200)
-                                .padding()
-                                .background(PapperColors.surfaceBackgroundPlain)
-                                .cornerRadius(PapperComponents.CornerRadius.medium)
-                        }
-                    }
-                    .padding(Papper.spacing.lg)
-                }
-            }
-            .navigationTitle("New Entry")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                    .foregroundColor(PapperColors.neutral600)
-                }
-                
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Save") {
-                        saveEntry()
-                    }
-                    .font(PapperTypography.cardTitle())
-                    .foregroundColor(PapperColors.neutral700)
-                    .disabled(selectedJournal == nil || content.isEmpty || isSaving)
-                }
-            }
-            .task {
-                // Setup based on widget type
-                title = widget.title
-                
-                // For custom widgets with pre-set journal
-                if widget.isCustom, let journalId = widget.journalId {
-                    selectedJournal = journalViewModel.journals.first { $0.id == journalId }
-                    
-                    // Pre-fill template text if available
-                    if let templateText = widget.templateText, !templateText.isEmpty {
-                        content = templateText
-                    }
-                } else {
-                    selectedJournal = journalViewModel.journals.first
-                }
-            }
-        }
-    }
-    
-    private func saveEntry() {
-        guard let journal = selectedJournal else { return }
-        isSaving = true
-        
-        Task {
-            await journalViewModel.createEntry(
-                journalId: journal.id,
-                title: title,
-                content: content,
-                inputMethod: .write,
-                templateId: widget.templateId
-            )
-            
-            // Refresh today's entries to update widget completion status
-            await viewModel.loadTodaysEntries()
-            
-            dismiss()
-        }
-    }
-}
-
-// MARK: - Skeleton Widget Card
-
-struct SkeletonWidgetCard: View {
-    @State private var isAnimating = false
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: Papper.spacing.sm) {
+        VStack(alignment: .leading, spacing: Papper.spacing.md) {
             HStack {
-                Circle()
-                    .fill(shimmerColor)
-                    .frame(width: 40, height: 40)
+                Image(systemName: "quote.opening")
+                    .font(.system(size: 24))
+                    .foregroundColor(Papper.colors.purple400.opacity(0.6))
                 
                 Spacer()
-            }
-            
-            Spacer()
-            
-            VStack(alignment: .leading, spacing: 6) {
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(shimmerColor)
-                    .frame(width: 80, height: 14)
                 
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(shimmerColor)
-                    .frame(width: 60, height: 10)
+                Text("Daily Inspiration")
+                    .font(Papper.typography.bodySmall)
+                    .foregroundColor(Papper.colors.fontSecondary)
+            }
+            
+            Text(quote)
+                .font(.system(size: 16, weight: .medium, design: .serif))
+                .foregroundColor(Papper.colors.fontMain)
+                .lineSpacing(4)
+            
+            HStack {
+                Spacer()
+                Text("— \(author)")
+                    .font(Papper.typography.body)
+                    .foregroundColor(Papper.colors.fontSecondary)
+                    .italic()
             }
         }
-        .padding(Papper.spacing.md)
-        .frame(maxWidth: .infinity)
-        .frame(height: 120)
-        .background(PapperColors.surfaceBackgroundPlain)
-        .cornerRadius(PapperComponents.CornerRadius.card)
-        .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 2)
-        .onAppear {
-            withAnimation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true)) {
-                isAnimating = true
+        .padding(Papper.spacing.lg)
+        .background(
+            ZStack {
+                Papper.colors.surfaceBackgroundPlain
+                
+                // Decorative gradient overlay
+                LinearGradient(
+                    colors: [
+                        Papper.colors.lavanda200.opacity(0.3),
+                        Papper.colors.surfaceBackgroundPlain
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
             }
-        }
+        )
+        .cornerRadius(Papper.components.Cards.taskRadius)
+        .papperSlightShadow()
     }
+}
+
+// MARK: - Streak Widget
+
+struct StreakWidget: View {
+    let currentStreak: Int
+    let longestStreak: Int
     
-    private var shimmerColor: Color {
-        PapperColors.neutral300.opacity(isAnimating ? 0.3 : 0.6)
+    var body: some View {
+        HStack(spacing: Papper.spacing.lg) {
+            // Current Streak
+            VStack(spacing: Papper.spacing.xxs) {
+                HStack(spacing: Papper.spacing.xxs) {
+                    Image(systemName: "flame.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(Papper.colors.purple400)
+                    
+                    Text("\(currentStreak)")
+                        .font(.system(size: 28, weight: .bold))
+                        .foregroundColor(Papper.colors.fontAccent)
+                }
+                
+                Text("Day Streak")
+                    .font(Papper.typography.bodySmall)
+                    .foregroundColor(Papper.colors.fontSecondary)
+            }
+            .frame(maxWidth: .infinity)
+            
+            // Divider
+            Rectangle()
+                .fill(Papper.colors.neutral300)
+                .frame(width: 1, height: 50)
+            
+            // Longest Streak
+            VStack(spacing: Papper.spacing.xxs) {
+                HStack(spacing: Papper.spacing.xxs) {
+                    Image(systemName: "trophy.fill")
+                        .font(.system(size: 18))
+                        .foregroundColor(Papper.colors.yellow400)
+                    
+                    Text("\(longestStreak)")
+                        .font(.system(size: 28, weight: .bold))
+                        .foregroundColor(Papper.colors.fontAccent)
+                }
+                
+                Text("Best Streak")
+                    .font(Papper.typography.bodySmall)
+                    .foregroundColor(Papper.colors.fontSecondary)
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .padding(Papper.spacing.lg)
+        .background(Papper.colors.surfaceBackgroundPlain)
+        .cornerRadius(Papper.components.Cards.taskRadius)
+        .papperSlightShadow()
     }
 }
 
@@ -672,3 +412,4 @@ struct DashboardView_Previews: PreviewProvider {
     }
 }
 #endif
+
