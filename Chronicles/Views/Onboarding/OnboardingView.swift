@@ -2,9 +2,9 @@
 //  OnboardingView.swift
 //  Chronicles
 //
-//  10-11 step onboarding flow with Papper design system
-//  Steps: Welcome, Name (optional), Goals, Reminder Intro, Morning, Evening, Notifications, Feature 1-3, Completion
-//  Name step is skipped if user's name is available from Google/Apple sign-in
+//  10-step onboarding flow with Papper design system
+//  Steps: Welcome, Goals, Reminder Intro, Morning, Evening, Notifications, Feature 1-3, Completion
+//  Name is collected from Google/Apple sign-in after onboarding
 //
 
 import SwiftUI
@@ -15,7 +15,7 @@ struct OnboardingView: View {
     
     var body: some View {
         ZStack {
-            // Gradient Background
+            // Background
             OnboardingGradientBackground()
             
             VStack(spacing: 0) {
@@ -24,34 +24,18 @@ struct OnboardingView: View {
                     .padding(.horizontal, Papper.spacing.lg)
                     .padding(.top, Papper.spacing.sm)
                 
-                // Content - steps are dynamically tagged based on whether name step is shown
+                // Content
                 TabView(selection: $viewModel.currentStep) {
                     WelcomeStep(viewModel: viewModel).tag(0)
-                    
-                    if viewModel.hasAccountName {
-                        // Name step skipped - shift all subsequent steps down by 1
-                        GoalsStep(viewModel: viewModel).tag(1)
-                        ReminderIntroStep(viewModel: viewModel).tag(2)
-                        MorningReminderStep(viewModel: viewModel).tag(3)
-                        EveningReminderStep(viewModel: viewModel).tag(4)
-                        NotificationStep(viewModel: viewModel).tag(5)
-                        FeatureSlide1(viewModel: viewModel).tag(6)
-                        FeatureSlide2(viewModel: viewModel).tag(7)
-                        FeatureSlide3(viewModel: viewModel).tag(8)
-                        CompletionStep(viewModel: viewModel).tag(9)
-                    } else {
-                        // Full flow with name step
-                        NameStep(viewModel: viewModel).tag(1)
-                        GoalsStep(viewModel: viewModel).tag(2)
-                        ReminderIntroStep(viewModel: viewModel).tag(3)
-                        MorningReminderStep(viewModel: viewModel).tag(4)
-                        EveningReminderStep(viewModel: viewModel).tag(5)
-                        NotificationStep(viewModel: viewModel).tag(6)
-                        FeatureSlide1(viewModel: viewModel).tag(7)
-                        FeatureSlide2(viewModel: viewModel).tag(8)
-                        FeatureSlide3(viewModel: viewModel).tag(9)
-                        CompletionStep(viewModel: viewModel).tag(10)
-                    }
+                    GoalsStep(viewModel: viewModel).tag(1)
+                    ReminderIntroStep(viewModel: viewModel).tag(2)
+                    MorningReminderStep(viewModel: viewModel).tag(3)
+                    EveningReminderStep(viewModel: viewModel).tag(4)
+                    NotificationStep(viewModel: viewModel).tag(5)
+                    FeatureSlide1(viewModel: viewModel).tag(6)
+                    FeatureSlide2(viewModel: viewModel).tag(7)
+                    FeatureSlide3(viewModel: viewModel).tag(8)
+                    CompletionStep(viewModel: viewModel).tag(9)
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 .animation(.spring(response: 0.5, dampingFraction: 0.8), value: viewModel.currentStep)
@@ -153,56 +137,6 @@ struct WelcomeStep: View {
                     .foregroundColor(PapperColors.neutral600)
                     .multilineTextAlignment(.center)
             }
-            
-            Spacer()
-            Spacer()
-        }
-        .padding(Papper.spacing.xl)
-    }
-}
-
-// MARK: - Name Step
-
-struct NameStep: View {
-    @ObservedObject var viewModel: OnboardingViewModel
-    @FocusState private var isTextFieldFocused: Bool
-    
-    var body: some View {
-        VStack(spacing: Papper.spacing.xxl) {
-            Spacer()
-            
-            // Icon
-            OnboardingIconCircle(
-                icon: "person.fill",
-                size: 100,
-                iconSize: 44,
-                backgroundColor: PapperColors.grayblue200,
-                iconColor: PapperColors.neutral700
-            )
-            
-            VStack(spacing: Papper.spacing.md) {
-                Text("What should we call you?")
-                    .font(PapperTypography.listTitle())
-                    .foregroundColor(PapperColors.neutral800)
-                    .multilineTextAlignment(.center)
-                
-                Text("We'll use this to personalize your experience")
-                    .font(PapperTypography.cardBody())
-                    .foregroundColor(PapperColors.neutral600)
-                    .multilineTextAlignment(.center)
-            }
-            
-            TextField("Your name", text: $viewModel.preferredName)
-                .font(.system(size: 18))
-                .padding()
-                .background(PapperColors.surfaceBackgroundPlain)
-                .cornerRadius(12)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(isTextFieldFocused ? PapperColors.borderActive : PapperColors.neutral300, lineWidth: isTextFieldFocused ? 2 : 1)
-                )
-                .focused($isTextFieldFocused)
-                .animation(.easeInOut(duration: 0.2), value: isTextFieldFocused)
             
             Spacer()
             Spacer()

@@ -4,6 +4,7 @@
 //
 //  Onboarding flow view model
 //  Works without authentication - stores data locally first
+//  Name is collected from Google/Apple sign-in after onboarding
 //
 
 import Foundation
@@ -18,7 +19,6 @@ class OnboardingViewModel: ObservableObject {
     @Published var isLoading = false
     
     // Onboarding Data
-    @Published var preferredName = ""
     @Published var primaryGoals: Set<String> = []
     @Published var morningReminderEnabled = false
     @Published var eveningReminderEnabled = false
@@ -26,18 +26,10 @@ class OnboardingViewModel: ObservableObject {
     @Published var eveningReminderTime = Calendar.current.date(bySettingHour: 21, minute: 0, second: 0, of: Date()) ?? Date()
     @Published var notificationsEnabled = false
     
-    /// Whether we have a name from the user's account (Google/Apple sign-in)
-    private(set) var hasAccountName = false
-    
     // MARK: - Constants
     
-    /// Base total steps in onboarding (11 steps: Welcome, Name, Goals, Reminder Intro, Morning, Evening, Notifications, Feature 1-3, Completion)
-    private let baseTotalSteps = 11
-    
-    /// Effective total steps (10 if name step is skipped, 11 otherwise)
-    var totalSteps: Int {
-        hasAccountName ? baseTotalSteps - 1 : baseTotalSteps
-    }
+    /// Total steps in onboarding (10 steps: Welcome, Goals, Reminder Intro, Morning, Evening, Notifications, Feature 1-3, Completion)
+    let totalSteps = 10
     
     let goalOptions = [
         ("mindfulness", "Practice mindfulness"),
@@ -52,43 +44,22 @@ class OnboardingViewModel: ObservableObject {
     
     private let notificationService = NotificationService.shared
     
-    // MARK: - Initialization
-    
-    init() {
-        // Check if we have an account name from Google/Apple sign-in
-        if let accountName = OnboardingViewModel.getAccountName(), !accountName.isEmpty {
-            preferredName = accountName
-            hasAccountName = true
-        }
-    }
-    
     // MARK: - Navigation
     
-    /// Steps (when name step is shown):
+    /// Steps:
     /// 0 - Welcome
-    /// 1 - Name (skipped if hasAccountName)
-    /// 2 - Goals (required)
-    /// 3 - Reminder Intro
-    /// 4 - Morning Reminder
-    /// 5 - Evening Reminder
-    /// 6 - Notifications
-    /// 7 - Feature Slide 1
-    /// 8 - Feature Slide 2
-    /// 9 - Feature Slide 3
-    /// 10 - Completion
+    /// 1 - Goals (required)
+    /// 2 - Reminder Intro
+    /// 3 - Morning Reminder
+    /// 4 - Evening Reminder
+    /// 5 - Notifications
+    /// 6 - Feature Slide 1
+    /// 7 - Feature Slide 2
+    /// 8 - Feature Slide 3
+    /// 9 - Completion
     var canProceed: Bool {
         switch currentStep {
-        case 1: 
-            // If we have account name and are on step 1, it's Goals step
-            if hasAccountName {
-                return !primaryGoals.isEmpty
-            }
-            // Otherwise it's Name step
-            return !preferredName.isEmpty
-        case 2: 
-            // If we have account name, step 2 is Reminder Intro (always can proceed)
-            // Otherwise it's Goals step
-            return hasAccountName ? true : !primaryGoals.isEmpty
+        case 1: return !primaryGoals.isEmpty
         default: return true
         }
     }
@@ -160,7 +131,6 @@ class OnboardingViewModel: ObservableObject {
     private func saveOnboardingDataLocally() {
         let defaults = UserDefaults.standard
         
-        defaults.set(preferredName, forKey: "onboarding_preferredName")
         defaults.set(Array(primaryGoals), forKey: "onboarding_primaryGoals")
         defaults.set(morningReminderEnabled, forKey: "onboarding_morningReminderEnabled")
         defaults.set(eveningReminderEnabled, forKey: "onboarding_eveningReminderEnabled")
@@ -190,16 +160,10 @@ class OnboardingViewModel: ObservableObject {
         )
     }
     
-    /// Get locally stored preferred name
-    static func getLocalPreferredName() -> String? {
-        return UserDefaults.standard.string(forKey: "onboarding_preferredName")
-    }
-    
     /// Clear locally stored onboarding data (after sync)
     static func clearLocalOnboardingData() {
         let defaults = UserDefaults.standard
         let keys = [
-            "onboarding_preferredName",
             "onboarding_primaryGoals",
             "onboarding_morningReminderEnabled",
             "onboarding_eveningReminderEnabled",
@@ -209,24 +173,5 @@ class OnboardingViewModel: ObservableObject {
             "onboarding_completedAt"
         ]
         keys.forEach { defaults.removeObject(forKey: $0) }
-    }
-    
-    // MARK: - Account Name (from Google/Apple Sign-In)
-    
-    private static let accountNameKey = "account_preferredName"
-    
-    /// Save the user's name from their Google/Apple account
-    static func saveAccountName(_ name: String) {
-        UserDefaults.standard.set(name, forKey: accountNameKey)
-    }
-    
-    /// Get the user's name from their Google/Apple account
-    static func getAccountName() -> String? {
-        return UserDefaults.standard.string(forKey: accountNameKey)
-    }
-    
-    /// Clear the stored account name
-    static func clearAccountName() {
-        UserDefaults.standard.removeObject(forKey: accountNameKey)
     }
 }

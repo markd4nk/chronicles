@@ -138,32 +138,9 @@ struct AuthView: View {
         }
         .onChange(of: viewModel.isAuthenticated) { _, isAuthenticated in
             if isAuthenticated {
-                // Extract and save the user's name from their account for onboarding
-                extractAndSaveAccountName()
                 // Sync onboarding data after authentication
                 syncOnboardingData()
             }
-        }
-    }
-    
-    /// Extract the user's name from their Google/Apple account and save it for onboarding
-    private func extractAndSaveAccountName() {
-        guard let user = AuthService.shared.currentUser else { return }
-        
-        // Use preferredName if available, otherwise extract from displayName
-        let accountName: String?
-        if let preferredName = user.preferredName, !preferredName.isEmpty, preferredName != "User" {
-            accountName = preferredName
-        } else if let displayName = user.displayName, !displayName.isEmpty {
-            // Extract first name from display name
-            accountName = displayName.components(separatedBy: " ").first
-        } else {
-            accountName = nil
-        }
-        
-        // Save the account name for onboarding to use
-        if let name = accountName, !name.isEmpty {
-            OnboardingViewModel.saveAccountName(name)
         }
     }
     
@@ -177,13 +154,6 @@ struct AuthView: View {
             do {
                 // Complete onboarding with the stored data
                 try await AuthService.shared.completeOnboarding(data: onboardingData)
-                
-                // Update preferred name if available
-                if let preferredName = OnboardingViewModel.getLocalPreferredName(),
-                   var user = AuthService.shared.currentUser {
-                    user.preferredName = preferredName
-                    try await AuthService.shared.updateUser(user)
-                }
                 
                 // Clear local data after successful sync
                 OnboardingViewModel.clearLocalOnboardingData()
