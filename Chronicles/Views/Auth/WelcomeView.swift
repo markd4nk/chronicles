@@ -101,6 +101,11 @@ struct WelcomeView: View {
                     .frame(height: 56)
                     .background(PapperColors.surfaceBackgroundPlain)
                     .cornerRadius(28)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 28)
+                            .stroke(PapperColors.neutral300, lineWidth: 1)
+                    )
+                    .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 4)
             }
             .buttonStyle(.plain)
             

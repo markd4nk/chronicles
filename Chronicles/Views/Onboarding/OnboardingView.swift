@@ -19,6 +19,9 @@ struct OnboardingView: View {
             OnboardingGradientBackground()
             
             VStack(spacing: 0) {
+                // Top Navigation Bar (back button for steps 1+)
+                topNavigationBar
+                
                 // Progress Bar
                 OnboardingProgressBar(progress: viewModel.progress)
                     .padding(.horizontal, Papper.spacing.lg)
@@ -40,7 +43,7 @@ struct OnboardingView: View {
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 .animation(.spring(response: 0.5, dampingFraction: 0.8), value: viewModel.currentStep)
                 
-                // Navigation Buttons
+                // Navigation Buttons - Step-aware
                 navigationButtons
             }
         }
@@ -51,16 +54,11 @@ struct OnboardingView: View {
         }
     }
     
-    // MARK: - Navigation Buttons
+    // MARK: - Top Navigation Bar
     
-    /// The last step index (Completion step)
-    private var lastStepIndex: Int {
-        viewModel.totalSteps - 1
-    }
-    
-    private var navigationButtons: some View {
-        HStack(spacing: Papper.spacing.md) {
-            // Back Button
+    private var topNavigationBar: some View {
+        HStack {
+            // Back button in top left for steps 1+
             if viewModel.currentStep > 0 {
                 Button(action: viewModel.previousStep) {
                     HStack(spacing: Papper.spacing.xs) {
@@ -71,18 +69,63 @@ struct OnboardingView: View {
                     }
                     .foregroundColor(PapperColors.neutral600)
                 }
-            } else {
-                Spacer()
             }
-            
             Spacer()
-            
-            // Skip Button (only on certain steps, not on completion)
-            if viewModel.currentStep > 0 && viewModel.currentStep < lastStepIndex {
-                OnboardingSecondaryButton(title: "Skip") {
-                    viewModel.skipToEnd()
-                }
+        }
+        .padding(.horizontal, Papper.spacing.lg)
+        .padding(.top, Papper.spacing.sm)
+        .frame(height: viewModel.currentStep > 0 ? 44 : 0)
+        .opacity(viewModel.currentStep > 0 ? 1 : 0)
+    }
+    
+    // MARK: - Navigation Buttons
+    
+    /// The last step index (Completion step)
+    private var lastStepIndex: Int {
+        viewModel.totalSteps - 1
+    }
+    
+    @ViewBuilder
+    private var navigationButtons: some View {
+        // Steps 0-1: Centered pill button (matching WelcomeView style)
+        if viewModel.currentStep <= 1 {
+            centeredPillNavigation
+        } else {
+            // Steps 2+: Standard navigation (no skip button)
+            standardNavigation
+        }
+    }
+    
+    // MARK: - Centered Pill Navigation (for Steps 0-1)
+    
+    private var centeredPillNavigation: some View {
+        VStack(spacing: Papper.spacing.lg) {
+            Button(action: viewModel.nextStep) {
+                Text(viewModel.currentStep == 0 ? "Next" : "Continue")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(viewModel.canProceed ? PapperColors.neutral800 : PapperColors.neutral500)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 56)
+                    .background(viewModel.canProceed ? PapperColors.surfaceBackgroundPlain : PapperColors.neutral300)
+                    .cornerRadius(28)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 28)
+                            .stroke(viewModel.canProceed ? PapperColors.neutral300 : PapperColors.neutral400, lineWidth: 1)
+                    )
+                    .shadow(color: viewModel.canProceed ? Color.black.opacity(0.08) : Color.clear, radius: 8, x: 0, y: 4)
             }
+            .buttonStyle(.plain)
+            .disabled(!viewModel.canProceed)
+        }
+        .padding(.horizontal, Papper.spacing.xl)
+        .padding(.bottom, Papper.spacing.xxxl)
+    }
+    
+    // MARK: - Standard Navigation (for Steps 2+)
+    
+    private var standardNavigation: some View {
+        HStack(spacing: Papper.spacing.md) {
+            Spacer()
             
             // Next/Continue Button
             Button(action: viewModel.nextStep) {
@@ -102,6 +145,8 @@ struct OnboardingView: View {
                 .cornerRadius(12)
             }
             .disabled(!viewModel.canProceed)
+            
+            Spacer()
         }
         .padding(.horizontal, Papper.spacing.lg)
         .padding(.vertical, Papper.spacing.lg)
@@ -127,8 +172,8 @@ struct WelcomeStep: View {
             )
             
             VStack(spacing: Papper.spacing.md) {
-                Text("Welcome to Chronicles")
-                    .font(PapperTypography.listTitle())
+                Text("Intelligent Journaling")
+                    .font(.system(size: 32, weight: .bold, design: .serif))
                     .foregroundColor(PapperColors.neutral800)
                     .multilineTextAlignment(.center)
                 
@@ -154,7 +199,7 @@ struct GoalsStep: View {
         VStack(spacing: Papper.spacing.xl) {
             VStack(spacing: Papper.spacing.md) {
                 Text("What are your goals?")
-                    .font(PapperTypography.listTitle())
+                    .font(.system(size: 32, weight: .bold, design: .serif))
                     .foregroundColor(PapperColors.neutral800)
                 
                 Text("Select up to 3 goals that matter most to you")

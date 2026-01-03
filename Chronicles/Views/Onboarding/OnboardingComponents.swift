@@ -21,9 +21,9 @@ struct OnboardingIconCircle: View {
     var body: some View {
         ZStack {
             Circle()
-                .fill(backgroundColor)
+                .fill(backgroundColor.opacity(0.85))
                 .frame(width: size, height: size)
-                .shadow(color: PapperColors.shadowColor, radius: 20, x: 0, y: 10)
+                .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 6)
             
             Image(systemName: icon)
                 .font(.system(size: iconSize, weight: .medium))
