@@ -119,4 +119,3 @@ struct Journal: Identifiable, Codable, Hashable {
 
 
 
-

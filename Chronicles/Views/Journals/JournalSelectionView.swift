@@ -8,36 +8,18 @@
 import SwiftUI
 
 struct JournalSelectionView: View {
+    var onEntrySaved: (() -> Void)? = nil
+    
     @ObservedObject private var firebaseService = FirebaseService.shared
     @Environment(\.dismiss) private var dismiss
     
     @State private var showCreateJournal = false
-    @State private var selectedJournal: Journal?
-    @State private var showCreateEntry = false
-    
-    // #region agent log
-    private func agentLog(hypothesisId: String, location: String, message: String, data: [String: Any] = [:]) {
-        let ts = Date().timeIntervalSince1970 * 1000
-        let jsonData: [String: Any] = [
-            "sessionId": "debug-session",
-            "runId": "run1",
-            "hypothesisId": hypothesisId,
-            "location": location,
-            "message": message,
-            "data": data,
-            "timestamp": ts
-        ]
-        if let raw = try? JSONSerialization.data(withJSONObject: jsonData),
-           let s = String(data: raw, encoding: .utf8) {
-            NSLog("%@", s)
-        }
-    }
-    // #endregion
+    @State private var journalForNewEntry: Journal?
     
     var body: some View {
         // No NavigationStack - use custom header to avoid sheet layout issues
         ZStack {
-            Color(hex: "#faf8f3")
+            PapperColors.backgroundWarm
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {
@@ -45,7 +27,7 @@ struct JournalSelectionView: View {
                 ZStack {
                     // Centered title
                     Text("New Entry")
-                        .font(.system(size: 17, weight: .semibold))
+                        .font(PapperTypography.cardTitle())
                         .foregroundColor(PapperColors.neutral800)
                     
                     // Cancel button on left
@@ -53,7 +35,7 @@ struct JournalSelectionView: View {
                         Button("Cancel") {
                             dismiss()
                         }
-                        .font(.system(size: 17))
+                        .font(PapperTypography.cardBody())
                         .foregroundColor(PapperColors.neutral600)
                         
                         Spacer()
@@ -61,7 +43,7 @@ struct JournalSelectionView: View {
                 }
                 .padding(.horizontal, Papper.spacing.lg)
                 .padding(.vertical, Papper.spacing.md)
-                .background(Color(hex: "#faf8f3"))
+                .background(PapperColors.backgroundWarm)
                 
                 // Content
                 if firebaseService.journals.isEmpty {
@@ -72,7 +54,7 @@ struct JournalSelectionView: View {
                             // Header
                             VStack(spacing: Papper.spacing.xs) {
                                 Text("Where would you like to write?")
-                                    .font(.system(size: 20, weight: .semibold))
+                                    .font(PapperTypography.paywallSubtitleLarge())
                                     .foregroundColor(PapperColors.neutral800)
                                 
                                 Text("Select a journal for your new entry")
@@ -86,19 +68,7 @@ struct JournalSelectionView: View {
                                 JournalSelectionCard(
                                     journal: journal,
                                     onTap: {
-                                        // #region agent log
-                                        agentLog(
-                                            hypothesisId: "NAV1",
-                                            location: "JournalSelectionView.swift:onTap",
-                                            message: "journalTapped",
-                                            data: [
-                                                "journalIdLength": journal.id.count,
-                                                "selectedJournalWasNil": selectedJournal == nil
-                                            ]
-                                        )
-                                        // #endregion
-                                        selectedJournal = journal
-                                        showCreateEntry = true
+                                        journalForNewEntry = journal
                                     }
                                 )
                             }
@@ -112,13 +82,13 @@ struct JournalSelectionView: View {
                                             .frame(width: 44, height: 44)
                                         
                                         Image(systemName: "plus")
-                                            .font(.system(size: 20, weight: .medium))
+                                            .font(PapperTypography.paywallSubtitleLarge())
                                             .foregroundColor(PapperColors.neutral600)
                                     }
                                     
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text("Create New Journal")
-                                            .font(.system(size: 16, weight: .semibold))
+                                            .font(PapperTypography.cardTitle())
                                             .foregroundColor(PapperColors.neutral700)
                                         
                                         Text("Start a new collection")
@@ -130,9 +100,9 @@ struct JournalSelectionView: View {
                                 }
                                 .padding(Papper.spacing.md)
                                 .background(PapperColors.surfaceBackgroundPlain)
-                                .cornerRadius(16)
+                                .cornerRadius(PapperComponents.CornerRadius.card)
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: 16)
+                                    RoundedRectangle(cornerRadius: PapperComponents.CornerRadius.card)
                                         .stroke(PapperColors.neutral300, style: StrokeStyle(lineWidth: 1, dash: [6]))
                                 )
                             }
@@ -146,47 +116,24 @@ struct JournalSelectionView: View {
         .sheet(isPresented: $showCreateJournal) {
             CreateJournalView()
         }
-        .fullScreenCover(isPresented: $showCreateEntry) {
-            // #region agent log
-            agentLog(
-                hypothesisId: "NAV1",
-                location: "JournalSelectionView.swift:fullScreenCover",
-                message: "coverEvaluated",
-                data: [
-                    "showCreateEntry": showCreateEntry,
-                    "selectedJournalIsNil": selectedJournal == nil,
-                    "selectedJournalIdLength": selectedJournal?.id.count ?? 0
-                ]
-            )
-            // #endregion
-            if let journal = selectedJournal {
-                CreateEntryView(journal: journal)
-            }
+        // Use item: binding - guarantees journal exists when cover presents
+        .fullScreenCover(item: $journalForNewEntry) { journal in
+            CreateEntryView(journal: journal, onSaveComplete: {
+                // Notify parent to dismiss sheet and navigate to Entries tab
+                onEntrySaved?()
+            })
         }
-        // #region agent log
-        .onChange(of: showCreateEntry) { _, newValue in
-            agentLog(
-                hypothesisId: "NAV1",
-                location: "JournalSelectionView.swift:onChange(showCreateEntry)",
-                message: "showCreateEntryChanged",
-                data: [
-                    "value": newValue,
-                    "selectedJournalIsNil": selectedJournal == nil
-                ]
-            )
-        }
-        // #endregion
     }
     
     private var emptyState: some View {
         VStack(spacing: Papper.spacing.lg) {
             Image(systemName: "books.vertical.fill")
-                .font(.system(size: 60))
+                .font(PapperTypography.papperTitle())
                 .foregroundColor(PapperColors.neutral400)
             
             VStack(spacing: Papper.spacing.xs) {
                 Text("No Journals Yet")
-                    .font(.system(size: 20, weight: .semibold))
+                    .font(PapperTypography.paywallSubtitleLarge())
                     .foregroundColor(PapperColors.neutral800)
                 
                 Text("Create your first journal to start writing")
@@ -197,15 +144,15 @@ struct JournalSelectionView: View {
             Button(action: { showCreateJournal = true }) {
                 HStack(spacing: Papper.spacing.xs) {
                     Image(systemName: "plus")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(PapperTypography.cardTitle())
                     Text("Create Journal")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(PapperTypography.cardTitle())
                 }
                 .foregroundColor(.white)
                 .padding(.horizontal, Papper.spacing.xl)
                 .padding(.vertical, Papper.spacing.sm)
                 .background(PapperColors.neutral700)
-                .cornerRadius(12)
+                .cornerRadius(PapperComponents.CornerRadius.medium)
             }
         }
         .padding(Papper.spacing.xl)
@@ -228,14 +175,14 @@ struct JournalSelectionCard: View {
                         .frame(width: 44, height: 44)
                     
                     Image(systemName: "book.closed.fill")
-                        .font(.system(size: 20))
+                        .font(PapperTypography.paywallSubtitleLarge())
                         .foregroundColor(journal.displayColor)
                 }
                 
                 // Journal info
                 VStack(alignment: .leading, spacing: 2) {
                     Text(journal.name)
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(PapperTypography.cardTitle())
                         .foregroundColor(PapperColors.neutral800)
                     
                     Text("\(journal.entryCount) entries")
@@ -246,12 +193,12 @@ struct JournalSelectionCard: View {
                 Spacer()
                 
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .medium))
+                    .font(PapperTypography.bodyTitleBold())
                     .foregroundColor(PapperColors.neutral400)
             }
             .padding(Papper.spacing.md)
             .background(PapperColors.surfaceBackgroundPlain)
-            .cornerRadius(16)
+            .cornerRadius(PapperComponents.CornerRadius.card)
             .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 2)
         }
     }

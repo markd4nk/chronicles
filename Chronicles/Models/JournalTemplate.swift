@@ -176,4 +176,3 @@ struct JournalTemplate: Identifiable, Codable {
 
 
 
-

@@ -176,4 +176,3 @@ struct JournalPrompt: Identifiable, Codable {
 
 
 
-
