@@ -75,6 +75,7 @@ struct PromptsFeedView: View {
                                     }
                                 }
                             }
+                            .scrollTargetLayout()
                         }
                         .scrollTargetBehavior(.paging)
                     }
